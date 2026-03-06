@@ -28,7 +28,6 @@ DEFAULT_REPO_OVERRIDE = ".repo-audit-refactor-optimize/skill-sources.json"
 # Shared domain constants used by scan_repo_profile and _matches_when.
 KNOWN_LANGUAGES = frozenset({"python", "c", "rust", "assembly"})
 KNOWN_TEST_SYSTEMS = frozenset({"pytest", "cargo", "cmake", "meson", "make"})
-BENCHMARK_DIR_NAMES = frozenset({"benches", "benchmarks"})
 
 
 def _env_value(env: dict[str, str] | None, key: str) -> str | None:
@@ -348,9 +347,9 @@ def _skill_entry(
     usable_skills: dict[str, dict[str, Any]],
     advisory_skills: dict[str, dict[str, Any]],
 ) -> dict[str, Any]:
-    for _field in _REQUIRED_SKILL_FIELDS:
-        if _field not in skill_config:
-            raise ValueError(f"Skill '{skill_name}' is missing required field '{_field}'.")
+    for field in _REQUIRED_SKILL_FIELDS:
+        if field not in skill_config:
+            raise ValueError(f"Skill '{skill_name}' is missing required field '{field}'.")
     entry = {
         "name": skill_name,
         "priority": skill_config["priority"],
