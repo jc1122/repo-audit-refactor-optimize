@@ -70,13 +70,13 @@ def _default_orchestrator_home(env: dict[str, str] | None) -> Path:
 
 
 def scan_repo_profile(repo_root: Path) -> dict[str, Any]:
+    """Scan a repository to detect languages, test systems, and benchmark surfaces."""
     languages: set[str] = set()
     test_systems: set[str] = set()
     benchmark_surfaces: set[str] = set()
 
     for current_root, dir_names, file_names in os.walk(repo_root):
         dir_names[:] = [name for name in dir_names if name not in SKIP_DIRS]
-        basename_lower = os.path.basename(current_root).lower()
 
         if "pytest.ini" in file_names:
             test_systems.add("pytest")
@@ -92,13 +92,6 @@ def scan_repo_profile(repo_root: Path) -> dict[str, Any]:
 
         rel = os.path.relpath(current_root, repo_root)
         parts_lower = {part.lower() for part in rel.replace("\\", "/").split("/")}
-        if basename_lower in BENCHMARK_DIR_NAMES:
-            if any(name.endswith(".py") for name in file_names):
-                benchmark_surfaces.add("python-benchmarks")
-            if any(name.endswith(".rs") for name in file_names):
-                benchmark_surfaces.add("cargo-benches")
-            if any(os.path.splitext(name)[1].lower() in {".c", ".cc", ".cpp", ".h"} for name in file_names):
-                benchmark_surfaces.add("native-benchmarks")
 
         for name in file_names:
             suffix = os.path.splitext(name)[1]
@@ -316,6 +309,7 @@ def _register_skill(
 
 
 def _matches_when(profile: dict[str, Any], conditions: dict[str, Any]) -> bool:
+    """Return True when the repo profile satisfies all lane activation conditions."""
     languages = set(profile["languages"])
     tests = set(profile["test_systems"])
     benchmarks = set(profile["benchmark_surfaces"])
@@ -578,6 +572,7 @@ def build_bootstrap_report(
     repo_override_path: Path | None = None,
     required_skill_names: list[str] | None = None,
 ) -> dict[str, Any]:
+    """Build the full bootstrap report for a repository."""
     repo_root = repo_root.resolve()
     out_dir = out_dir.resolve()
     manifest = load_dependency_manifest(manifest_path)
@@ -690,6 +685,7 @@ def _markdown_install_plan(report: dict[str, Any]) -> str:
 
 
 def write_bootstrap_outputs(report: dict[str, Any], out_dir: Path) -> None:
+    """Write JSON report, Markdown report, and install plan to the output directory."""
     bootstrap_dir = out_dir / "bootstrap"
     bootstrap_dir.mkdir(parents=True, exist_ok=True)
     (bootstrap_dir / "bootstrap_report.json").write_text(

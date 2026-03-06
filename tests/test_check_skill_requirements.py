@@ -49,6 +49,16 @@ def sample_manifest() -> dict:
     return manifest
 
 
+@pytest.fixture
+def python_pytest_repo(tmp_path: Path) -> Path:
+    """Create a minimal Python+pytest repository and return its root path."""
+    repo = tmp_path / "repo"
+    (repo / "tests").mkdir(parents=True)
+    (repo / "tests" / "test_x.py").write_text("pass\n", encoding="utf-8")
+    (repo / "pytest.ini").write_text("[pytest]\n", encoding="utf-8")
+    return repo
+
+
 def test_scan_repo_profile_detects_languages_and_surfaces(tmp_path: Path):
     repo = tmp_path / "repo"
     (repo / "src").mkdir(parents=True)
@@ -129,11 +139,9 @@ def test_resolve_skill_roots_codex_home_backward_compat(tmp_path: Path):
 def test_python_repo_uses_tqa_triage_fallback_when_pipeline_missing(
     tmp_path: Path,
     sample_manifest: dict,
+    python_pytest_repo: Path,
 ):
-    repo = tmp_path / "repo"
-    (repo / "tests").mkdir(parents=True)
-    (repo / "tests" / "test_app.py").write_text("def test_ok(): assert True\n", encoding="utf-8")
-    (repo / "pytest.ini").write_text("[pytest]\n", encoding="utf-8")
+    repo = python_pytest_repo
 
     manifest_path = tmp_path / "manifest.json"
     write_manifest(manifest_path, sample_manifest)
@@ -247,11 +255,8 @@ def test_malformed_override_file_hard_fails(tmp_path: Path, sample_manifest: dic
         )
 
 
-def test_bad_optional_override_entry_is_ignored(tmp_path: Path, sample_manifest: dict):
-    repo = tmp_path / "repo"
-    (repo / "tests").mkdir(parents=True)
-    (repo / "tests" / "test_app.py").write_text("def test_ok(): assert True\n", encoding="utf-8")
-    (repo / "pytest.ini").write_text("[pytest]\n", encoding="utf-8")
+def test_bad_optional_override_entry_is_ignored(tmp_path: Path, sample_manifest: dict, python_pytest_repo: Path):
+    repo = python_pytest_repo
 
     manifest_path = tmp_path / "manifest.json"
     write_manifest(manifest_path, sample_manifest)
@@ -284,11 +289,8 @@ def test_bad_optional_override_entry_is_ignored(tmp_path: Path, sample_manifest:
     assert report["warnings"]
 
 
-def test_bad_active_optional_override_entry_is_ignored(tmp_path: Path, sample_manifest: dict):
-    repo = tmp_path / "repo"
-    (repo / "tests").mkdir(parents=True)
-    (repo / "tests" / "test_app.py").write_text("def test_ok(): assert True\n", encoding="utf-8")
-    (repo / "pytest.ini").write_text("[pytest]\n", encoding="utf-8")
+def test_bad_active_optional_override_entry_is_ignored(tmp_path: Path, sample_manifest: dict, python_pytest_repo: Path):
+    repo = python_pytest_repo
 
     manifest_path = tmp_path / "manifest.json"
     write_manifest(manifest_path, sample_manifest)
@@ -377,11 +379,8 @@ def test_perf_focused_repo_without_benchmark_surfaces_is_blocked(
     assert report["skills"]["perf-benchmark"]["state"] == "blocking_missing"
 
 
-def test_main_cli_roundtrip(tmp_path: Path, sample_manifest: dict):
-    repo = tmp_path / "repo"
-    (repo / "tests").mkdir(parents=True)
-    (repo / "tests" / "test_x.py").write_text("def test_x(): pass\n", encoding="utf-8")
-    (repo / "pytest.ini").write_text("[pytest]\n", encoding="utf-8")
+def test_main_cli_roundtrip(tmp_path: Path, sample_manifest: dict, python_pytest_repo: Path):
+    repo = python_pytest_repo
 
     manifest_path = tmp_path / "manifest.json"
     write_manifest(manifest_path, sample_manifest)
@@ -412,11 +411,8 @@ def test_load_dependency_manifest_missing_keys(tmp_path: Path):
         checker.load_dependency_manifest(bad)
 
 
-def test_test_lane_full_with_optional(tmp_path: Path, sample_manifest: dict):
-    repo = tmp_path / "repo"
-    (repo / "tests").mkdir(parents=True)
-    (repo / "tests" / "test_x.py").write_text("pass\n", encoding="utf-8")
-    (repo / "pytest.ini").write_text("[pytest]\n", encoding="utf-8")
+def test_test_lane_full_with_optional(tmp_path: Path, sample_manifest: dict, python_pytest_repo: Path):
+    repo = python_pytest_repo
 
     manifest_path = tmp_path / "manifest.json"
     write_manifest(manifest_path, sample_manifest)
@@ -440,11 +436,8 @@ def test_test_lane_full_with_optional(tmp_path: Path, sample_manifest: dict):
     assert "hypothesis-testing" in lane["selected_skills"]
 
 
-def test_test_lane_manual_when_nothing_available(tmp_path: Path, sample_manifest: dict):
-    repo = tmp_path / "repo"
-    (repo / "tests").mkdir(parents=True)
-    (repo / "tests" / "test_x.py").write_text("pass\n", encoding="utf-8")
-    (repo / "pytest.ini").write_text("[pytest]\n", encoding="utf-8")
+def test_test_lane_manual_when_nothing_available(tmp_path: Path, sample_manifest: dict, python_pytest_repo: Path):
+    repo = python_pytest_repo
 
     manifest_path = tmp_path / "manifest.json"
     write_manifest(manifest_path, sample_manifest)
@@ -494,11 +487,9 @@ def test_performance_lane_full_and_degraded(tmp_path: Path, sample_manifest: dic
 def test_performance_lane_manual_with_test_surface_no_benchmarks(
     tmp_path: Path,
     sample_manifest: dict,
+    python_pytest_repo: Path,
 ):
-    repo = tmp_path / "repo"
-    (repo / "tests").mkdir(parents=True)
-    (repo / "tests" / "test_x.py").write_text("pass\n", encoding="utf-8")
-    (repo / "pytest.ini").write_text("[pytest]\n", encoding="utf-8")
+    repo = python_pytest_repo
 
     manifest_path = tmp_path / "manifest.json"
     write_manifest(manifest_path, sample_manifest)
@@ -712,11 +703,8 @@ def test_code_health_python_full_with_optional(tmp_path: Path, sample_manifest: 
     ]
 
 
-def test_markdown_report_structure(tmp_path: Path, sample_manifest: dict):
-    repo = tmp_path / "repo"
-    (repo / "tests").mkdir(parents=True)
-    (repo / "tests" / "test_x.py").write_text("pass\n", encoding="utf-8")
-    (repo / "pytest.ini").write_text("[pytest]\n", encoding="utf-8")
+def test_markdown_report_structure(tmp_path: Path, sample_manifest: dict, python_pytest_repo: Path):
+    repo = python_pytest_repo
 
     manifest_path = tmp_path / "manifest.json"
     write_manifest(manifest_path, sample_manifest)
