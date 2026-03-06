@@ -21,12 +21,12 @@ Keep the top-level flow here and load the reference files only when needed:
 
 Follow this sequence:
 
-1. Bootstrap subskills and current-session capabilities.
-2. Discover repository shape and verification surfaces.
-3. Diagnose tests, code health, and performance.
-4. Synthesize a ranked remediation backlog.
-5. Execute safe cleanup, refactor, and optimization batches.
-6. Verify the resulting claims before completion.
+0. Bootstrap subskills and current-session capabilities.
+1. Discover repository shape and verification surfaces.
+2. Diagnose tests, code health, and performance.
+3. Synthesize a ranked remediation backlog.
+4. Execute safe cleanup, refactor, and optimization batches.
+5. Verify the resulting claims before completion.
 
 Treat this skill as an orchestrator. Reuse specialized subskills instead of re-implementing their internals. Keep raw outputs from each lane, then merge them into a single backlog and verification summary.
 

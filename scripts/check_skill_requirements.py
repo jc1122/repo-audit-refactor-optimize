@@ -186,9 +186,8 @@ def load_dependency_manifest(manifest_path: Path) -> dict[str, Any]:
         raise ValueError(f"Malformed dependency manifest: {manifest_path}") from exc
     if not isinstance(payload, dict) or "skills" not in payload or "lanes" not in payload:
         raise ValueError(f"Invalid dependency manifest: {manifest_path}")
-    REQUIRED_SKILL_FIELDS = {"priority", "source_type", "manual_fallback", "restart_required_if_installed"}
     for name, entry in payload["skills"].items():
-        missing = REQUIRED_SKILL_FIELDS - entry.keys()
+        missing = _REQUIRED_SKILL_FIELDS - entry.keys()
         if missing:
             raise ValueError(f"Skill '{name}' missing required fields in manifest: {missing}")
     return payload
@@ -340,7 +339,7 @@ def _relevant_lane_names(profile: dict[str, Any], manifest: dict[str, Any]) -> l
     return lane_names
 
 
-_REQUIRED_SKILL_FIELDS = ("priority", "source_type", "manual_fallback", "restart_required_if_installed")
+_REQUIRED_SKILL_FIELDS = frozenset({"priority", "source_type", "manual_fallback", "restart_required_if_installed"})
 
 
 def _skill_entry(

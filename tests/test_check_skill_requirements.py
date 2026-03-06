@@ -912,3 +912,59 @@ def test_manifest_skill_missing_required_field(tmp_path: Path, sample_manifest: 
             out_dir=tmp_path / "out",
             env={"HOME": str(tmp_path)},
         )
+
+
+def test_native_benchmarks_surface_detection(tmp_path: Path):
+    """A C file with 'bench' in its name triggers the native-benchmarks surface."""
+    repo = tmp_path / "repo"
+    (repo / "src").mkdir(parents=True)
+    (repo / "src" / "bench_fft.c").write_text("int main(void){return 0;}\n", encoding="utf-8")
+
+    profile = checker.scan_repo_profile(repo)
+
+    assert "c" in profile["languages"]
+    assert "native-benchmarks" in profile["benchmark_surfaces"]
+    assert profile["has_deterministic_perf_surface"] is True
+
+
+def test_cargo_benches_surface_detection(tmp_path: Path):
+    """An .rs file inside a 'benches/' directory triggers the cargo-benches surface."""
+    repo = tmp_path / "repo"
+    (repo / "benches").mkdir(parents=True)
+    (repo / "Cargo.toml").write_text("[package]\nname='demo'\nversion='0.1.0'\n", encoding="utf-8")
+    (repo / "benches" / "my_bench.rs").write_text("fn main(){}\n", encoding="utf-8")
+
+    profile = checker.scan_repo_profile(repo)
+
+    assert "rust" in profile["languages"]
+    assert "cargo-benches" in profile["benchmark_surfaces"]
+    assert profile["has_deterministic_perf_surface"] is True
+
+
+def test_unknown_lane_type_falls_back_with_warning(tmp_path: Path, sample_manifest: dict):
+    """An unknown lane_type should use the orchestration evaluator and emit a warning."""
+    sample_manifest["lanes"]["futuristic-lane"] = {
+        "when": {"python": True},
+        "lane_type": "quantum_computing",
+        "preferred": [],
+        "manual_fallback": "Use quantum manually.",
+        "blocking": False,
+    }
+
+    repo = tmp_path / "repo"
+    (repo / "src").mkdir(parents=True)
+    (repo / "src" / "app.py").write_text("print('ok')\n", encoding="utf-8")
+
+    manifest_path = tmp_path / "manifest.json"
+    write_manifest(manifest_path, sample_manifest)
+
+    report = checker.build_bootstrap_report(
+        repo_root=repo,
+        manifest_path=manifest_path,
+        out_dir=tmp_path / "out",
+        env={"HOME": str(tmp_path)},
+    )
+
+    assert "futuristic-lane" in report["summary"]["active_lanes"]
+    lane = report["lanes"]["futuristic-lane"]
+    assert any("Unknown lane type" in w for w in lane["warnings"])
