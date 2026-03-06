@@ -1,4 +1,4 @@
 interface:
   display_name: "Repo Audit Refactor Optimize"
   short_description: "End-to-end repository optimization orchestration"
-  default_prompt: "Audit this repository end-to-end, prioritize the findings, execute safe improvements, and verify the results."
+  default_prompt: "Bootstrap the relevant subskills, audit this repository end-to-end, execute safe improvements, and verify the results."

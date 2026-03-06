@@ -2,15 +2,27 @@
 
 ## Stage Order
 
-Run the orchestrator in five stages:
+Run the orchestrator in six stages:
 
-1. Discovery
-2. Diagnose
-3. Synthesize
-4. Execute
-5. Verify
+1. Bootstrap
+2. Discovery
+3. Diagnose
+4. Synthesize
+5. Execute
+6. Verify
 
-Do not skip the discovery stage. A bad repository profile causes wrong lane activation and wasted work.
+Do not skip Bootstrap or Discovery. A bad dependency profile or a bad repository profile causes wrong lane activation and wasted work.
+
+## Bootstrap Stage
+
+Run `scripts/check_skill_requirements.py` before any repository diagnosis. Read the bootstrap report first and decide whether the current session is:
+
+- `full`
+- `degraded`
+- `manual`
+- `blocked`
+
+If the report says `stop_before_discovery`, stop. If the report says the required install would only be `available_next_run`, restart before continuing.
 
 ## Discovery Artifacts
 
@@ -18,7 +30,7 @@ Capture at least:
 
 - languages present
 - build and test systems
-- benchmark entrypoints
+- benchmark entrypoints or benchmark gaps
 - likely generated or vendor directories
 - deterministic or flaky verification surfaces
 - likely hotspot directories or binaries
@@ -33,7 +45,7 @@ Prefer three diagnosis lanes:
 - code health lane
 - performance lane
 
-Run independent lanes in parallel only after the repository profile is complete.
+Run independent lanes in parallel only after Bootstrap and Discovery are complete.
 
 ### Parallelism Rules
 
@@ -59,6 +71,7 @@ Write temporary outputs into one run-specific directory such as:
 
 Store:
 
+- `bootstrap/`
 - `repo_profile.json`
 - `test/`
 - `code_health/`
@@ -106,11 +119,13 @@ Escalate before execution when:
 - the benchmark is non-deterministic
 - the test suite is too flaky to verify outcomes
 - assembly changes are suggested without strong profiling evidence
+- bootstrap has only a manual fallback for a lane that would otherwise change high-risk code
 
 ## Completion Criteria
 
 A run is complete only when:
 
+- bootstrap findings and lane states are preserved in the artifact set
 - all executed batches have verification evidence
 - unexecuted findings remain clearly labeled as recommendations
-- the final summary distinguishes verified work from deferred work
+- the final summary distinguishes verified work from degraded-mode work and deferred work

@@ -1,0 +1,252 @@
+{
+  "version": 1,
+  "skills": {
+    "find-skills": {
+      "priority": "optional",
+      "source_type": "user-local",
+      "install_source": null,
+      "manual_fallback": "Use raw `npx skills find` discovery.",
+      "restart_required_if_installed": false
+    },
+    "skill-installer": {
+      "priority": "optional",
+      "source_type": "user-local",
+      "install_source": null,
+      "manual_fallback": "Use raw `npx skills add` installation commands.",
+      "restart_required_if_installed": false
+    },
+    "test-audit-pipeline": {
+      "priority": "preferred",
+      "source_type": "user-local",
+      "install_source": null,
+      "manual_fallback": "Perform a manual test audit with explicit deterministic checks.",
+      "restart_required_if_installed": true
+    },
+    "test-quality-assurance": {
+      "priority": "preferred",
+      "source_type": "user-local",
+      "install_source": null,
+      "manual_fallback": "Review test quality manually when the TDD rubric skill is unavailable.",
+      "restart_required_if_installed": true
+    },
+    "test-redundancy-triage": {
+      "priority": "preferred",
+      "source_type": "user-local",
+      "install_source": null,
+      "manual_fallback": "Identify redundant tests manually by structural review and deselection.",
+      "restart_required_if_installed": true
+    },
+    "hypothesis-testing": {
+      "priority": "optional",
+      "source_type": "user-local",
+      "install_source": null,
+      "manual_fallback": "Use hand-written invariant checks when Hypothesis support is unavailable.",
+      "restart_required_if_installed": true
+    },
+    "m15-anti-pattern": {
+      "priority": "preferred",
+      "source_type": "user-local",
+      "install_source": null,
+      "manual_fallback": "Review structural anti-patterns manually.",
+      "restart_required_if_installed": true
+    },
+    "refactoring": {
+      "priority": "preferred",
+      "source_type": "user-local",
+      "install_source": null,
+      "manual_fallback": "Apply conservative refactors without the dedicated skill.",
+      "restart_required_if_installed": true
+    },
+    "python-code-quality": {
+      "priority": "preferred",
+      "source_type": "user-local",
+      "install_source": null,
+      "manual_fallback": "Review Python linting, formatting, and typing manually.",
+      "restart_required_if_installed": true
+    },
+    "python-code-style": {
+      "priority": "preferred",
+      "source_type": "user-local",
+      "install_source": null,
+      "manual_fallback": "Review Python style manually.",
+      "restart_required_if_installed": true
+    },
+    "dignified-code-simplifier": {
+      "priority": "optional",
+      "source_type": "user-local",
+      "install_source": null,
+      "manual_fallback": "Simplify Python code manually.",
+      "restart_required_if_installed": true
+    },
+    "cpp-coding-standards": {
+      "priority": "preferred",
+      "source_type": "user-local",
+      "install_source": null,
+      "manual_fallback": "Apply C/C++ standards review manually.",
+      "restart_required_if_installed": true
+    },
+    "rust-best-practices": {
+      "priority": "preferred",
+      "source_type": "user-local",
+      "install_source": null,
+      "manual_fallback": "Apply Rust review manually.",
+      "restart_required_if_installed": true
+    },
+    "perf-benchmark": {
+      "priority": "preferred",
+      "source_type": "user-local",
+      "install_source": null,
+      "manual_fallback": "Use manual benchmark discipline with stable commands and fixtures.",
+      "restart_required_if_installed": true
+    },
+    "m10-performance": {
+      "priority": "optional",
+      "source_type": "user-local",
+      "install_source": null,
+      "manual_fallback": "Optimize only from proven hotspots and manual reasoning.",
+      "restart_required_if_installed": true
+    },
+    "performance-testing": {
+      "priority": "optional",
+      "source_type": "user-local",
+      "install_source": null,
+      "manual_fallback": "Run load or service-level performance checks manually.",
+      "restart_required_if_installed": true
+    },
+    "dispatching-parallel-agents": {
+      "priority": "optional",
+      "source_type": "user-local",
+      "install_source": null,
+      "manual_fallback": "Run independent lanes sequentially.",
+      "restart_required_if_installed": true
+    },
+    "subagent-driven-development": {
+      "priority": "optional",
+      "source_type": "user-local",
+      "install_source": null,
+      "manual_fallback": "Execute batches sequentially in one agent.",
+      "restart_required_if_installed": true
+    },
+    "verification-before-completion": {
+      "priority": "preferred",
+      "source_type": "user-local",
+      "install_source": null,
+      "manual_fallback": "Rerun verification manually and record evidence.",
+      "restart_required_if_installed": true
+    }
+  },
+  "lanes": {
+    "bootstrap": {
+      "always": true,
+      "lane_type": "bootstrap",
+      "preferred": [
+        "find-skills",
+        "skill-installer"
+      ],
+      "fallback": [],
+      "manual_fallback": "Use raw Skills CLI commands when helper skills are missing.",
+      "blocking": false
+    },
+    "test-python": {
+      "when": {
+        "python": true,
+        "pytest": true
+      },
+      "lane_type": "test",
+      "preferred": [
+        "test-audit-pipeline"
+      ],
+      "fallback": [
+        "test-quality-assurance",
+        "test-redundancy-triage"
+      ],
+      "optional": [
+        "hypothesis-testing"
+      ],
+      "manual_fallback": "Run a deterministic manual Python test audit when the skill lane is unavailable.",
+      "blocking": false
+    },
+    "code-health-python": {
+      "when": {
+        "python": true
+      },
+      "lane_type": "code_health",
+      "preferred": [
+        "m15-anti-pattern",
+        "refactoring",
+        "python-code-quality",
+        "python-code-style"
+      ],
+      "optional": [
+        "dignified-code-simplifier"
+      ],
+      "manual_fallback": "Review Python code health manually when dedicated skills are missing.",
+      "blocking": false
+    },
+    "code-health-c": {
+      "when": {
+        "c": true
+      },
+      "lane_type": "code_health",
+      "preferred": [
+        "m15-anti-pattern",
+        "refactoring",
+        "cpp-coding-standards"
+      ],
+      "manual_fallback": "Review C code health manually when the dedicated lane is unavailable.",
+      "blocking": false
+    },
+    "code-health-rust": {
+      "when": {
+        "rust": true
+      },
+      "lane_type": "code_health",
+      "preferred": [
+        "m15-anti-pattern",
+        "refactoring",
+        "rust-best-practices"
+      ],
+      "manual_fallback": "Review Rust code health manually when the dedicated lane is unavailable.",
+      "blocking": false
+    },
+    "code-health-assembly": {
+      "when": {
+        "assembly": true
+      },
+      "lane_type": "code_health",
+      "preferred": [
+        "m15-anti-pattern"
+      ],
+      "manual_fallback": "Review assembly-adjacent code health manually and keep actual assembly changes perf-first.",
+      "blocking": false
+    },
+    "performance": {
+      "always": true,
+      "lane_type": "performance",
+      "preferred": [
+        "perf-benchmark"
+      ],
+      "fallback": [
+        "m10-performance"
+      ],
+      "optional": [
+        "performance-testing"
+      ],
+      "manual_fallback": "Use manual performance reasoning and stable verification when the preferred skill set is unavailable.",
+      "blocking": true
+    },
+    "orchestration": {
+      "always": true,
+      "lane_type": "orchestration",
+      "preferred": [
+        "verification-before-completion"
+      ],
+      "optional": [
+        "dispatching-parallel-agents",
+        "subagent-driven-development"
+      ],
+      "manual_fallback": "Run verification manually and execute batches sequentially when orchestration helpers are missing.",
+      "blocking": false
+    }
+  }
+}

@@ -1,18 +1,19 @@
 ---
 name: repo-audit-refactor-optimize
-description: End-to-end repository diagnosis, remediation, and optimization orchestration for Python, C, Rust, and assembly codebases. Use when Codex needs to audit a repository, assess test quality and redundancy, stabilize deterministic tests and benchmarks, propose or execute refactors and cleanups, benchmark and optimize performance, or run a full repo optimization pipeline from diagnosis through verified completion.
+description: End-to-end repository diagnosis, remediation, and optimization orchestration for Python, C, Rust, and assembly codebases. Use when Codex needs to audit a repository, assess test quality and redundancy, bootstrap the relevant subskills, stabilize deterministic tests and benchmarks, propose or execute refactors and cleanups, benchmark and optimize performance, or run a full repo optimization pipeline from diagnosis through verified completion.
 ---
 
 # Repo Audit Refactor Optimize
 
 ## Overview
 
-Run an end-to-end repository optimization program. Start by profiling repository shape and verification surfaces. Diagnose tests, code health, and performance in parallel where safe. Merge the findings into ranked work batches, execute low-risk changes first, and verify every claimed improvement before completion.
+Run an end-to-end repository optimization program. Start with a bootstrap pass that checks which subskills are relevant and usable in the current Codex environment. Only after bootstrap succeeds or degrades safely should the workflow continue into repository discovery, diagnosis, execution, and verification.
 
 Keep the top-level flow here and load the reference files only when needed:
 
-- `references/pipeline.md` for stage order, concurrency rules, and batch structure
-- `references/activation-matrix.md` for language and repo-shape based subskill selection
+- `references/bootstrap.md` for root search order, dependency states, override files, and install policy
+- `references/pipeline.md` for stage order, concurrency rules, artifact layout, and batch structure
+- `references/activation-matrix.md` for lane-specific preferred, fallback, manual, and blocked behavior
 - `references/prioritization.md` for ranking findings and defining execution batches
 - `references/verification.md` for baseline, rerun, and claim-evidence standards
 
@@ -20,20 +21,49 @@ Keep the top-level flow here and load the reference files only when needed:
 
 Follow this sequence:
 
-1. Discover repository shape and available verification surfaces.
-2. Diagnose tests, code health, and performance.
-3. Synthesize a ranked remediation backlog.
-4. Execute safe cleanup, refactor, and optimization batches.
-5. Verify the resulting claims before completion.
+1. Bootstrap subskills and current-session capabilities.
+2. Discover repository shape and verification surfaces.
+3. Diagnose tests, code health, and performance.
+4. Synthesize a ranked remediation backlog.
+5. Execute safe cleanup, refactor, and optimization batches.
+6. Verify the resulting claims before completion.
 
 Treat this skill as an orchestrator. Reuse specialized subskills instead of re-implementing their internals. Keep raw outputs from each lane, then merge them into a single backlog and verification summary.
 
-## Discovery
+## Stage 0: Bootstrap
+
+Run the checker before Discovery:
+
+```bash
+python3 scripts/check_skill_requirements.py \
+  --repo /path/to/target-repo \
+  --out-dir /tmp/repo-audit-refactor-optimize/<repo-name>/<timestamp>
+```
+
+The checker is deterministic and non-mutating. It reads `scripts/skill_bootstrap_manifest.json`, pre-scans the target repository, resolves the relevant lanes, checks usable skill roots, and writes:
+
+- `bootstrap/bootstrap_report.json`
+- `bootstrap/bootstrap_report.md`
+- `bootstrap/install_plan.md`
+
+Then read the report and apply these rules:
+
+- Continue immediately when all blocking lanes are usable.
+- Continue in degraded mode when only non-blocking skills are missing and the report provides a safe manual fallback.
+- Install public skills only after explicit user approval.
+- Prefer `skill-installer` when it is already available; otherwise fall back to raw `npx skills add` or `npx skills find`.
+- Never auto-install local or private skills. Without a configured source mapping they remain `manual_only`.
+- If a blocking skill is installed during bootstrap, stop and restart Codex before continuing.
+- If only optional skills were installed, continue the current run in degraded mode and mark them as `available_next_run`.
+
+Load `references/bootstrap.md` before interpreting the report.
+
+## Stage 1: Discovery
 
 Begin by building a repository profile.
 
 - Identify primary languages and major directories.
-- Detect build and test systems such as `pytest`, `cargo`, `cmake`, `meson`, `make`, and custom benchmark runners.
+- Detect build and test systems such as `pytest`, `cargo`, `cmake`, `meson`, `make`, and benchmark runners.
 - Separate product code from generated code, vendor code, fixtures, snapshots, and benchmark artifacts.
 - Detect whether deterministic verification is already available.
 - If tests or benchmarks are flaky, stabilize the verification loop before broad optimization work.
@@ -42,17 +72,18 @@ Load `references/activation-matrix.md` once the repo profile is clear.
 
 ## Diagnosis Lanes
 
-Activate only the lanes that match the repository profile.
+Activate only the lanes that match the repository profile and the bootstrap result.
 
 ### Test Lane
 
 Use:
 
-- `test-audit-pipeline` for Python/pytest-heavy repositories that can produce meaningful coverage and redundancy data
+- `test-audit-pipeline` as the preferred Python audit lane
+- `test-quality-assurance` plus `test-redundancy-triage` as the degraded fallback
 - `hypothesis-testing` when invariants, parsers, graph logic, numeric code, or serialization surfaces are present
 - `verification-before-completion` only as the final gate, not as a replacement for diagnosis
 
-For non-Python test ecosystems, perform deterministic test-loop assessment and structural review, but acknowledge the current tooling gap explicitly.
+For non-Python test ecosystems, perform deterministic test-loop assessment and structural review, and keep the tooling gap explicit.
 
 ### Code Health Lane
 
@@ -121,6 +152,7 @@ Never claim that the repository is improved merely because the code looks cleane
 
 Consult these files during execution:
 
+- `references/bootstrap.md`
 - `references/pipeline.md`
 - `references/activation-matrix.md`
 - `references/prioritization.md`
