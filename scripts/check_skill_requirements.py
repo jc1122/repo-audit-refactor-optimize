@@ -498,6 +498,53 @@ def _collect_active_and_strict_skills(
     return active_skills, strict_skills
 
 
+def _build_merged_skills(
+    active_skills: set[str],
+    manifest: dict[str, Any],
+    overrides: dict[str, dict[str, Any]],
+    usable_skills: dict[str, dict[str, Any]],
+    advisory_skills: dict[str, dict[str, Any]],
+) -> dict[str, dict[str, Any]]:
+    merged: dict[str, dict[str, Any]] = {}
+    for skill_name in sorted(active_skills):
+        skill_config = dict(manifest["skills"][skill_name])
+        if skill_name in overrides:
+            skill_config.update(overrides[skill_name])
+        merged[skill_name] = _skill_entry(skill_name, skill_config, usable_skills, advisory_skills)
+    return merged
+
+
+def _build_install_candidates(merged_skills: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
+    return [
+        {
+            "name": skill_name,
+            "command": _install_command_for_skill(skill),
+            "post_install_state": skill.get("post_install_state"),
+            "restart_required": skill["restart_required_if_installed"],
+            "source_type": skill["source_type"],
+        }
+        for skill_name, skill in merged_skills.items()
+        if skill["state"] == "installable_now" and _install_command_for_skill(skill)
+    ]
+
+
+def _mark_blocking_skills(
+    lanes: dict[str, dict[str, Any]],
+    manifest: dict[str, Any],
+    merged_skills: dict[str, dict[str, Any]],
+) -> None:
+    blocking_skill_names: set[str] = set()
+    for lane_name, lane_result in lanes.items():
+        if not lane_result["blocking"]:
+            continue
+        lane_config = manifest["lanes"][lane_name]
+        blocking_skill_names.update(lane_config.get("preferred", []))
+        blocking_skill_names.update(lane_config.get("fallback", []))
+    for skill_name in blocking_skill_names:
+        if merged_skills[skill_name]["state"] == "manual_only":
+            merged_skills[skill_name]["state"] = "blocking_missing"
+
+
 def build_bootstrap_report(
     *,
     repo_root: Path,
@@ -531,40 +578,15 @@ def build_bootstrap_report(
     usable_skills = _discover_skills(roots["usable_roots"])
     advisory_skills = _discover_skills(roots["advisory_roots"])
 
-    merged_skills: dict[str, dict[str, Any]] = {}
-    for skill_name in sorted(active_skills):
-        skill_config = dict(manifest["skills"][skill_name])
-        if skill_name in overrides:
-            skill_config.update(overrides[skill_name])
-        merged_skills[skill_name] = _skill_entry(skill_name, skill_config, usable_skills, advisory_skills)
+    merged_skills = _build_merged_skills(active_skills, manifest, overrides, usable_skills, advisory_skills)
 
     lanes: dict[str, dict[str, Any]] = {}
     for lane_name in active_lanes:
         lanes[lane_name] = _evaluate_lane(lane_name, manifest["lanes"][lane_name], merged_skills, profile)
         warnings.extend(lanes[lane_name]["warnings"])
 
-    blocking_skill_names: set[str] = set()
-    for lane_name, lane_result in lanes.items():
-        if not lane_result["blocking"]:
-            continue
-        lane_config = manifest["lanes"][lane_name]
-        blocking_skill_names.update(lane_config.get("preferred", []))
-        blocking_skill_names.update(lane_config.get("fallback", []))
-    for skill_name in blocking_skill_names:
-        if merged_skills[skill_name]["state"] == "manual_only":
-            merged_skills[skill_name]["state"] = "blocking_missing"
-
-    install_candidates = [
-        {
-            "name": skill_name,
-            "command": _install_command_for_skill(skill),
-            "post_install_state": skill.get("post_install_state"),
-            "restart_required": skill["restart_required_if_installed"],
-            "source_type": skill["source_type"],
-        }
-        for skill_name, skill in merged_skills.items()
-        if skill["state"] == "installable_now" and _install_command_for_skill(skill)
-    ]
+    _mark_blocking_skills(lanes, manifest, merged_skills)
+    install_candidates = _build_install_candidates(merged_skills)
 
     stop_before_discovery = any(lane["blocking"] for lane in lanes.values())
     restart_required = any(item["restart_required"] for item in install_candidates if item["post_install_state"] == "available_next_run")

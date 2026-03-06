@@ -622,3 +622,145 @@ def test_meson_build_detects_meson(tmp_path: Path):
     profile = checker.scan_repo_profile(repo)
 
     assert "meson" in profile["test_systems"]
+
+
+def test_bootstrap_lane_full(tmp_path: Path, sample_manifest: dict):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+
+    manifest_path = tmp_path / "manifest.json"
+    write_manifest(manifest_path, sample_manifest)
+
+    skills_root = tmp_path / ".agents" / "skills"
+    write_skill(skills_root, "find-skills")
+    write_skill(skills_root, "skill-installer")
+    write_skill(skills_root, "perf-benchmark")
+    write_skill(skills_root, "verification-before-completion")
+
+    report = checker.build_bootstrap_report(
+        repo_root=repo,
+        manifest_path=manifest_path,
+        out_dir=tmp_path / "out",
+        env={"HOME": str(tmp_path)},
+    )
+
+    lane = report["lanes"]["bootstrap"]
+    assert lane["state"] == "full"
+    assert "find-skills" in lane["selected_skills"]
+    assert "skill-installer" in lane["selected_skills"]
+
+
+def test_orchestration_lane_full_with_optional(tmp_path: Path, sample_manifest: dict):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+
+    manifest_path = tmp_path / "manifest.json"
+    write_manifest(manifest_path, sample_manifest)
+
+    skills_root = tmp_path / ".agents" / "skills"
+    write_skill(skills_root, "verification-before-completion")
+    write_skill(skills_root, "dispatching-parallel-agents")
+    write_skill(skills_root, "subagent-driven-development")
+    write_skill(skills_root, "perf-benchmark")
+
+    report = checker.build_bootstrap_report(
+        repo_root=repo,
+        manifest_path=manifest_path,
+        out_dir=tmp_path / "out",
+        env={"HOME": str(tmp_path)},
+    )
+
+    lane = report["lanes"]["orchestration"]
+    assert lane["state"] == "full"
+    assert "verification-before-completion" in lane["selected_skills"]
+    assert "dispatching-parallel-agents" in lane["selected_skills"]
+    assert "subagent-driven-development" in lane["selected_skills"]
+
+
+def test_code_health_python_full_with_optional(tmp_path: Path, sample_manifest: dict):
+    repo = tmp_path / "repo"
+    (repo / "src").mkdir(parents=True)
+    (repo / "src" / "app.py").write_text("print('ok')\n", encoding="utf-8")
+
+    manifest_path = tmp_path / "manifest.json"
+    write_manifest(manifest_path, sample_manifest)
+
+    skills_root = tmp_path / ".agents" / "skills"
+    write_skill(skills_root, "m15-anti-pattern")
+    write_skill(skills_root, "refactoring")
+    write_skill(skills_root, "python-code-quality")
+    write_skill(skills_root, "python-code-style")
+    write_skill(skills_root, "dignified-code-simplifier")
+    write_skill(skills_root, "perf-benchmark")
+    write_skill(skills_root, "verification-before-completion")
+
+    report = checker.build_bootstrap_report(
+        repo_root=repo,
+        manifest_path=manifest_path,
+        out_dir=tmp_path / "out",
+        env={"HOME": str(tmp_path)},
+    )
+
+    lane = report["lanes"]["code-health-python"]
+    assert lane["state"] == "full"
+    assert lane["selected_skills"] == [
+        "m15-anti-pattern",
+        "refactoring",
+        "python-code-quality",
+        "python-code-style",
+        "dignified-code-simplifier",
+    ]
+
+
+def test_markdown_report_structure(tmp_path: Path, sample_manifest: dict):
+    repo = tmp_path / "repo"
+    (repo / "tests").mkdir(parents=True)
+    (repo / "tests" / "test_x.py").write_text("pass\n", encoding="utf-8")
+    (repo / "pytest.ini").write_text("[pytest]\n", encoding="utf-8")
+
+    manifest_path = tmp_path / "manifest.json"
+    write_manifest(manifest_path, sample_manifest)
+
+    skills_root = tmp_path / ".agents" / "skills"
+    write_skill(skills_root, "perf-benchmark")
+    write_skill(skills_root, "verification-before-completion")
+
+    report = checker.build_bootstrap_report(
+        repo_root=repo,
+        manifest_path=manifest_path,
+        out_dir=tmp_path / "out",
+        env={"HOME": str(tmp_path)},
+    )
+
+    md = checker._markdown_report(report)
+
+    assert "# Bootstrap Report" in md
+    assert "## Lane States" in md
+    assert "## Skill States" in md
+    for lane_name, lane in report["lanes"].items():
+        assert f"`{lane_name}`: `{lane['state']}`" in md
+
+
+def test_install_plan_no_candidates(tmp_path: Path, sample_manifest: dict):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+
+    manifest_path = tmp_path / "manifest.json"
+    write_manifest(manifest_path, sample_manifest)
+
+    skills_root = tmp_path / ".agents" / "skills"
+    write_skill(skills_root, "perf-benchmark")
+    write_skill(skills_root, "verification-before-completion")
+
+    report = checker.build_bootstrap_report(
+        repo_root=repo,
+        manifest_path=manifest_path,
+        out_dir=tmp_path / "out",
+        env={"HOME": str(tmp_path)},
+    )
+    checker.write_bootstrap_outputs(report, tmp_path / "out")
+
+    install_plan = (tmp_path / "out" / "bootstrap" / "install_plan.md").read_text(
+        encoding="utf-8",
+    )
+    assert "No public install candidates" in install_plan
