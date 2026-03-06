@@ -825,3 +825,102 @@ def test_scan_repo_profile_no_false_positive_from_parent_dir(tmp_path: Path):
 
     assert profile["benchmark_surfaces"] == []
     assert profile["has_deterministic_perf_surface"] is False
+
+
+def test_code_health_c_lane_activation(tmp_path: Path, sample_manifest: dict):
+    repo = tmp_path / "repo"
+    (repo / "src").mkdir(parents=True)
+    (repo / "src" / "main.c").write_text("int main(void) { return 0; }\n", encoding="utf-8")
+
+    manifest_path = tmp_path / "manifest.json"
+    write_manifest(manifest_path, sample_manifest)
+
+    skills_root = tmp_path / ".agents" / "skills"
+    write_skill(skills_root, "m15-anti-pattern")
+    write_skill(skills_root, "refactoring")
+    write_skill(skills_root, "cpp-coding-standards")
+    write_skill(skills_root, "perf-benchmark")
+    write_skill(skills_root, "verification-before-completion")
+
+    report = checker.build_bootstrap_report(
+        repo_root=repo,
+        manifest_path=manifest_path,
+        out_dir=tmp_path / "out",
+        env={"HOME": str(tmp_path)},
+    )
+
+    assert "code-health-c" in report["summary"]["active_lanes"]
+    assert report["lanes"]["code-health-c"]["state"] == "full"
+
+
+def test_code_health_rust_lane_activation(tmp_path: Path, sample_manifest: dict):
+    repo = tmp_path / "repo"
+    (repo / "src").mkdir(parents=True)
+    (repo / "Cargo.toml").write_text("[package]\nname='demo'\nversion='0.1.0'\n", encoding="utf-8")
+    (repo / "src" / "lib.rs").write_text("pub fn hello() {}\n", encoding="utf-8")
+
+    manifest_path = tmp_path / "manifest.json"
+    write_manifest(manifest_path, sample_manifest)
+
+    skills_root = tmp_path / ".agents" / "skills"
+    write_skill(skills_root, "m15-anti-pattern")
+    write_skill(skills_root, "refactoring")
+    write_skill(skills_root, "rust-best-practices")
+    write_skill(skills_root, "perf-benchmark")
+    write_skill(skills_root, "verification-before-completion")
+
+    report = checker.build_bootstrap_report(
+        repo_root=repo,
+        manifest_path=manifest_path,
+        out_dir=tmp_path / "out",
+        env={"HOME": str(tmp_path)},
+    )
+
+    assert "code-health-rust" in report["summary"]["active_lanes"]
+    assert report["lanes"]["code-health-rust"]["state"] == "full"
+
+
+def test_cpp_files_detect_c_language(tmp_path: Path):
+    repo = tmp_path / "repo"
+    (repo / "src").mkdir(parents=True)
+    (repo / "src" / "main.cpp").write_text("int main() { return 0; }\n", encoding="utf-8")
+
+    profile = checker.scan_repo_profile(repo)
+
+    assert "c" in profile["languages"]
+
+
+def test_extract_skill_name_missing_name(tmp_path: Path):
+    skill_file = tmp_path / "SKILL.md"
+    skill_file.write_text("---\ndescription: test skill\n---\n", encoding="utf-8")
+
+    result = checker._extract_skill_name(skill_file)
+
+    assert result is None
+
+
+def test_extract_skill_name_unreadable_file(tmp_path: Path):
+    nonexistent = tmp_path / "does-not-exist" / "SKILL.md"
+
+    result = checker._extract_skill_name(nonexistent)
+
+    assert result is None
+
+
+def test_manifest_skill_missing_required_field(tmp_path: Path, sample_manifest: dict):
+    sample_manifest["skills"]["m15-anti-pattern"].pop("priority")
+
+    manifest_path = tmp_path / "manifest.json"
+    write_manifest(manifest_path, sample_manifest)
+
+    repo = tmp_path / "repo"
+    (repo / "asm").mkdir(parents=True)
+    (repo / "asm" / "start.S").write_text(".globl _start\n", encoding="utf-8")
+
+    with pytest.raises(ValueError):
+        checker.build_bootstrap_report(
+            repo_root=repo,
+            manifest_path=manifest_path,
+            out_dir=tmp_path / "out",
+            env={"HOME": str(tmp_path)},
+        )

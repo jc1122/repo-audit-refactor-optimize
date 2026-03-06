@@ -108,7 +108,7 @@ def scan_repo_profile(repo_root: Path) -> dict[str, Any]:
                 languages.add("python")
                 if "bench" in lower_name or "benchmark" in lower_name or "benches" in parts_lower:
                     benchmark_surfaces.add("python-benchmarks")
-            elif suffix in {".c", ".h"}:
+            elif suffix in {".c", ".h", ".cc", ".cpp", ".hpp"}:
                 languages.add("c")
                 if "bench" in lower_name or "perf" in lower_name or "benchmark" in parts_lower:
                     benchmark_surfaces.add("native-benchmarks")
@@ -193,6 +193,11 @@ def load_dependency_manifest(manifest_path: Path) -> dict[str, Any]:
         raise ValueError(f"Malformed dependency manifest: {manifest_path}") from exc
     if not isinstance(payload, dict) or "skills" not in payload or "lanes" not in payload:
         raise ValueError(f"Invalid dependency manifest: {manifest_path}")
+    REQUIRED_SKILL_FIELDS = {"priority", "source_type", "manual_fallback", "restart_required_if_installed"}
+    for name, entry in payload["skills"].items():
+        missing = REQUIRED_SKILL_FIELDS - entry.keys()
+        if missing:
+            raise ValueError(f"Skill '{name}' missing required fields in manifest: {missing}")
     return payload
 
 
@@ -341,12 +346,18 @@ def _relevant_lane_names(profile: dict[str, Any], manifest: dict[str, Any]) -> l
     return lane_names
 
 
+_REQUIRED_SKILL_FIELDS = ("priority", "source_type", "manual_fallback", "restart_required_if_installed")
+
+
 def _skill_entry(
     skill_name: str,
     skill_config: dict[str, Any],
     usable_skills: dict[str, dict[str, Any]],
     advisory_skills: dict[str, dict[str, Any]],
 ) -> dict[str, Any]:
+    for _field in _REQUIRED_SKILL_FIELDS:
+        if _field not in skill_config:
+            raise ValueError(f"Skill '{skill_name}' is missing required field '{_field}'.")
     entry = {
         "name": skill_name,
         "priority": skill_config["priority"],
@@ -469,8 +480,13 @@ def _evaluate_lane(
     profile: dict[str, Any],
 ) -> dict[str, Any]:
     lane_type = lane["lane_type"]
+    if lane_type not in _LANE_EVALUATORS:
+        warnings_list = [f"Unknown lane type '{lane_type}'; using orchestration evaluator."]
+    else:
+        warnings_list = []
     evaluator = _LANE_EVALUATORS.get(lane_type, _LANE_EVALUATORS["orchestration"])
-    state, selected, warnings = evaluator(lane, skills, profile)
+    state, selected, eval_warnings = evaluator(lane, skills, profile)
+    warnings = warnings_list + eval_warnings
 
     return {
         "lane_type": lane_type,
