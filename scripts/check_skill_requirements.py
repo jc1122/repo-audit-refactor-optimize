@@ -53,7 +53,16 @@ def _default_user_override_path(env: dict[str, str] | None) -> Path:
     return base / CONFIG_DIR_NAME / "skill-sources.json"
 
 
-def _default_codex_home(env: dict[str, str] | None) -> Path:
+def _default_orchestrator_home(env: dict[str, str] | None) -> Path:
+    """Return the orchestrator skill home directory.
+
+    Checks AGENT_SKILLS_HOME first (generic), then CODEX_HOME (backward
+    compatibility with OpenAI Codex).  Falls back to ~/.codex when neither
+    environment variable is set.
+    """
+    agent_home = _env_value(env, "AGENT_SKILLS_HOME")
+    if agent_home:
+        return Path(agent_home).expanduser()
     codex_home = _env_value(env, "CODEX_HOME")
     if codex_home:
         return Path(codex_home).expanduser()
@@ -146,11 +155,11 @@ def resolve_skill_roots(
     foreign_roots: list[Path] | None = None,
     env: dict[str, str] | None = None,
 ) -> dict[str, list[dict[str, str]]]:
-    codex_home = _default_codex_home(env)
+    orchestrator_home = _default_orchestrator_home(env)
     home = _home_dir(env)
     candidate_roots = [
-        ("codex", codex_home / "skills"),
-        ("bundled", codex_home / "vendor_imports" / "skills" / "skills"),
+        ("orchestrator", orchestrator_home / "skills"),
+        ("bundled", orchestrator_home / "vendor_imports" / "skills" / "skills"),
         ("user-local", home / ".agents" / "skills"),
         ("repo-local", repo_root / ".agents" / "skills"),
     ]

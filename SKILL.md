@@ -1,13 +1,13 @@
 ---
 name: repo-audit-refactor-optimize
-description: End-to-end repository diagnosis, remediation, and optimization orchestration for Python, C, Rust, and assembly codebases. Use when Codex needs to audit a repository, assess test quality and redundancy, bootstrap the relevant subskills, stabilize deterministic tests and benchmarks, propose or execute refactors and cleanups, benchmark and optimize performance, or run a full repo optimization pipeline from diagnosis through verified completion.
+description: End-to-end repository diagnosis, remediation, and optimization orchestration for Python, C, Rust, and assembly codebases. Use when the agent needs to audit a repository, assess test quality and redundancy, bootstrap the relevant subskills, stabilize deterministic tests and benchmarks, propose or execute refactors and cleanups, benchmark and optimize performance, or run a full repo optimization pipeline from diagnosis through verified completion.
 ---
 
 # Repo Audit Refactor Optimize
 
 ## Overview
 
-Run an end-to-end repository optimization program. Start with a bootstrap pass that checks which subskills are relevant and usable in the current Codex environment. Only after bootstrap succeeds or degrades safely should the workflow continue into repository discovery, diagnosis, execution, and verification.
+Run an end-to-end repository optimization program. Start with a bootstrap pass that checks which subskills are relevant and usable in the current agent session. Only after bootstrap succeeds or degrades safely should the workflow continue into repository discovery, diagnosis, execution, and verification.
 
 Keep the top-level flow here and load the reference files only when needed:
 
@@ -53,7 +53,7 @@ Then read the report and apply these rules:
 - Install public skills only after explicit user approval.
 - Prefer `skill-installer` when it is already available; otherwise fall back to raw `npx skills add` or `npx skills find`.
 - Never auto-install local or private skills. Without a configured source mapping they remain `manual_only`.
-- If a blocking skill is installed during bootstrap, stop and restart Codex before continuing.
+- If a blocking skill is installed during bootstrap, stop and restart the agent session before continuing.
 - If only optional skills were installed, continue the current run in degraded mode and mark them as `available_next_run`.
 
 Load `references/bootstrap.md` before interpreting the report.

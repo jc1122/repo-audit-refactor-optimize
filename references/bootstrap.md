@@ -2,9 +2,9 @@
 
 ## Purpose
 
-Bootstrap is Stage 0. Its job is to determine whether the relevant subskills are usable in the current Codex session before the orchestrator starts repository discovery.
+Bootstrap is Stage 0. Its job is to determine whether the relevant subskills are usable in the current agent session before the orchestrator starts repository discovery.
 
-Bootstrap is required because the same metaskill can run on machines with different skill inventories, different repository-local skill trees, and different runtime roots.
+Bootstrap is required because the same metaskill can run on machines with different skill inventories, different repository-local skill trees, and different runtime roots. It is designed to work with any orchestrator — not only OpenAI Codex.
 
 ## Checker and Manifest
 
@@ -25,11 +25,13 @@ The checker is non-mutating. It never installs skills. It only:
 
 Search usable roots in this order:
 
-1. `$CODEX_HOME/skills` if `CODEX_HOME` is set, else `~/.codex/skills`
-2. bundled runtime roots such as `~/.codex/vendor_imports/skills/skills` when present
+1. orchestrator skills home: `$AGENT_SKILLS_HOME/skills`, falling back to `$CODEX_HOME/skills` (backward compatibility), then `~/.codex/skills`
+2. bundled runtime roots under the orchestrator home (e.g. `<orchestrator-home>/vendor_imports/skills/skills`)
 3. `~/.agents/skills` when present
 4. `<repo>/.agents/skills`
 5. explicit extra roots passed to the checker
+
+> **Note:** `CODEX_HOME` and `~/.codex` are retained for backward compatibility with OpenAI Codex. Other orchestrators should set `AGENT_SKILLS_HOME` to their own skill root.
 
 Foreign-agent roots are optional and advisory only. They may be reported, but they must never satisfy a usable dependency.
 

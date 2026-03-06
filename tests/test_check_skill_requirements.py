@@ -13,8 +13,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 
-def load_checker_module():
-    return importlib.import_module("scripts.check_skill_requirements")
+checker = importlib.import_module("scripts.check_skill_requirements")
 
 
 def write_skill(root: Path, name: str) -> None:
@@ -51,7 +50,6 @@ def sample_manifest() -> dict:
 
 
 def test_scan_repo_profile_detects_languages_and_surfaces(tmp_path: Path):
-    checker = load_checker_module()
     repo = tmp_path / "repo"
     (repo / "src").mkdir(parents=True)
     (repo / "tests").mkdir()
@@ -80,30 +78,29 @@ def test_scan_repo_profile_detects_languages_and_surfaces(tmp_path: Path):
 
 
 def test_resolve_skill_roots_orders_usable_and_advisory_roots(tmp_path: Path):
-    checker = load_checker_module()
     repo = tmp_path / "repo"
     repo.mkdir()
 
-    codex_home = tmp_path / "codex-home"
-    codex_skills = codex_home / "skills"
-    bundled = codex_home / "vendor_imports" / "skills" / "skills"
+    orchestrator_home = tmp_path / "orchestrator-home"
+    orchestrator_skills = orchestrator_home / "skills"
+    bundled = orchestrator_home / "vendor_imports" / "skills" / "skills"
     agents = tmp_path / ".agents" / "skills"
     repo_local = repo / ".agents" / "skills"
     extra = tmp_path / "extra-skills"
     foreign = tmp_path / "foreign-skills"
 
-    for root in [codex_skills, bundled, agents, repo_local, extra, foreign]:
+    for root in [orchestrator_skills, bundled, agents, repo_local, extra, foreign]:
         write_skill(root, "demo-skill")
 
     roots = checker.resolve_skill_roots(
         repo_root=repo,
         extra_roots=[extra],
         foreign_roots=[foreign],
-        env={"CODEX_HOME": str(codex_home), "HOME": str(tmp_path)},
+        env={"AGENT_SKILLS_HOME": str(orchestrator_home), "HOME": str(tmp_path)},
     )
 
     assert [item["path"] for item in roots["usable_roots"]] == [
-        str(codex_skills),
+        str(orchestrator_skills),
         str(bundled),
         str(agents),
         str(repo_local),
@@ -112,11 +109,27 @@ def test_resolve_skill_roots_orders_usable_and_advisory_roots(tmp_path: Path):
     assert [item["path"] for item in roots["advisory_roots"]] == [str(foreign)]
 
 
+def test_resolve_skill_roots_codex_home_backward_compat(tmp_path: Path):
+    """CODEX_HOME still works as a fallback when AGENT_SKILLS_HOME is unset."""
+    repo = tmp_path / "repo"
+    repo.mkdir()
+
+    codex_home = tmp_path / "codex-compat-home"
+    codex_skills = codex_home / "skills"
+    write_skill(codex_skills, "demo-skill")
+
+    roots = checker.resolve_skill_roots(
+        repo_root=repo,
+        env={"CODEX_HOME": str(codex_home), "HOME": str(tmp_path)},
+    )
+
+    assert any(item["path"] == str(codex_skills) for item in roots["usable_roots"])
+
+
 def test_python_repo_uses_tqa_triage_fallback_when_pipeline_missing(
     tmp_path: Path,
     sample_manifest: dict,
 ):
-    checker = load_checker_module()
     repo = tmp_path / "repo"
     (repo / "tests").mkdir(parents=True)
     (repo / "tests" / "test_app.py").write_text("def test_ok(): assert True\n", encoding="utf-8")
@@ -148,7 +161,6 @@ def test_python_repo_uses_tqa_triage_fallback_when_pipeline_missing(
 
 
 def test_missing_public_skill_generates_exact_install_command(tmp_path: Path, sample_manifest: dict):
-    checker = load_checker_module()
     repo = tmp_path / "repo"
     repo.mkdir()
 
@@ -172,7 +184,6 @@ def test_missing_public_skill_generates_exact_install_command(tmp_path: Path, sa
 
 
 def test_assembly_repo_activates_code_health_lane(tmp_path: Path, sample_manifest: dict):
-    checker = load_checker_module()
     repo = tmp_path / "repo"
     (repo / "asm").mkdir(parents=True)
     (repo / "asm" / "start.S").write_text(".globl _start\n", encoding="utf-8")
@@ -199,7 +210,6 @@ def test_missing_local_skill_without_source_mapping_is_manual_only(
     tmp_path: Path,
     sample_manifest: dict,
 ):
-    checker = load_checker_module()
     repo = tmp_path / "repo"
     repo.mkdir()
 
@@ -218,7 +228,6 @@ def test_missing_local_skill_without_source_mapping_is_manual_only(
 
 
 def test_malformed_override_file_hard_fails(tmp_path: Path, sample_manifest: dict):
-    checker = load_checker_module()
     repo = tmp_path / "repo"
     repo.mkdir()
 
@@ -239,7 +248,6 @@ def test_malformed_override_file_hard_fails(tmp_path: Path, sample_manifest: dic
 
 
 def test_bad_optional_override_entry_is_ignored(tmp_path: Path, sample_manifest: dict):
-    checker = load_checker_module()
     repo = tmp_path / "repo"
     (repo / "tests").mkdir(parents=True)
     (repo / "tests" / "test_app.py").write_text("def test_ok(): assert True\n", encoding="utf-8")
@@ -277,7 +285,6 @@ def test_bad_optional_override_entry_is_ignored(tmp_path: Path, sample_manifest:
 
 
 def test_bad_active_optional_override_entry_is_ignored(tmp_path: Path, sample_manifest: dict):
-    checker = load_checker_module()
     repo = tmp_path / "repo"
     (repo / "tests").mkdir(parents=True)
     (repo / "tests" / "test_app.py").write_text("def test_ok(): assert True\n", encoding="utf-8")
@@ -314,7 +321,6 @@ def test_bad_active_optional_override_entry_is_ignored(tmp_path: Path, sample_ma
 
 
 def test_bad_blocking_override_entry_hard_fails(tmp_path: Path, sample_manifest: dict):
-    checker = load_checker_module()
     repo = tmp_path / "repo"
     (repo / "benches").mkdir(parents=True)
     (repo / "benches" / "bench_hot.py").write_text("def bench_hot(): pass\n", encoding="utf-8")
@@ -351,7 +357,6 @@ def test_perf_focused_repo_without_benchmark_surfaces_is_blocked(
     tmp_path: Path,
     sample_manifest: dict,
 ):
-    checker = load_checker_module()
     repo = tmp_path / "repo"
     (repo / "src").mkdir(parents=True)
     (repo / "src" / "module.py").write_text("print('ok')\n", encoding="utf-8")
@@ -373,7 +378,6 @@ def test_perf_focused_repo_without_benchmark_surfaces_is_blocked(
 
 
 def test_main_cli_roundtrip(tmp_path: Path, sample_manifest: dict):
-    checker = load_checker_module()
     repo = tmp_path / "repo"
     (repo / "tests").mkdir(parents=True)
     (repo / "tests" / "test_x.py").write_text("def test_x(): pass\n", encoding="utf-8")
@@ -395,7 +399,6 @@ def test_main_cli_roundtrip(tmp_path: Path, sample_manifest: dict):
 
 
 def test_load_dependency_manifest_malformed_json(tmp_path: Path):
-    checker = load_checker_module()
     bad = tmp_path / "bad.json"
     bad.write_text("{not json", encoding="utf-8")
     with pytest.raises(ValueError, match="Malformed"):
@@ -403,7 +406,6 @@ def test_load_dependency_manifest_malformed_json(tmp_path: Path):
 
 
 def test_load_dependency_manifest_missing_keys(tmp_path: Path):
-    checker = load_checker_module()
     bad = tmp_path / "bad.json"
     bad.write_text(json.dumps({"skills": {}}), encoding="utf-8")
     with pytest.raises(ValueError, match="Invalid"):
@@ -411,7 +413,6 @@ def test_load_dependency_manifest_missing_keys(tmp_path: Path):
 
 
 def test_test_lane_full_with_optional(tmp_path: Path, sample_manifest: dict):
-    checker = load_checker_module()
     repo = tmp_path / "repo"
     (repo / "tests").mkdir(parents=True)
     (repo / "tests" / "test_x.py").write_text("pass\n", encoding="utf-8")
@@ -440,7 +441,6 @@ def test_test_lane_full_with_optional(tmp_path: Path, sample_manifest: dict):
 
 
 def test_test_lane_manual_when_nothing_available(tmp_path: Path, sample_manifest: dict):
-    checker = load_checker_module()
     repo = tmp_path / "repo"
     (repo / "tests").mkdir(parents=True)
     (repo / "tests" / "test_x.py").write_text("pass\n", encoding="utf-8")
@@ -465,7 +465,6 @@ def test_test_lane_manual_when_nothing_available(tmp_path: Path, sample_manifest
 
 
 def test_performance_lane_full_and_degraded(tmp_path: Path, sample_manifest: dict):
-    checker = load_checker_module()
 
     for install_fallback, expected_state in [(True, "full"), (False, "degraded")]:
         repo = tmp_path / f"repo-{expected_state}"
@@ -496,7 +495,6 @@ def test_performance_lane_manual_with_test_surface_no_benchmarks(
     tmp_path: Path,
     sample_manifest: dict,
 ):
-    checker = load_checker_module()
     repo = tmp_path / "repo"
     (repo / "tests").mkdir(parents=True)
     (repo / "tests" / "test_x.py").write_text("pass\n", encoding="utf-8")
@@ -521,7 +519,6 @@ def test_performance_lane_manual_with_test_surface_no_benchmarks(
 
 
 def test_scan_repo_profile_empty_repo(tmp_path: Path):
-    checker = load_checker_module()
     repo = tmp_path / "repo"
     repo.mkdir()
 
@@ -532,3 +529,96 @@ def test_scan_repo_profile_empty_repo(tmp_path: Path):
     assert profile["benchmark_surfaces"] == []
     assert profile["has_deterministic_test_surface"] is False
     assert profile["has_deterministic_perf_surface"] is False
+
+
+def test_advisory_only_skill_state(tmp_path: Path, sample_manifest: dict):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / "asm").mkdir()
+    (repo / "asm" / "start.S").write_text(".globl _start\n", encoding="utf-8")
+
+    manifest_path = tmp_path / "manifest.json"
+    write_manifest(manifest_path, sample_manifest)
+
+    foreign = tmp_path / "foreign-skills"
+    write_skill(foreign, "m15-anti-pattern")
+
+    report = checker.build_bootstrap_report(
+        repo_root=repo,
+        manifest_path=manifest_path,
+        out_dir=tmp_path / "out",
+        env={"HOME": str(tmp_path)},
+        foreign_roots=[foreign],
+    )
+
+    assert report["skills"]["m15-anti-pattern"]["state"] == "advisory_only"
+    assert report["skills"]["m15-anti-pattern"]["root_kind"] == "foreign"
+
+
+def test_repo_level_override_applies(tmp_path: Path, sample_manifest: dict):
+    repo = tmp_path / "repo"
+    (repo / "asm").mkdir(parents=True)
+    (repo / "asm" / "start.S").write_text(".globl _start\n", encoding="utf-8")
+
+    manifest_path = tmp_path / "manifest.json"
+    write_manifest(manifest_path, sample_manifest)
+
+    repo_override = tmp_path / "repo-override.json"
+    repo_override.write_text(
+        json.dumps(
+            {
+                "version": 1,
+                "skills": {
+                    "m15-anti-pattern": {
+                        "manual_fallback": "Custom fallback from repo override.",
+                    }
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    report = checker.build_bootstrap_report(
+        repo_root=repo,
+        manifest_path=manifest_path,
+        out_dir=tmp_path / "out",
+        env={"HOME": str(tmp_path)},
+        repo_override_path=repo_override,
+    )
+
+    assert report["skills"]["m15-anti-pattern"]["manual_fallback"] == "Custom fallback from repo override."
+
+
+def test_pyproject_toml_detects_pytest(tmp_path: Path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / "pyproject.toml").write_text(
+        "[tool.pytest.ini_options]\naddopts = '-v'\n",
+        encoding="utf-8",
+    )
+
+    profile = checker.scan_repo_profile(repo)
+
+    assert "python" in profile["languages"]
+    assert "pytest" in profile["test_systems"]
+
+
+def test_makefile_detects_make(tmp_path: Path):
+    for makefile_name in ("Makefile", "GNUmakefile"):
+        repo = tmp_path / f"repo-{makefile_name}"
+        repo.mkdir()
+        (repo / makefile_name).write_text("all:\n\techo ok\n", encoding="utf-8")
+
+        profile = checker.scan_repo_profile(repo)
+
+        assert "make" in profile["test_systems"], f"{makefile_name} should detect make"
+
+
+def test_meson_build_detects_meson(tmp_path: Path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / "meson.build").write_text("project('demo', 'c')\n", encoding="utf-8")
+
+    profile = checker.scan_repo_profile(repo)
+
+    assert "meson" in profile["test_systems"]
