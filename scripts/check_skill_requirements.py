@@ -64,7 +64,6 @@ def scan_repo_profile(repo_root: Path) -> dict[str, Any]:
         dir_names[:] = [name for name in dir_names if name not in SKIP_DIRS]
         current = Path(current_root)
 
-        lowered_names = {name.lower() for name in file_names}
         if "pytest.ini" in file_names:
             test_systems.add("pytest")
         if "Cargo.toml" in file_names:
@@ -344,26 +343,31 @@ def _skill_entry(
     return entry
 
 
+def _all_usable(names: list[str], skills: dict[str, dict[str, Any]]) -> bool:
+    return all(skills[name]["state"] == "usable_now" for name in names)
+
+
+def _usable_optionals(lane: dict[str, Any], skills: dict[str, dict[str, Any]]) -> list[str]:
+    return [name for name in lane.get("optional", []) if skills[name]["state"] == "usable_now"]
+
+
 def _evaluate_test_lane(lane: dict[str, Any], skills: dict[str, dict[str, Any]]) -> tuple[str, list[str], list[str]]:
     preferred = lane.get("preferred", [])
     fallback = lane.get("fallback", [])
     warnings: list[str] = []
-    if preferred and all(skills[name]["state"] == "usable_now" for name in preferred):
-        selected = list(preferred)
-        selected.extend(name for name in lane.get("optional", []) if skills[name]["state"] == "usable_now")
+    if preferred and _all_usable(preferred, skills):
+        selected = list(preferred) + _usable_optionals(lane, skills)
         return "full", selected, warnings
-    if fallback and all(skills[name]["state"] == "usable_now" for name in fallback):
+    if fallback and _all_usable(fallback, skills):
         warnings.append("Preferred test audit skill unavailable; using fallback pair.")
-        selected = list(fallback)
-        selected.extend(name for name in lane.get("optional", []) if skills[name]["state"] == "usable_now")
+        selected = list(fallback) + _usable_optionals(lane, skills)
         return "degraded", selected, warnings
     return "manual", [], warnings
 
 
 def _evaluate_code_health_lane(lane: dict[str, Any], skills: dict[str, dict[str, Any]]) -> tuple[str, list[str], list[str]]:
-    if all(skills[name]["state"] == "usable_now" for name in lane.get("preferred", [])):
-        selected = list(lane.get("preferred", []))
-        selected.extend(name for name in lane.get("optional", []) if skills[name]["state"] == "usable_now")
+    if _all_usable(lane.get("preferred", []), skills):
+        selected = list(lane.get("preferred", [])) + _usable_optionals(lane, skills)
         return "full", selected, []
     return "manual", [], []
 
@@ -380,13 +384,12 @@ def _evaluate_performance_lane(
             return "manual", [], warnings
         return "blocked", [], warnings
 
-    preferred_ok = all(skills[name]["state"] == "usable_now" for name in lane.get("preferred", []))
-    if preferred_ok:
+    if _all_usable(lane.get("preferred", []), skills):
         selected = list(lane.get("preferred", []))
         fallback = lane.get("fallback", [])
-        if fallback and all(skills[name]["state"] == "usable_now" for name in fallback):
+        if fallback and _all_usable(fallback, skills):
             selected.extend(fallback)
-            selected.extend(name for name in lane.get("optional", []) if skills[name]["state"] == "usable_now")
+            selected.extend(_usable_optionals(lane, skills))
             return "full", selected, warnings
         warnings.append("Optimization skill missing; lane remains benchmark-first.")
         return "degraded", selected, warnings
@@ -395,15 +398,14 @@ def _evaluate_performance_lane(
 
 
 def _evaluate_bootstrap_lane(lane: dict[str, Any], skills: dict[str, dict[str, Any]]) -> tuple[str, list[str], list[str]]:
-    if all(skills[name]["state"] == "usable_now" for name in lane.get("preferred", [])):
+    if _all_usable(lane.get("preferred", []), skills):
         return "full", list(lane.get("preferred", [])), []
     return "degraded", [], ["Bootstrap helper skills unavailable; raw Skills CLI fallback required."]
 
 
 def _evaluate_orchestration_lane(lane: dict[str, Any], skills: dict[str, dict[str, Any]]) -> tuple[str, list[str], list[str]]:
-    if all(skills[name]["state"] == "usable_now" for name in lane.get("preferred", [])):
-        selected = list(lane.get("preferred", []))
-        selected.extend(name for name in lane.get("optional", []) if skills[name]["state"] == "usable_now")
+    if _all_usable(lane.get("preferred", []), skills):
+        selected = list(lane.get("preferred", [])) + _usable_optionals(lane, skills)
         return "full", selected, []
     return "manual", [], []
 

@@ -30,6 +30,9 @@ def write_manifest(path: Path, payload: dict) -> None:
     path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
 
+MANIFEST_PATH = REPO_ROOT / "scripts" / "skill_bootstrap_manifest.json"
+
+
 @pytest.fixture
 def sample_manifest() -> dict:
     return {
@@ -575,3 +578,165 @@ def test_perf_focused_repo_without_benchmark_surfaces_is_blocked(
     assert perf_lane["state"] == "blocked"
     assert report["summary"]["stop_before_discovery"] is True
     assert report["skills"]["perf-benchmark"]["state"] == "blocking_missing"
+
+
+def test_main_cli_roundtrip(tmp_path: Path, sample_manifest: dict):
+    checker = load_checker_module()
+    repo = tmp_path / "repo"
+    (repo / "tests").mkdir(parents=True)
+    (repo / "tests" / "test_x.py").write_text("def test_x(): pass\n", encoding="utf-8")
+    (repo / "pytest.ini").write_text("[pytest]\n", encoding="utf-8")
+
+    manifest_path = tmp_path / "manifest.json"
+    write_manifest(manifest_path, sample_manifest)
+
+    out_dir = tmp_path / "out"
+    ret = checker.main([
+        "--repo", str(repo),
+        "--manifest", str(manifest_path),
+        "--out-dir", str(out_dir),
+    ])
+    assert ret == 0
+    assert (out_dir / "bootstrap" / "bootstrap_report.json").exists()
+    assert (out_dir / "bootstrap" / "bootstrap_report.md").exists()
+    assert (out_dir / "bootstrap" / "install_plan.md").exists()
+
+
+def test_load_dependency_manifest_malformed_json(tmp_path: Path):
+    checker = load_checker_module()
+    bad = tmp_path / "bad.json"
+    bad.write_text("{not json", encoding="utf-8")
+    with pytest.raises(ValueError, match="Malformed"):
+        checker.load_dependency_manifest(bad)
+
+
+def test_load_dependency_manifest_missing_keys(tmp_path: Path):
+    checker = load_checker_module()
+    bad = tmp_path / "bad.json"
+    bad.write_text(json.dumps({"skills": {}}), encoding="utf-8")
+    with pytest.raises(ValueError, match="Invalid"):
+        checker.load_dependency_manifest(bad)
+
+
+def test_test_lane_full_with_optional(tmp_path: Path, sample_manifest: dict):
+    checker = load_checker_module()
+    repo = tmp_path / "repo"
+    (repo / "tests").mkdir(parents=True)
+    (repo / "tests" / "test_x.py").write_text("pass\n", encoding="utf-8")
+    (repo / "pytest.ini").write_text("[pytest]\n", encoding="utf-8")
+
+    manifest_path = tmp_path / "manifest.json"
+    write_manifest(manifest_path, sample_manifest)
+
+    skills_root = tmp_path / ".agents" / "skills"
+    write_skill(skills_root, "test-audit-pipeline")
+    write_skill(skills_root, "hypothesis-testing")
+    write_skill(skills_root, "perf-benchmark")
+    write_skill(skills_root, "verification-before-completion")
+
+    report = checker.build_bootstrap_report(
+        repo_root=repo,
+        manifest_path=manifest_path,
+        out_dir=tmp_path / "out",
+        env={"HOME": str(tmp_path)},
+    )
+
+    lane = report["lanes"]["test-python"]
+    assert lane["state"] == "full"
+    assert "test-audit-pipeline" in lane["selected_skills"]
+    assert "hypothesis-testing" in lane["selected_skills"]
+
+
+def test_test_lane_manual_when_nothing_available(tmp_path: Path, sample_manifest: dict):
+    checker = load_checker_module()
+    repo = tmp_path / "repo"
+    (repo / "tests").mkdir(parents=True)
+    (repo / "tests" / "test_x.py").write_text("pass\n", encoding="utf-8")
+    (repo / "pytest.ini").write_text("[pytest]\n", encoding="utf-8")
+
+    manifest_path = tmp_path / "manifest.json"
+    write_manifest(manifest_path, sample_manifest)
+
+    skills_root = tmp_path / ".agents" / "skills"
+    write_skill(skills_root, "perf-benchmark")
+    write_skill(skills_root, "verification-before-completion")
+
+    report = checker.build_bootstrap_report(
+        repo_root=repo,
+        manifest_path=manifest_path,
+        out_dir=tmp_path / "out",
+        env={"HOME": str(tmp_path)},
+    )
+
+    assert report["lanes"]["test-python"]["state"] == "manual"
+    assert report["lanes"]["test-python"]["selected_skills"] == []
+
+
+def test_performance_lane_full_and_degraded(tmp_path: Path, sample_manifest: dict):
+    checker = load_checker_module()
+
+    for install_fallback, expected_state in [(True, "full"), (False, "degraded")]:
+        repo = tmp_path / f"repo-{expected_state}"
+        (repo / "benches").mkdir(parents=True)
+        (repo / "benches" / "bench_hot.py").write_text("pass\n", encoding="utf-8")
+
+        manifest_path = tmp_path / f"manifest-{expected_state}.json"
+        write_manifest(manifest_path, sample_manifest)
+
+        skills_root = tmp_path / f".agents-{expected_state}" / "skills"
+        write_skill(skills_root, "perf-benchmark")
+        write_skill(skills_root, "verification-before-completion")
+        if install_fallback:
+            write_skill(skills_root, "m10-performance")
+
+        report = checker.build_bootstrap_report(
+            repo_root=repo,
+            manifest_path=manifest_path,
+            out_dir=tmp_path / f"out-{expected_state}",
+            env={"HOME": str(tmp_path)},
+            extra_roots=[skills_root.parent],
+        )
+
+        assert report["lanes"]["performance"]["state"] == expected_state
+
+
+def test_performance_lane_manual_with_test_surface_no_benchmarks(
+    tmp_path: Path,
+    sample_manifest: dict,
+):
+    checker = load_checker_module()
+    repo = tmp_path / "repo"
+    (repo / "tests").mkdir(parents=True)
+    (repo / "tests" / "test_x.py").write_text("pass\n", encoding="utf-8")
+    (repo / "pytest.ini").write_text("[pytest]\n", encoding="utf-8")
+
+    manifest_path = tmp_path / "manifest.json"
+    write_manifest(manifest_path, sample_manifest)
+
+    skills_root = tmp_path / ".agents" / "skills"
+    write_skill(skills_root, "perf-benchmark")
+    write_skill(skills_root, "verification-before-completion")
+
+    report = checker.build_bootstrap_report(
+        repo_root=repo,
+        manifest_path=manifest_path,
+        out_dir=tmp_path / "out",
+        env={"HOME": str(tmp_path)},
+    )
+
+    assert report["lanes"]["performance"]["state"] == "manual"
+    assert any("No benchmark surface" in w for w in report["warnings"])
+
+
+def test_scan_repo_profile_empty_repo(tmp_path: Path):
+    checker = load_checker_module()
+    repo = tmp_path / "repo"
+    repo.mkdir()
+
+    profile = checker.scan_repo_profile(repo)
+
+    assert profile["languages"] == []
+    assert profile["test_systems"] == []
+    assert profile["benchmark_surfaces"] == []
+    assert profile["has_deterministic_test_surface"] is False
+    assert profile["has_deterministic_perf_surface"] is False

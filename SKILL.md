@@ -72,6 +72,10 @@ Load `references/activation-matrix.md` once the repo profile is clear.
 
 ## Diagnosis Lanes
 
+Load `references/pipeline.md` before dispatching diagnosis lanes.
+
+Once bootstrap and discovery artifacts are available, dispatch independent diagnosis lanes in parallel. Each lane reads shared files but does not modify them. Use `dispatching-parallel-agents` when available, or instruct subagents with non-overlapping output directories.
+
 Activate only the lanes that match the repository profile and the bootstrap result.
 
 ### Test Lane
@@ -107,8 +111,6 @@ Use:
 
 Treat assembly as a perf-first, evidence-driven lane. No dedicated assembly audit subskill is currently available, so prefer profiling evidence and conservative change control over broad structural edits.
 
-Load `references/pipeline.md` before dispatching multiple lanes or batching work.
-
 ## Synthesis
 
 Merge the lane outputs into a single remediation backlog.
@@ -129,7 +131,9 @@ Execute changes in batches.
 - Keep performance changes separate from broad refactors unless the same evidence supports both.
 - Rebaseline after each meaningful batch.
 
-For implementation orchestration:
+For diagnosis parallelism (read-only lanes), prefer concurrent dispatch as the default.
+
+For execution parallelism (write lanes), keep sequential execution as the default:
 
 - Use `subagent-driven-development` for sequential multi-batch execution with review loops.
 - Use `dispatching-parallel-agents` only for clearly independent subsystems with no shared-state or overlapping-file risk.
