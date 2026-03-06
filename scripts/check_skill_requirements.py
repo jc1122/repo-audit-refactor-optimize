@@ -488,6 +488,17 @@ def build_bootstrap_report(
         lanes[lane_name] = _evaluate_lane(lane_name, manifest["lanes"][lane_name], merged_skills, profile)
         warnings.extend(lanes[lane_name]["warnings"])
 
+    blocking_skill_names: set[str] = set()
+    for lane_name, lane_result in lanes.items():
+        if not lane_result["blocking"]:
+            continue
+        lane_config = manifest["lanes"][lane_name]
+        blocking_skill_names.update(lane_config.get("preferred", []))
+        blocking_skill_names.update(lane_config.get("fallback", []))
+    for skill_name in blocking_skill_names:
+        if merged_skills[skill_name]["state"] == "manual_only":
+            merged_skills[skill_name]["state"] = "blocking_missing"
+
     install_candidates = [
         {
             "name": skill_name,

@@ -574,3 +574,4 @@ def test_perf_focused_repo_without_benchmark_surfaces_is_blocked(
     perf_lane = report["lanes"]["performance"]
     assert perf_lane["state"] == "blocked"
     assert report["summary"]["stop_before_discovery"] is True
+    assert report["skills"]["perf-benchmark"]["state"] == "blocking_missing"
