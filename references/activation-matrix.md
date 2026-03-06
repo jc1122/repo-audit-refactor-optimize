@@ -2,6 +2,8 @@
 
 ## Core Rule
 
+Activated diagnosis lanes are independent read-only analyses and should be dispatched in parallel when bootstrap and discovery are complete.
+
 Activate subskills based on repository shape, language, verification surface, and bootstrap availability. Do not treat the skill list as flat. Each lane must resolve to `full`, `degraded`, `manual`, or `blocked`.
 
 ## Test Lane

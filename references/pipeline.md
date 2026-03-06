@@ -47,6 +47,8 @@ Prefer three diagnosis lanes:
 
 Run independent lanes in parallel only after Bootstrap and Discovery are complete.
 
+Bootstrap and Discovery form a sequential barrier. All diagnosis lanes must wait for both artifacts. Once available, dispatch lanes concurrently — they read shared files but do not write.
+
 ### Parallelism Rules
 
 Allow parallel execution when:
@@ -60,6 +62,8 @@ Keep sequential execution when:
 - the same files will be rewritten
 - baseline performance collection depends on a stable, already-fixed test loop
 - the repo has a single fragile build system or shared mutable environment
+
+When dispatching to subagents, assign each lane a separate output subdirectory and limit the orchestrator's role to dispatching, collecting results, and synthesizing. This preserves the orchestrator's context window for high-level decisions.
 
 ## Recommended Artifact Layout
 

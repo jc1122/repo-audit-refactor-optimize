@@ -30,6 +30,8 @@ Run verification in this order:
 
 If the smallest affected surface fails, stop and fix the regression before running broader verification.
 
+When multiple lanes complete in parallel, run lane-specific verification concurrently. Only the final cross-lane verification step needs sequential execution.
+
 ## Test Verification
 
 Prefer deterministic commands and stable fixtures.

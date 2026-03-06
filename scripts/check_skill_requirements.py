@@ -28,6 +28,7 @@ DEFAULT_REPO_OVERRIDE = ".repo-audit-refactor-optimize/skill-sources.json"
 # Shared domain constants used by scan_repo_profile and _matches_when.
 KNOWN_LANGUAGES = frozenset({"python", "c", "rust", "assembly"})
 KNOWN_TEST_SYSTEMS = frozenset({"pytest", "cargo", "cmake", "meson", "make"})
+BENCHMARK_DIR_NAMES = frozenset({"benches", "benchmarks"})
 
 
 def _env_value(env: dict[str, str] | None, key: str) -> str | None:
@@ -66,7 +67,7 @@ def scan_repo_profile(repo_root: Path) -> dict[str, Any]:
 
     for current_root, dir_names, file_names in os.walk(repo_root):
         dir_names[:] = [name for name in dir_names if name not in SKIP_DIRS]
-        current = Path(current_root)
+        basename_lower = os.path.basename(current_root).lower()
 
         if "pytest.ini" in file_names:
             test_systems.add("pytest")
@@ -80,31 +81,30 @@ def scan_repo_profile(repo_root: Path) -> dict[str, Any]:
         if "Makefile" in file_names or "GNUmakefile" in file_names:
             test_systems.add("make")
 
-        current_parts = {part.lower() for part in current.parts}
-        if current.name.lower() in {"benches", "benchmarks"}:
+        parts_lower = {part.lower() for part in current_root.replace("\\", "/").split("/")}
+        if basename_lower in BENCHMARK_DIR_NAMES:
             if any(name.endswith(".py") for name in file_names):
                 benchmark_surfaces.add("python-benchmarks")
             if any(name.endswith(".rs") for name in file_names):
                 benchmark_surfaces.add("cargo-benches")
-            if any(Path(name).suffix.lower() in {".c", ".cc", ".cpp", ".h"} for name in file_names):
+            if any(os.path.splitext(name)[1].lower() in {".c", ".cc", ".cpp", ".h"} for name in file_names):
                 benchmark_surfaces.add("native-benchmarks")
 
         for name in file_names:
-            file_path = current / name
-            suffix = file_path.suffix
+            suffix = os.path.splitext(name)[1]
             lower_name = name.lower()
 
             if suffix == ".py":
                 languages.add("python")
-                if "bench" in lower_name or "benchmark" in lower_name or "benches" in current_parts:
+                if "bench" in lower_name or "benchmark" in lower_name or "benches" in parts_lower:
                     benchmark_surfaces.add("python-benchmarks")
             elif suffix in {".c", ".h"}:
                 languages.add("c")
-                if "bench" in lower_name or "perf" in lower_name or "benchmark" in current_parts:
+                if "bench" in lower_name or "perf" in lower_name or "benchmark" in parts_lower:
                     benchmark_surfaces.add("native-benchmarks")
             elif suffix == ".rs":
                 languages.add("rust")
-                if "bench" in lower_name or "benches" in current_parts:
+                if "bench" in lower_name or "benches" in parts_lower:
                     benchmark_surfaces.add("cargo-benches")
             elif suffix in {".s", ".S", ".asm"}:
                 languages.add("assembly")
@@ -114,13 +114,13 @@ def scan_repo_profile(repo_root: Path) -> dict[str, Any]:
             if name == "pyproject.toml":
                 languages.add("python")
                 try:
-                    content = file_path.read_text(encoding="utf-8")
+                    content = Path(os.path.join(current_root, name)).read_text(encoding="utf-8")
                 except OSError:
                     content = ""
                 if "[tool.pytest.ini_options]" in content or "pytest" in content:
                     test_systems.add("pytest")
 
-        if "tests" in current_parts and any(name.endswith(".py") for name in file_names):
+        if "tests" in parts_lower and any(name.endswith(".py") for name in file_names):
             languages.add("python")
 
     ordered_languages = [lang for lang in sorted(KNOWN_LANGUAGES) if lang in languages]
@@ -243,10 +243,11 @@ def load_source_overrides(
 
 def _extract_skill_name(skill_path: Path) -> str | None:
     try:
-        lines = skill_path.read_text(encoding="utf-8").splitlines()
+        with open(skill_path, encoding="utf-8", errors="replace") as fh:
+            head = fh.read(2048)
     except OSError:
         return None
-    for line in lines[:20]:
+    for line in head.splitlines()[:20]:
         if line.startswith("name:"):
             return line.split(":", 1)[1].strip().strip('"')
     return None
@@ -256,16 +257,47 @@ def _discover_skills(roots: list[dict[str, str]]) -> dict[str, dict[str, Any]]:
     discovered: dict[str, dict[str, Any]] = {}
     for root in roots:
         root_path = Path(root["path"])
-        for skill_file in sorted(root_path.rglob("SKILL.md")):
-            skill_name = _extract_skill_name(skill_file)
-            if not skill_name or skill_name in discovered:
+        if not root_path.is_dir():
+            continue
+        try:
+            entries = sorted(os.scandir(root_path), key=lambda e: e.name)
+        except OSError:
+            continue
+        for entry in entries:
+            if not entry.is_dir(follow_symlinks=True):
                 continue
-            discovered[skill_name] = {
-                "root_kind": root["kind"],
-                "root_path": str(root_path),
-                "skill_path": str(skill_file),
-            }
+            skill_file = root_path / entry.name / "SKILL.md"
+            if skill_file.exists():
+                _register_skill(skill_file, root, root_path, discovered)
+            else:
+                # Support <root>/<subdir>/<skill>/SKILL.md (e.g. extra roots).
+                sub_path = root_path / entry.name
+                try:
+                    sub_entries = sorted(os.scandir(sub_path), key=lambda e: e.name)
+                except OSError:
+                    continue
+                for sub_entry in sub_entries:
+                    if not sub_entry.is_dir(follow_symlinks=True):
+                        continue
+                    nested = sub_path / sub_entry.name / "SKILL.md"
+                    if nested.exists():
+                        _register_skill(nested, root, root_path, discovered)
     return discovered
+
+
+def _register_skill(
+    skill_file: Path,
+    root: dict[str, str],
+    root_path: Path,
+    discovered: dict[str, dict[str, Any]],
+) -> None:
+    skill_name = _extract_skill_name(skill_file)
+    if skill_name and skill_name not in discovered:
+        discovered[skill_name] = {
+            "root_kind": root["kind"],
+            "root_path": str(root_path),
+            "skill_path": str(skill_file),
+        }
 
 
 def _matches_when(profile: dict[str, Any], conditions: dict[str, Any]) -> bool:
@@ -439,6 +471,24 @@ def _evaluate_lane(
     }
 
 
+def _collect_active_and_strict_skills(
+    active_lanes: list[str],
+    manifest: dict[str, Any],
+    required_skill_names: list[str] | None = None,
+) -> tuple[set[str], set[str]]:
+    active_skills = set(required_skill_names or [])
+    strict_skills = set(required_skill_names or [])
+    for lane_name in active_lanes:
+        lane = manifest["lanes"][lane_name]
+        active_skills.update(lane.get("preferred", []))
+        active_skills.update(lane.get("fallback", []))
+        active_skills.update(lane.get("optional", []))
+        if lane.get("blocking"):
+            strict_skills.update(lane.get("preferred", []))
+            strict_skills.update(lane.get("fallback", []))
+    return active_skills, strict_skills
+
+
 def build_bootstrap_report(
     *,
     repo_root: Path,
@@ -456,16 +506,9 @@ def build_bootstrap_report(
     manifest = load_dependency_manifest(manifest_path)
     profile = scan_repo_profile(repo_root)
     active_lanes = _relevant_lane_names(profile, manifest)
-    active_skills = set(required_skill_names or [])
-    strict_skills = set(required_skill_names or [])
-    for lane_name in active_lanes:
-        lane = manifest["lanes"][lane_name]
-        active_skills.update(lane.get("preferred", []))
-        active_skills.update(lane.get("fallback", []))
-        active_skills.update(lane.get("optional", []))
-        if lane.get("blocking"):
-            strict_skills.update(lane.get("preferred", []))
-            strict_skills.update(lane.get("fallback", []))
+    active_skills, strict_skills = _collect_active_and_strict_skills(
+        active_lanes, manifest, required_skill_names,
+    )
 
     overrides, warnings = load_source_overrides(
         repo_root=repo_root,
