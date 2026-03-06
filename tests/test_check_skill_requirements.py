@@ -868,6 +868,167 @@ def test_code_health_rust_lane_activation(tmp_path: Path, sample_manifest: dict)
     assert report["lanes"]["code-health-rust"]["state"] == "full"
 
 
+def test_optional_install_candidate_does_not_force_restart_summary(
+    tmp_path: Path,
+    sample_manifest: dict,
+    python_pytest_repo: Path,
+):
+    repo = python_pytest_repo
+
+    sample_manifest["skills"]["hypothesis-testing"] = {
+        **sample_manifest["skills"]["hypothesis-testing"],
+        "source_type": "public",
+        "install_source": {
+            "method": "skills_cli",
+            "package": "acme/skills@hypothesis-testing",
+        },
+    }
+
+    manifest_path = tmp_path / "manifest.json"
+    write_manifest(manifest_path, sample_manifest)
+
+    report = checker.build_bootstrap_report(
+        repo_root=repo,
+        manifest_path=manifest_path,
+        out_dir=tmp_path / "out",
+        env={"HOME": str(tmp_path)},
+    )
+
+    assert report["skills"]["hypothesis-testing"]["state"] == "installable_now"
+    assert report["summary"]["restart_required"] is False
+
+
+def test_public_skill_without_supported_install_command_is_manual_only(
+    tmp_path: Path,
+    sample_manifest: dict,
+):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+
+    sample_manifest["skills"]["public-helper"] = {
+        "priority": "preferred",
+        "source_type": "public",
+        "install_source": {
+            "method": "unknown",
+            "package": "acme/skills@public-helper",
+        },
+        "manual_fallback": "Use fallback helper manually.",
+        "restart_required_if_installed": True,
+    }
+
+    manifest_path = tmp_path / "manifest.json"
+    write_manifest(manifest_path, sample_manifest)
+
+    report = checker.build_bootstrap_report(
+        repo_root=repo,
+        manifest_path=manifest_path,
+        out_dir=tmp_path / "out",
+        env={"HOME": str(tmp_path)},
+        required_skill_names=["public-helper"],
+    )
+
+    assert report["skills"]["public-helper"]["state"] == "manual_only"
+    assert report["install_candidates"] == []
+
+
+def test_main_cli_reports_validation_errors_cleanly(
+    tmp_path: Path,
+    sample_manifest: dict,
+    capsys: pytest.CaptureFixture[str],
+):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+
+    manifest_path = tmp_path / "manifest.json"
+    write_manifest(manifest_path, sample_manifest)
+
+    bad_override = tmp_path / "bad-override.json"
+    bad_override.write_text("{not-json", encoding="utf-8")
+
+    ret = checker.main(
+        [
+            "--repo", str(repo),
+            "--manifest", str(manifest_path),
+            "--out-dir", str(tmp_path / "out"),
+            "--user-override", str(bad_override),
+        ]
+    )
+    captured = capsys.readouterr()
+
+    assert ret == 2
+    assert "Malformed user override file" in captured.err
+    assert "Traceback" not in captured.err
+
+
+def test_build_bootstrap_report_rejects_missing_repo(tmp_path: Path, sample_manifest: dict):
+    repo = tmp_path / "missing-repo"
+
+    manifest_path = tmp_path / "manifest.json"
+    write_manifest(manifest_path, sample_manifest)
+
+    with pytest.raises(ValueError, match="Repository root does not exist"):
+        checker.build_bootstrap_report(
+            repo_root=repo,
+            manifest_path=manifest_path,
+            out_dir=tmp_path / "out",
+            env={"HOME": str(tmp_path)},
+        )
+
+
+def test_main_cli_reports_missing_manifest_cleanly(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+
+    ret = checker.main(
+        [
+            "--repo", str(repo),
+            "--manifest", str(tmp_path / "missing-manifest.json"),
+            "--out-dir", str(tmp_path / "out"),
+        ]
+    )
+    captured = capsys.readouterr()
+
+    assert ret == 2
+    assert "No such file or directory" in captured.err
+    assert "Traceback" not in captured.err
+
+
+def test_markdown_report_restart_label_matches_summary_semantics(
+    tmp_path: Path,
+    sample_manifest: dict,
+):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+
+    sample_manifest["skills"]["public-helper"] = {
+        "priority": "preferred",
+        "source_type": "public",
+        "install_source": {
+            "method": "skills_cli",
+            "package": "acme/skills@public-helper",
+        },
+        "manual_fallback": "Use fallback helper manually.",
+        "restart_required_if_installed": True,
+    }
+
+    manifest_path = tmp_path / "manifest.json"
+    write_manifest(manifest_path, sample_manifest)
+
+    report = checker.build_bootstrap_report(
+        repo_root=repo,
+        manifest_path=manifest_path,
+        out_dir=tmp_path / "out",
+        env={"HOME": str(tmp_path)},
+        required_skill_names=["public-helper"],
+    )
+    md = checker._markdown_report(report)
+
+    assert "Restart required before using strict installs" in md
+
+
 def test_cpp_files_detect_c_language(tmp_path: Path):
     repo = tmp_path / "repo"
     (repo / "src").mkdir(parents=True)

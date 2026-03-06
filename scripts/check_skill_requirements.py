@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -377,7 +378,7 @@ def _skill_entry(
                 "skill_path": discovered["skill_path"],
             }
         )
-    elif entry["source_type"] == "public" and isinstance(entry["install_source"], dict):
+    elif _install_command_for_skill(entry):
         entry.update(
             {
                 "state": "installable_now",
@@ -573,6 +574,10 @@ def build_bootstrap_report(
     """Build the full bootstrap report for a repository."""
     repo_root = repo_root.resolve()
     out_dir = out_dir.resolve()
+    if not repo_root.exists():
+        raise ValueError(f"Repository root does not exist: {repo_root}")
+    if not repo_root.is_dir():
+        raise ValueError(f"Repository root is not a directory: {repo_root}")
     manifest = load_dependency_manifest(manifest_path)
     profile = scan_repo_profile(repo_root)
     active_lanes = _relevant_lane_names(profile, manifest)
@@ -603,7 +608,11 @@ def build_bootstrap_report(
     install_candidates = _build_install_candidates(merged_skills)
 
     stop_before_discovery = any(lane["blocking"] for lane in lanes.values())
-    restart_required = any(item["restart_required"] for item in install_candidates if item["post_install_state"] == "available_next_run")
+    restart_required = any(
+        item["restart_required"]
+        for item in install_candidates
+        if item["post_install_state"] == "available_next_run" and item["name"] in strict_skills
+    )
 
     return {
         "repo_root": str(repo_root),
@@ -638,7 +647,7 @@ def _markdown_report(report: dict[str, Any]) -> str:
         f"- Repo: `{report['repo_root']}`",
         f"- Active lanes: {', '.join(report['summary']['active_lanes']) or 'none'}",
         f"- Stop before discovery: `{str(report['summary']['stop_before_discovery']).lower()}`",
-        f"- Restart required after blocking installs: `{str(report['summary']['restart_required']).lower()}`",
+        f"- Restart required before using strict installs: `{str(report['summary']['restart_required']).lower()}`",
         "",
         "## Lane States",
         "",
@@ -720,16 +729,21 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 def main(argv: list[str] | None = None) -> int:
     args = _parse_args(argv)
-    report = build_bootstrap_report(
-        repo_root=args.repo,
-        manifest_path=args.manifest,
-        out_dir=args.out_dir,
-        extra_roots=args.extra_root,
-        foreign_roots=args.foreign_root,
-        user_override_path=args.user_override,
-        repo_override_path=args.repo_override,
-        required_skill_names=args.require_skill,
-    )
+    try:
+        report = build_bootstrap_report(
+            repo_root=args.repo,
+            manifest_path=args.manifest,
+            out_dir=args.out_dir,
+            extra_roots=args.extra_root,
+            foreign_roots=args.foreign_root,
+            user_override_path=args.user_override,
+            repo_override_path=args.repo_override,
+            required_skill_names=args.require_skill,
+        )
+    except (FileNotFoundError, ValueError) as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        return 2
+
     write_bootstrap_outputs(report, args.out_dir)
     print(json.dumps(report["summary"], indent=2, sort_keys=True))
     return 0
