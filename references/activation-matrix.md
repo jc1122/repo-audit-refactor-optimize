@@ -81,8 +81,8 @@ Interpretation:
 
 - `full` when `perf-benchmark` and `m10-performance` are usable now and a deterministic performance surface exists
 - `degraded` when `perf-benchmark` is usable now but `m10-performance` is not
-- `manual` when a deterministic surface exists but the preferred benchmark skill is missing
-- `blocked` when no deterministic verification surface exists for performance work
+- `manual` when a deterministic test surface exists but no benchmark surface is available, or when the preferred benchmark skill is missing
+- `blocked` when no deterministic test or benchmark surface exists at all
 
 ### Service or Throughput Performance
 

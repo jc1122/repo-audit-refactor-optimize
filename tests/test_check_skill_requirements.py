@@ -764,3 +764,64 @@ def test_install_plan_no_candidates(tmp_path: Path, sample_manifest: dict):
         encoding="utf-8",
     )
     assert "No public install candidates" in install_plan
+
+
+def test_matches_when_unknown_key_is_fail_closed(tmp_path: Path, sample_manifest: dict):
+    """Unknown condition keys with expected=True should fail-close, not silently activate."""
+    # Add a lane with an unknown condition key
+    sample_manifest["lanes"]["impossible-lane"] = {
+        "when": {"nonexistent_thing": True},
+        "lane_type": "code_health",
+        "preferred": ["m15-anti-pattern"],
+        "manual_fallback": "Manual.",
+        "blocking": False,
+    }
+
+    repo = tmp_path / "repo"
+    (repo / "src").mkdir(parents=True)
+    (repo / "src" / "app.py").write_text("print('ok')\n", encoding="utf-8")
+
+    manifest_path = tmp_path / "manifest.json"
+    write_manifest(manifest_path, sample_manifest)
+
+    report = checker.build_bootstrap_report(
+        repo_root=repo,
+        manifest_path=manifest_path,
+        out_dir=tmp_path / "out",
+        env={"HOME": str(tmp_path)},
+    )
+
+    # The lane should NOT be activated since the condition cannot be satisfied
+    assert "impossible-lane" not in report["summary"]["active_lanes"]
+
+
+def test_require_skill_unknown_name_raises(tmp_path: Path, sample_manifest: dict):
+    """--require-skill with a name not in the manifest should raise ValueError."""
+    repo = tmp_path / "repo"
+    repo.mkdir()
+
+    manifest_path = tmp_path / "manifest.json"
+    write_manifest(manifest_path, sample_manifest)
+
+    with pytest.raises(ValueError, match="not defined in the manifest"):
+        checker.build_bootstrap_report(
+            repo_root=repo,
+            manifest_path=manifest_path,
+            out_dir=tmp_path / "out",
+            env={"HOME": str(tmp_path)},
+            required_skill_names=["totally-unknown-skill"],
+        )
+
+
+def test_scan_repo_profile_no_false_positive_from_parent_dir(tmp_path: Path):
+    """Repo inside a 'benches' directory should not produce false-positive benchmark surfaces."""
+    # Create the repo inside a parent dir named "benches"
+    benches_dir = tmp_path / "benches"
+    repo = benches_dir / "myproject"
+    (repo / "src").mkdir(parents=True)
+    (repo / "src" / "app.py").write_text("print('ok')\n", encoding="utf-8")
+
+    profile = checker.scan_repo_profile(repo)
+
+    assert profile["benchmark_surfaces"] == []
+    assert profile["has_deterministic_perf_surface"] is False

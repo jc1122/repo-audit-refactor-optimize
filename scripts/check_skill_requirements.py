@@ -90,7 +90,8 @@ def scan_repo_profile(repo_root: Path) -> dict[str, Any]:
         if "Makefile" in file_names or "GNUmakefile" in file_names:
             test_systems.add("make")
 
-        parts_lower = {part.lower() for part in current_root.replace("\\", "/").split("/")}
+        rel = os.path.relpath(current_root, repo_root)
+        parts_lower = {part.lower() for part in rel.replace("\\", "/").split("/")}
         if basename_lower in BENCHMARK_DIR_NAMES:
             if any(name.endswith(".py") for name in file_names):
                 benchmark_surfaces.add("python-benchmarks")
@@ -124,7 +125,7 @@ def scan_repo_profile(repo_root: Path) -> dict[str, Any]:
                 languages.add("python")
                 try:
                     content = Path(os.path.join(current_root, name)).read_text(encoding="utf-8")
-                except OSError:
+                except (OSError, UnicodeDecodeError):
                     content = ""
                 if "[tool.pytest.ini_options]" in content or "pytest" in content:
                     test_systems.add("pytest")
@@ -323,7 +324,8 @@ def _matches_when(profile: dict[str, Any], conditions: dict[str, Any]) -> bool:
         elif key.startswith("has_deterministic_"):
             if bool(expected) != bool(profile.get(key)):
                 return False
-        elif key in benchmarks or bool(expected) is False:
+        else:
+            # Treat as a benchmark-surface condition by default (fail-closed).
             if bool(expected) != (key in benchmarks):
                 return False
     return True
@@ -485,6 +487,9 @@ def _collect_active_and_strict_skills(
     manifest: dict[str, Any],
     required_skill_names: list[str] | None = None,
 ) -> tuple[set[str], set[str]]:
+    for name in required_skill_names or []:
+        if name not in manifest["skills"]:
+            raise ValueError(f"Required skill '{name}' is not defined in the manifest.")
     active_skills = set(required_skill_names or [])
     strict_skills = set(required_skill_names or [])
     for lane_name in active_lanes:

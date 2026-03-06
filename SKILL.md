@@ -40,6 +40,8 @@ python3 scripts/check_skill_requirements.py \
   --out-dir /tmp/repo-audit-refactor-optimize/<repo-name>/<timestamp>
 ```
 
+Run `python3 scripts/check_skill_requirements.py --help` for override and extra-root flags.
+
 The checker is deterministic and non-mutating. It reads `scripts/skill_bootstrap_manifest.json`, pre-scans the target repository, resolves the relevant lanes, checks usable skill roots, and writes:
 
 - `bootstrap/bootstrap_report.json`
