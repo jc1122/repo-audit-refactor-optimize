@@ -25,6 +25,10 @@ SKIP_DIRS = {
 CONFIG_DIR_NAME = "repo-audit-refactor-optimize"
 DEFAULT_REPO_OVERRIDE = ".repo-audit-refactor-optimize/skill-sources.json"
 
+# Shared domain constants used by scan_repo_profile and _matches_when.
+KNOWN_LANGUAGES = frozenset({"python", "c", "rust", "assembly"})
+KNOWN_TEST_SYSTEMS = frozenset({"pytest", "cargo", "cmake", "meson", "make"})
+
 
 def _env_value(env: dict[str, str] | None, key: str) -> str | None:
     if env is None:
@@ -119,8 +123,8 @@ def scan_repo_profile(repo_root: Path) -> dict[str, Any]:
         if "tests" in current_parts and any(name.endswith(".py") for name in file_names):
             languages.add("python")
 
-    ordered_languages = [lang for lang in ["assembly", "c", "python", "rust"] if lang in languages]
-    ordered_tests = [name for name in ["cargo", "cmake", "make", "meson", "pytest"] if name in test_systems]
+    ordered_languages = [lang for lang in sorted(KNOWN_LANGUAGES) if lang in languages]
+    ordered_tests = [name for name in sorted(KNOWN_TEST_SYSTEMS) if name in test_systems]
     ordered_benchmarks = [
         name
         for name in ["cargo-benches", "native-benchmarks", "python-benchmarks"]
@@ -182,20 +186,19 @@ def load_dependency_manifest(manifest_path: Path) -> dict[str, Any]:
     return payload
 
 
+_OVERRIDE_SCHEMA: dict[str, type] = {
+    "source_type": str,
+    "install_source": dict,
+    "manual_fallback": str,
+    "restart_required_if_installed": bool,
+}
+
+
 def _is_skill_override_valid(payload: dict[str, Any]) -> bool:
-    source_type = payload.get("source_type")
-    if source_type is not None and not isinstance(source_type, str):
-        return False
-    install_source = payload.get("install_source")
-    if install_source is not None and not isinstance(install_source, dict):
-        return False
-    manual_fallback = payload.get("manual_fallback")
-    if manual_fallback is not None and not isinstance(manual_fallback, str):
-        return False
-    restart_required = payload.get("restart_required_if_installed")
-    if restart_required is not None and not isinstance(restart_required, bool):
-        return False
-    return True
+    return all(
+        payload.get(field) is None or isinstance(payload[field], expected_type)
+        for field, expected_type in _OVERRIDE_SCHEMA.items()
+    )
 
 
 def load_source_overrides(
@@ -270,20 +273,17 @@ def _matches_when(profile: dict[str, Any], conditions: dict[str, Any]) -> bool:
     tests = set(profile["test_systems"])
     benchmarks = set(profile["benchmark_surfaces"])
     for key, expected in conditions.items():
-        if key in {"python", "c", "rust", "assembly"}:
+        if key in KNOWN_LANGUAGES:
             if bool(expected) != (key in languages):
                 return False
-        elif key in {"pytest", "cargo", "cmake", "meson", "make"}:
+        elif key in KNOWN_TEST_SYSTEMS:
             if bool(expected) != (key in tests):
                 return False
-        elif key == "has_deterministic_perf_surface":
-            if bool(expected) != bool(profile["has_deterministic_perf_surface"]):
+        elif key.startswith("has_deterministic_"):
+            if bool(expected) != bool(profile.get(key)):
                 return False
-        elif key == "has_deterministic_test_surface":
-            if bool(expected) != bool(profile["has_deterministic_test_surface"]):
-                return False
-        elif key == "python-benchmarks":
-            if bool(expected) != ("python-benchmarks" in benchmarks):
+        elif key in benchmarks or bool(expected) is False:
+            if bool(expected) != (key in benchmarks):
                 return False
     return True
 
@@ -410,6 +410,15 @@ def _evaluate_orchestration_lane(lane: dict[str, Any], skills: dict[str, dict[st
     return "manual", [], []
 
 
+_LANE_EVALUATORS = {
+    "test": lambda lane, skills, profile: _evaluate_test_lane(lane, skills),
+    "code_health": lambda lane, skills, profile: _evaluate_code_health_lane(lane, skills),
+    "performance": _evaluate_performance_lane,
+    "bootstrap": lambda lane, skills, profile: _evaluate_bootstrap_lane(lane, skills),
+    "orchestration": lambda lane, skills, profile: _evaluate_orchestration_lane(lane, skills),
+}
+
+
 def _evaluate_lane(
     lane_name: str,
     lane: dict[str, Any],
@@ -417,16 +426,8 @@ def _evaluate_lane(
     profile: dict[str, Any],
 ) -> dict[str, Any]:
     lane_type = lane["lane_type"]
-    if lane_type == "test":
-        state, selected, warnings = _evaluate_test_lane(lane, skills)
-    elif lane_type == "code_health":
-        state, selected, warnings = _evaluate_code_health_lane(lane, skills)
-    elif lane_type == "performance":
-        state, selected, warnings = _evaluate_performance_lane(lane, skills, profile)
-    elif lane_type == "bootstrap":
-        state, selected, warnings = _evaluate_bootstrap_lane(lane, skills)
-    else:
-        state, selected, warnings = _evaluate_orchestration_lane(lane, skills)
+    evaluator = _LANE_EVALUATORS.get(lane_type, _LANE_EVALUATORS["orchestration"])
+    state, selected, warnings = evaluator(lane, skills, profile)
 
     return {
         "lane_type": lane_type,
