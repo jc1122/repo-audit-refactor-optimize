@@ -39,7 +39,17 @@
 - Rewrite lanes + version: `SKILL.md`; touch `README.md`
 - Create: `docs/dogfood/2026-06-10-sp5-dogfood-report.md` (T7 evidence)
 
-Execution order: **T1 → T2 sequential** (same script/test files). **T3 ∥ T4** (disjoint docs) any time after T2's design is fixed (i.e., immediately). **T5 after T3+T4** (SKILL.md references them). **T6 → T7 → T8** are orchestrator-verified gates, sequential.
+### Worker wave map (keep the DeepSeek pool saturated; cap 4)
+
+The design is locked in this plan, so doc tasks do NOT wait for code tasks. Dispatch one worker per packet, own worktree each:
+
+- **Wave 1 (3 workers in parallel):** W-A = T1 (evaluators + tests) ∥ W-B = T3 (references rewrite) ∥ W-C = T4 (remediation playbook). Disjoint files.
+- **Wave 2 (2 workers in parallel):** W-D = T2 (manifest + manifest tests; requires T1 merged) ∥ W-E = T5 (SKILL.md; requires T3+T4 merged). Disjoint files.
+- **Gate (orchestrator, no worker):** T6 bootstrap self-checks. Must pass before Wave 3.
+- **Wave 3 (3 workers in parallel):** W-F = T7a (code-health determinism dogfood) ∥ W-G = T7b (coverage handoff dogfood) ∥ W-H = T7c (test-audit-pipeline self-dogfood). All read-only diagnosis with disjoint `/tmp` out-dirs; orchestrator synthesizes T7d (gated backlog + report).
+- **Sequential tail:** T8 README/review, then **Phase 2 self-dogfood loop** (one worker per remediation batch, serialized merges).
+
+Merge discipline: the orchestrator owns all merges; after each merge re-run `python3 -m pytest tests/ -q` and read the output. Never merge two workers touching the same file without rebasing the second.
 
 ---
 
@@ -513,7 +523,7 @@ Expected: 4 failed (old manifest still has 19 skills / 8 lanes).
 - [ ] **Step 5: Run the full suite, verify green**
 
 Run: `python3 -m pytest tests/ -q`
-Expected: all pass (52 + 4 new − deleted ≈ 53–55; exact count recorded in the commit message). Zero failures, zero errors.
+Expected: `53 passed` (52 after T1, + 4 new from Step 1, − the 3 deleted lane tests; perf-lane tests are rewritten in place, net 0). If Step 4's grep surfaces additional stale production-manifest tests, the count may differ — record the exact count and the delta arithmetic in the commit message. Zero failures, zero errors.
 
 - [ ] **Step 6: Commit**
 
@@ -759,13 +769,15 @@ git commit -m "feat(skill): v0.2.0 — deterministic first-party lanes + remedia
 
 ### Task 6: Bootstrap self-check gates (orchestrator-verified, no worker)
 
-- [ ] **Step 1:** Install the rewired skill where the checker can see it, or point the checker at the working tree via its extra-roots flag (see `python3 scripts/check_skill_requirements.py --help`). Then run against the skillset repo:
+- [ ] **Step 1:** No install needed: run the working-tree checker (it defaults to the working-tree manifest at `scripts/skill_bootstrap_manifest.json`); the repo-audit-skills v0.3.0 family is already installed at the user skills root, which the checker discovers via its standard root search order. From `/home/jakub/projects/repo-audit-refactor-optimize`:
 
 ```bash
 python3 scripts/check_skill_requirements.py \
   --repo /home/jakub/projects/repo-audit-skills \
   --out-dir /tmp/sp5-selfcheck/repo-audit-skills
 ```
+
+If a lane unexpectedly reports `manual`, verify discovery with `--extra-root /home/jakub/.claude/skills` before debugging anything else.
 
 Expected in `bootstrap/bootstrap_report.json`: `test-python` full `["test-audit-pipeline"]`; `code-health-python` full `["code-health-audit-pipeline"]`; `coverage-python` full `["coverage-gap-audit"]`; `performance` manual with the no-benchmark-surface warning; `orchestration` full; `stop_before_discovery` false. Any other result → STOP, fix before proceeding.
 
@@ -778,27 +790,66 @@ Expected in `bootstrap/bootstrap_report.json`: `test-python` full `["test-audit-
 **Files:**
 - Create: `docs/dogfood/2026-06-10-sp5-dogfood-report.md`
 
-- [ ] **Step 1 (code-health lane):** Read `/home/jakub/projects/repo-audit-skills/scripts/self_audit.py` for the canonical umbrella invocation and run the umbrella the same way against `/home/jakub/projects/repo-audit-skills` into `/tmp/sp5-dogfood/code-health-run1/`, then run it again into `.../code-health-run2/`. Diff the two findings outputs ignoring the segregated meta block. Expected: byte-identical findings (the family's determinism contract).
+T7a/T7b/T7c are independent read-only packets (Wave 3, one worker each, disjoint out-dirs). `SKILLS=/home/jakub/.claude/skills` throughout. T7d is the orchestrator's synthesis.
 
-- [ ] **Step 2 (coverage handoff):** Produce a coverage artifact and feed both consumers:
+- [ ] **T7a (code-health determinism):** run the umbrella twice and diff:
+
+```bash
+python3 $SKILLS/code-health-audit-pipeline/scripts/code_health_pipeline.py \
+  --root /home/jakub/projects/repo-audit-skills \
+  --source-prefix scripts/ --source-prefix shared/ --source-prefix skills/ \
+  --out-dir /tmp/sp5-dogfood/code-health-run1
+python3 $SKILLS/code-health-audit-pipeline/scripts/code_health_pipeline.py \
+  --root /home/jakub/projects/repo-audit-skills \
+  --source-prefix scripts/ --source-prefix shared/ --source-prefix skills/ \
+  --out-dir /tmp/sp5-dogfood/code-health-run2
+python3 - <<'EOF'
+import json
+a = json.load(open("/tmp/sp5-dogfood/code-health-run1/code_health_summary.json"))
+b = json.load(open("/tmp/sp5-dogfood/code-health-run2/code_health_summary.json"))
+a.pop("meta", None); b.pop("meta", None)
+assert a == b, "NON-DETERMINISTIC umbrella output"
+print("deterministic: OK,", len(a.get("findings", [])), "findings")
+EOF
+```
+
+Expected: `deterministic: OK` with a finding count > 0. Any assertion failure → STOP.
+
+- [ ] **T7b (coverage handoff into both consumers):**
 
 ```bash
 cd /home/jakub/projects/repo-audit-skills
 .venv/bin/python -m pytest tests/ -q --cov=scripts --cov-report=json:/tmp/sp5-dogfood/coverage.json
-python3 <skills-root>/coverage-gap-audit/scripts/coverage_gap_audit.py --help   # confirm exact flags first
-python3 <skills-root>/coverage-gap-audit/scripts/coverage_gap_audit.py \
+python3 $SKILLS/coverage-gap-audit/scripts/coverage_gap_audit.py \
   --root /home/jakub/projects/repo-audit-skills \
   --coverage-json /tmp/sp5-dogfood/coverage.json \
-  > /tmp/sp5-dogfood/coverage-findings.json
+  --source-prefix scripts/ \
+  --out-dir /tmp/sp5-dogfood/coverage-gap --format json
+python3 $SKILLS/code-health-audit-pipeline/scripts/code_health_pipeline.py \
+  --root /home/jakub/projects/repo-audit-skills \
+  --source-prefix scripts/ \
+  --coverage-json /tmp/sp5-dogfood/coverage.json \
+  --out-dir /tmp/sp5-dogfood/code-health-cov
 ```
 
-Expected: TEST findings JSON; the run exits 0/1 (advisory), never crashes. Re-run the umbrella from Step 1 with `--coverage-json /tmp/sp5-dogfood/coverage.json` and confirm the coverage leaf executed (not skipped) in the umbrella output.
+Expected: the coverage-gap leaf emits TEST findings JSON under `/tmp/sp5-dogfood/coverage-gap/` (advisory exit 0/1, never a crash), and the umbrella run's summary shows the `coverage-gap` leaf EXECUTED (present in its leaf results, not skipped). Capture the exact summary lines proving activation.
 
-- [ ] **Step 3 (test lane, small target):** Run `test-audit-pipeline` per its SKILL.md against this repo (`repo-audit-refactor-optimize`, 50-odd tests — bounded). Expected: pipeline completes, `pipeline_summary.json` carries a supervisor decision with exit code 0/1/2.
+- [ ] **T7c (test lane, small target):** run the pipeline against this repo (bounded: one suite, 53 tests):
 
-- [ ] **Step 4 (synthesis sample):** Apply `references/prioritization.md` to the merged findings from Steps 1–3: produce a ranked backlog table (top 10) in which every finding in a file with a TEST finding is marked `characterize-first`. This proves the coverage gate is mechanically applicable.
+```bash
+python3 $SKILLS/test-audit-pipeline/scripts/audit_pipeline.py \
+  --root /home/jakub/projects/repo-audit-refactor-optimize \
+  --python python3 \
+  --suite tests/test_check_skill_requirements.py \
+  --source-prefix scripts/ \
+  --out-dir /tmp/sp5-dogfood/test-audit
+```
 
-- [ ] **Step 5:** Write `docs/dogfood/2026-06-10-sp5-dogfood-report.md` recording: lane states from T6, finding counts per lane, the determinism diff result, the coverage-leaf activation evidence, the top-10 gated backlog, and exact commands used. Commit:
+Expected: pipeline completes; `/tmp/sp5-dogfood/test-audit/pipeline_summary.json` carries a supervisor decision; exit code 0/1/2 (2 = error → STOP).
+
+- [ ] **T7d (orchestrator synthesis):** Apply `references/prioritization.md` to the merged findings from T7a–T7c: produce a ranked backlog table (top 10) in which every finding in a file with a TEST finding is marked `characterize-first`. This proves the coverage gate is mechanically applicable.
+
+- [ ] **Step 5:** Write `docs/dogfood/2026-06-10-sp5-dogfood-report.md` recording: lane states from T6, finding counts per lane, the determinism check output, the coverage-leaf activation evidence, the top-10 gated backlog, and exact commands used. Commit:
 
 ```bash
 git add docs/dogfood/2026-06-10-sp5-dogfood-report.md
@@ -820,14 +871,41 @@ git commit -m "docs: README lane updates for v0.2.0 (SP5 T8)"
 
 ---
 
+### Phase 2: Self-build / self-audit loop — the rewired skill remediates its own repo
+
+This is the point of SP5: the orchestrator skill audits ITSELF with the deterministic family and fixes itself following its own playbook. The orchestrator (Opus) drives the loop; one DeepSeek worker per remediation batch, own worktree; merges serialized.
+
+- [ ] **Round protocol (max 4 rounds; findings may only SHRINK):**
+
+  1. **Audit self** (orchestrator, read-only — both commands from `/home/jakub/projects/repo-audit-refactor-optimize`):
+
+```bash
+python3 -m pytest tests/ -q --cov=scripts --cov-report=json:/tmp/sp5-phase2/coverage.json
+python3 $SKILLS/code-health-audit-pipeline/scripts/code_health_pipeline.py \
+  --root /home/jakub/projects/repo-audit-refactor-optimize \
+  --source-prefix scripts/ \
+  --coverage-json /tmp/sp5-phase2/coverage.json \
+  --out-dir /tmp/sp5-phase2/round-N
+```
+
+  2. **Gate the backlog** per `references/prioritization.md`: findings in files carrying a TEST finding → `characterize-first` (the worker's batch becomes "write behavior tests for that file's contract", not the refactor). Everything else ranks normally.
+  3. **Dispatch batches** per `references/remediation-playbook.md`: one signal class per worker per batch (LINT/FORMAT bulk first, then DELETE with reachability checks, then SIMPLIFY/DECOMPOSE only where the producing leaf confirms a net reduction). ACCEPT a worker only if, in its worktree, `python3 -m pytest tests/ -q` is green AND re-running the round's audit command over the touched scope shows the batch's findings shrank with nothing new elsewhere. Else discard/retry.
+  4. **Merge, re-audit, record**: after merging the round's batches, re-run step 1; append a row to the round table in `docs/dogfood/2026-06-10-sp5-dogfood-report.md` (round, findings before → after, batches accepted/discarded, freezes + one-line justifications). Commit the round.
+  5. **Stop conditions** (playbook): total findings grow → STOP and investigate; a remediation would change the checker's CLI or report contract → record as out-of-scope (needs human approval), do not do it; two consecutive no-progress rounds or every remaining finding individually justified → CONVERGED.
+
+- [ ] **Phase 2 exit:** converged or 4-round bound; every remaining finding either fixed or justified in the report; final `python3 -m pytest tests/ -q` green; per-round table committed. The orchestrator skill has now demonstrably audited and improved itself with the skillset it orchestrates.
+
+---
+
 ## Definition of Done (report with evidence)
 
 1. `python3 -m pytest tests/ -q` green; count ≥ baseline 48 + the new evaluator/manifest tests; zero references to dropped skills in `scripts/`, `references/`, `SKILL.md`, or production-manifest tests.
 2. The manifest guard test pins exactly 16 skills and 6 lanes; the 7 repo-audit-skills entries and the new `code-health-python` fallback + `coverage-python` lane resolve as specced (full/degraded/manual transitions tested).
 3. `references/remediation-playbook.md` exists with all 10 signal procedures; prioritization is coverage-gated; activation matrix records the non-Python tooling gap honestly.
 4. T6 bootstrap reports for both target repos show the deterministic lanes `full` with first-party skills only.
-5. T7 dogfood evidence committed: deterministic double-run diff, coverage handoff into both consumers (umbrella coverage leaf ACTIVE), test-audit-pipeline supervisor decision, coverage-gated top-10 backlog.
-6. `SKILL.md` v0.2.0; commits local only — **nothing pushed, tagged, or released**.
+5. T7 dogfood evidence committed: deterministic double-run check, coverage handoff into both consumers (umbrella coverage leaf ACTIVE), test-audit-pipeline supervisor decision, coverage-gated top-10 backlog.
+6. **Phase 2 self-build/self-audit loop ran on this repo**: per-round findings table committed (shrink-only), every batch accepted under green tests + leaf re-run evidence, converged or 4-round bound, residual findings individually justified.
+7. `SKILL.md` v0.2.0; commits local only — **nothing pushed, tagged, or released**.
 
 ---
 
@@ -835,30 +913,42 @@ git commit -m "docs: README lane updates for v0.2.0 (SP5 T8)"
 
 ```
 You are the ORCHESTRATOR (Opus) for the SP5 deterministic-skillset-rewire run of
-repo-audit-refactor-optimize, in /home/jakub/projects/repo-audit-refactor-optimize. Coordinate
-only: dispatch workers (own git worktree, one task each), verify every gate yourself by reading
-real output, own all merges. Cap concurrency 4. Commit locally per task; do NOT push, tag, or
-release — human reviews.
+repo-audit-refactor-optimize, in /home/jakub/projects/repo-audit-refactor-optimize. You
+coordinate ONLY — you never implement: dispatch MULTIPLE OpenCode DeepSeek v4 Pro Max workers
+in parallel (one packet each, own git worktree), keep the pool SATURATED at the cap of 4, verify
+every gate yourself by reading real output, own all merges. Commit locally per task/round; do
+NOT push, tag, or release — human reviews.
 
 READ FIRST, authoritative: docs/plans/2026-06-10-sp5-deterministic-skillset-rewire.md. Workers
 implement plan tasks VERBATIM via TDD. A worker's "green" is NOT evidence — re-run gates yourself.
 
-WORKERS: PRIMARY = OpenCode DeepSeek v4 Pro Max via opencode-worker-bridge. FALLBACK (automatic,
-one-way, logged) on infrastructure dispatch failure (credits/quota, auth/billing, bridge
-unreachable): NATIVE OPUS workers (Agent tool, isolated worktree, same packet + gates) for that
-and all later packets. A gate-failing CHANGE is a normal discard/retry, NOT a switch.
+WORKERS: PRIMARY = OpenCode DeepSeek v4 Pro Max via opencode-worker-bridge, multiple concurrent.
+FALLBACK (automatic, one-way, logged) ONLY on infrastructure dispatch failure (credits/quota
+exhausted, auth/billing, bridge unreachable): NATIVE OPUS workers (Agent tool, isolated worktree,
+same packet + gates) for that and all later packets, no pause. A gate-failing CHANGE is a normal
+discard/retry on DeepSeek, NOT a backend switch.
 
 PRE-FLIGHT (any failure -> STOP and report): this repo clean, python3 -m pytest tests/ -q = 48
-passed; repo-audit-skills v0.3.0 installed at the skills root (coverage-gap-audit present);
+passed; repo-audit-skills v0.3.0 installed at ~/.claude/skills (coverage-gap-audit present);
 /home/jakub/projects/repo-audit-skills clean with npm run check green; worker-bridge loads.
 
-ORDER: T1 -> T2 sequential (same files). T3 || T4 parallel (disjoint docs). T5 after T3+T4.
-T6, T7, T8 are YOUR gates (no worker for T6; T7 may use one worker for execution, you verify).
-Per-task gate: full pytest suite green in the worker's worktree before merge; you re-run after
-merge. T6/T7 expected outputs are in the plan — any divergence from the Expected lines = STOP
-and surface, do not improvise.
+WAVES (from the plan's worker wave map — saturate, don't serialize):
+  Wave 1: T1 || T3 || T4 (3 workers, disjoint files).
+  Wave 2: T2 (after T1 merged) || T5 (after T3+T4 merged).
+  Gate:   T6 bootstrap self-checks (YOU, no worker) — expected lane states are in the plan.
+  Wave 3: T7a || T7b || T7c (3 read-only dogfood workers, disjoint /tmp out-dirs); YOU do T7d.
+  Tail:   T8, then PHASE 2.
+Per-merge gate: full pytest suite green in the worker's worktree AND re-run by you after merge.
+Any divergence from a plan Expected line = STOP and surface; do not improvise.
 
-DEFINITION OF DONE: plan's DoD section, all 6 items, each with evidence in your final report
-(test counts, bootstrap lane states, determinism diff, coverage-leaf activation, backlog table,
-version). Nothing pushed.
+PHASE 2 — SELF-BUILD/SELF-AUDIT (the point of the run; do not skip or summarize it away): the
+rewired skill audits its OWN repo with code-health-audit-pipeline + coverage handoff, builds a
+coverage-gated backlog, and remediates itself per references/remediation-playbook.md — one
+DeepSeek worker per single-signal batch, merges serialized, findings may only SHRINK, max 4
+rounds, per-round table committed in the dogfood report. ACCEPT only on green tests + leaf
+re-run showing the batch shrank. Converge or bound; justify residuals individually.
+
+DEFINITION OF DONE: plan's DoD, all 7 items, each with evidence in your final report (exact test
+counts, bootstrap lane states, determinism check output, coverage-leaf activation lines, gated
+backlog table, Phase 2 round table, version 0.2.0). Nothing pushed.
 ```
