@@ -435,7 +435,38 @@ def test_test_lane_manual_when_nothing_available(tmp_path: Path, sample_manifest
     assert report["lanes"]["test-python"]["selected_skills"] == []
 
 
-def test_performance_lane_full_with_perf_benchmark_only(tmp_path: Path, sample_manifest: dict):
+def test_performance_lane_full_with_perf_benchmark_and_optimization(
+    tmp_path: Path, sample_manifest: dict
+):
+    repo = tmp_path / "repo"
+    (repo / "benches").mkdir(parents=True)
+    (repo / "benches" / "bench_hot.py").write_text("pass\n", encoding="utf-8")
+
+    manifest_path = tmp_path / "manifest.json"
+    write_manifest(manifest_path, sample_manifest)
+
+    skills_root = tmp_path / ".agents" / "skills"
+    write_skill(skills_root, "perf-benchmark")
+    write_skill(skills_root, "perf-optimization", version="0.1.0")
+    write_skill(skills_root, "verification-before-completion")
+
+    report = checker.build_bootstrap_report(
+        repo_root=repo,
+        manifest_path=manifest_path,
+        out_dir=tmp_path / "out",
+        env={"HOME": str(tmp_path)},
+        extra_roots=[skills_root.parent],
+    )
+
+    lane = report["lanes"]["performance"]
+    assert lane["state"] == "full"
+    assert lane["selected_skills"] == ["perf-benchmark", "perf-optimization"]
+    assert lane["warnings"] == []
+
+
+def test_performance_lane_degraded_when_only_perf_benchmark_installed(
+    tmp_path: Path, sample_manifest: dict
+):
     repo = tmp_path / "repo"
     (repo / "benches").mkdir(parents=True)
     (repo / "benches" / "bench_hot.py").write_text("pass\n", encoding="utf-8")
@@ -455,7 +486,12 @@ def test_performance_lane_full_with_perf_benchmark_only(tmp_path: Path, sample_m
         extra_roots=[skills_root.parent],
     )
 
-    assert report["lanes"]["performance"]["state"] == "full"
+    lane = report["lanes"]["performance"]
+    assert lane["state"] == "degraded"
+    assert lane["selected_skills"] == ["perf-benchmark"]
+    assert lane["warnings"] == [
+        "Optimization skill missing; lane remains benchmark-first."
+    ]
 
 
 def test_performance_lane_manual_with_test_surface_no_benchmarks(
@@ -1188,6 +1224,7 @@ EXPECTED_MANIFEST_SKILLS = {
     "docs-consistency-audit",
     "security-audit",
     "test-effectiveness-audit",
+    "perf-optimization",
 }
 
 
@@ -1618,10 +1655,10 @@ def test_security_lane_not_active_on_non_python_repo(tmp_path: Path):
 # -- production manifest shape tests -----------------------------------------
 
 
-def test_production_manifest_skill_count_is_22():
-    """The production manifest has exactly 22 skills (16 existing + 6 new)."""
+def test_production_manifest_skill_count_is_23():
+    """The production manifest has exactly 23 skills (22 existing + perf-optimization)."""
     manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
-    assert len(manifest["skills"]) == 22
+    assert len(manifest["skills"]) == 23
     assert set(manifest["skills"]) == EXPECTED_MANIFEST_SKILLS
 
 

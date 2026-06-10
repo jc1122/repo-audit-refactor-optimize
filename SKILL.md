@@ -1,6 +1,6 @@
 ---
 name: repo-audit-refactor-optimize
-version: 0.3.0
+version: 0.3.1
 description: End-to-end repository diagnosis, remediation, and optimization orchestration built on the deterministic repo-audit-skills family. Use when the agent needs to audit a repository with deterministic code-health, coverage-gap, and test-audit lanes, synthesize a coverage-gated remediation backlog, execute safe refactor batches, benchmark and optimize performance, or run a full repo optimization pipeline from diagnosis through verified completion.
 ---
 
@@ -118,6 +118,7 @@ TEST findings gate the backlog (see `references/prioritization.md`): findings in
 Use:
 
 - `perf-benchmark` to establish baselines, hotspot rankings, and benchmark discipline; optimize only after a bottleneck is proven
+- `perf-optimization` as the preferred fallback companion for remediation after `perf-benchmark` proves a bottleneck
 
 Treat assembly as a perf-first, evidence-driven lane: profiling evidence and conservative change control over broad structural edits.
 

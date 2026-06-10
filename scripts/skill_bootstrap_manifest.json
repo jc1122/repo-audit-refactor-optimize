@@ -100,6 +100,14 @@
       "manual_fallback": "Use manual benchmark discipline with stable commands and fixtures.",
       "restart_required_if_installed": true
     },
+    "perf-optimization": {
+      "priority": "preferred",
+      "source_type": "user-local",
+      "install_source": null,
+      "manual_fallback": "Optimize manually per the perf-benchmark remediation playbook ratchet.",
+      "restart_required_if_installed": true,
+      "min_version": "0.1.0"
+    },
     "dispatching-parallel-agents": {
       "priority": "optional",
       "source_type": "user-local",
@@ -217,7 +225,7 @@
       "always": true,
       "lane_type": "performance",
       "preferred": ["perf-benchmark"],
-      "fallback": [],
+      "fallback": ["perf-optimization"],
       "manual_fallback": "Use manual performance reasoning and stable verification when the preferred skill set is unavailable.",
       "blocking": true
     },

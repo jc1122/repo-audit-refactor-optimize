@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.3.1
+
+SP7 C4 -- perf-optimization joins the performance lane as a preferred fallback.
+
+- Manifest registers `perf-optimization` (min_version 0.1.0) as a performance
+  lane fallback companion for remediation after `perf-benchmark` proves a
+  bottleneck.
+- Performance lane now returns `degraded` when only `perf-benchmark` is
+  installed and full when both `perf-benchmark` and `perf-optimization` are
+  usable.
+- Version bump 0.3.0 -> 0.3.1.
+
 ## 0.3.0
 
 Track B — bootstrap hardening, CI release gates, and new lane surface.
