@@ -517,7 +517,7 @@ Expected: 4 failed (old manifest still has 19 skills / 8 lanes).
 ```
 
 - [ ] **Step 4: Update stale production-manifest tests.** Run `grep -n "m15-anti-pattern\|refactoring\|python-code-quality\|python-code-style\|cpp-coding-standards\|rust-best-practices\|m10-performance\|performance-testing\|hypothesis-testing\|dignified-code-simplifier\|code-health-c\|code-health-rust\|code-health-assembly" tests/test_check_skill_requirements.py`. For each hit decide:
-  - Tests that use **synthetic manifests** (built with `write_manifest` from scratch, not `sample_manifest`/`MANIFEST_PATH`) may keep arbitrary skill names — leave them.
+  - Tests that use **synthetic manifests** (built with `write_manifest` from scratch, not `sample_manifest`/`MANIFEST_PATH`) are functionally fine with any skill name, but rename any literal dropped-skill name (e.g., `m15-anti-pattern` → `helper-a`) so the repo greps clean — DoD item 1 asserts zero references repo-wide.
   - Tests that exercise the **production manifest** (via `sample_manifest` or `MANIFEST_PATH`) and assert removed lanes/skills must be rewritten: delete `test_assembly_repo_activates_code_health_lane` (~line 194) and the code-health-c (~line 841) / code-health-rust (~line 868) full-state tests — `test_non_python_repo_activates_no_code_health_lane` from Step 1 replaces them. Rewrite any performance-lane test that fabricates `m10-performance`/`performance-testing` roots to expect `full` with `["perf-benchmark"]` only.
 
 - [ ] **Step 5: Run the full suite, verify green**
@@ -779,7 +779,14 @@ python3 scripts/check_skill_requirements.py \
 
 If a lane unexpectedly reports `manual`, verify discovery with `--extra-root /home/jakub/.claude/skills` before debugging anything else.
 
-Expected in `bootstrap/bootstrap_report.json`: `test-python` full `["test-audit-pipeline"]`; `code-health-python` full `["code-health-audit-pipeline"]`; `coverage-python` full `["coverage-gap-audit"]`; `performance` manual with the no-benchmark-surface warning; `orchestration` full; `stop_before_discovery` false. Any other result → STOP, fix before proceeding.
+Expected in `bootstrap/bootstrap_report.json` — HARD assertions (any divergence → STOP):
+- `test-python` full `["test-audit-pipeline"]`
+- `code-health-python` full `["code-health-audit-pipeline"]`
+- `coverage-python` full `["coverage-gap-audit"]`
+- `performance` manual with the no-benchmark-surface warning
+- `summary.stop_before_discovery` false
+
+RECORD-ONLY (non-blocking lanes whose state depends on the local environment — do not STOP on these): `bootstrap` is expected `degraded` (find-skills/skill-installer not installed) and `orchestration` is expected `manual` (verified 2026-06-10: `verification-before-completion` is not mirrored into `~/.claude/skills`; only some superpowers skills are). Record both states in the T7 report.
 
 - [ ] **Step 2:** Run the same against this repo itself (`--repo /home/jakub/projects/repo-audit-refactor-optimize`); expect the same lane states. Save both reports; they are T8 evidence.
 
@@ -792,16 +799,19 @@ Expected in `bootstrap/bootstrap_report.json`: `test-python` full `["test-audit-
 
 T7a/T7b/T7c are independent read-only packets (Wave 3, one worker each, disjoint out-dirs). `SKILLS=/home/jakub/.claude/skills` throughout. T7d is the orchestrator's synthesis.
 
-- [ ] **T7a (code-health determinism):** run the umbrella twice and diff:
+- [ ] **T7a (code-health determinism):** run the umbrella twice over the canonical production scope (mirrors `scripts/self_audit.py::_prefixes()` in repo-audit-skills: `shared`, `scripts`, and each `skills/<name>/scripts` — NOT wholesale `skills/`, which would sweep test fixtures into the audit) and diff:
 
 ```bash
+TARGET=/home/jakub/projects/repo-audit-skills
+PREFIXES="--source-prefix shared --source-prefix scripts"
+for d in "$TARGET"/skills/*/scripts; do
+  PREFIXES="$PREFIXES --source-prefix skills/$(basename "$(dirname "$d")")/scripts"
+done
 python3 $SKILLS/code-health-audit-pipeline/scripts/code_health_pipeline.py \
-  --root /home/jakub/projects/repo-audit-skills \
-  --source-prefix scripts/ --source-prefix shared/ --source-prefix skills/ \
+  --root "$TARGET" $PREFIXES \
   --out-dir /tmp/sp5-dogfood/code-health-run1
 python3 $SKILLS/code-health-audit-pipeline/scripts/code_health_pipeline.py \
-  --root /home/jakub/projects/repo-audit-skills \
-  --source-prefix scripts/ --source-prefix shared/ --source-prefix skills/ \
+  --root "$TARGET" $PREFIXES \
   --out-dir /tmp/sp5-dogfood/code-health-run2
 python3 - <<'EOF'
 import json
@@ -832,7 +842,19 @@ python3 $SKILLS/code-health-audit-pipeline/scripts/code_health_pipeline.py \
   --out-dir /tmp/sp5-dogfood/code-health-cov
 ```
 
-Expected: the coverage-gap leaf emits TEST findings JSON under `/tmp/sp5-dogfood/coverage-gap/` (advisory exit 0/1, never a crash), and the umbrella run's summary shows the `coverage-gap` leaf EXECUTED (present in its leaf results, not skipped). Capture the exact summary lines proving activation.
+Expected: the coverage-gap leaf emits TEST findings JSON under `/tmp/sp5-dogfood/coverage-gap/` (advisory exit 0/1, never a crash), and the umbrella run executed the `coverage-gap` leaf (not skipped). Verify mechanically:
+
+```bash
+python3 - <<'EOF'
+import json
+s = json.load(open("/tmp/sp5-dogfood/code-health-cov/code_health_summary.json"))
+text = json.dumps(s)
+assert "coverage-gap" in text, "coverage-gap leaf absent from umbrella summary"
+print("coverage-gap leaf present in umbrella summary: OK")
+EOF
+```
+
+Capture the summary's per-leaf record for `coverage-gap` (exit code / findings count) as the activation evidence in the report.
 
 - [ ] **T7c (test lane, small target):** run the pipeline against this repo (bounded: one suite, 53 tests):
 
@@ -877,7 +899,7 @@ This is the point of SP5: the orchestrator skill audits ITSELF with the determin
 
 - [ ] **Round protocol (max 4 rounds; findings may only SHRINK):**
 
-  1. **Audit self** (orchestrator, read-only — both commands from `/home/jakub/projects/repo-audit-refactor-optimize`):
+  1. **Audit self** (orchestrator, read-only — both commands from `/home/jakub/projects/repo-audit-refactor-optimize`; `SKILLS=/home/jakub/.claude/skills`; pytest-cov verified importable by system `python3` on 2026-06-10):
 
 ```bash
 python3 -m pytest tests/ -q --cov=scripts --cov-report=json:/tmp/sp5-phase2/coverage.json
@@ -899,7 +921,7 @@ python3 $SKILLS/code-health-audit-pipeline/scripts/code_health_pipeline.py \
 
 ## Definition of Done (report with evidence)
 
-1. `python3 -m pytest tests/ -q` green; count ≥ baseline 48 + the new evaluator/manifest tests; zero references to dropped skills in `scripts/`, `references/`, `SKILL.md`, or production-manifest tests.
+1. `python3 -m pytest tests/ -q` green (expected `53 passed`; exact delta arithmetic recorded if T2 Step 4 surfaced extra stale tests); `grep -rn "m15-anti-pattern\|cpp-coding-standards\|rust-best-practices\|m10-performance\|performance-testing\|hypothesis-testing\|dignified-code-simplifier\|python-code-quality\|python-code-style" scripts/ references/ tests/ SKILL.md README.md` returns nothing.
 2. The manifest guard test pins exactly 16 skills and 6 lanes; the 7 repo-audit-skills entries and the new `code-health-python` fallback + `coverage-python` lane resolve as specced (full/degraded/manual transitions tested).
 3. `references/remediation-playbook.md` exists with all 10 signal procedures; prioritization is coverage-gated; activation matrix records the non-Python tooling gap honestly.
 4. T6 bootstrap reports for both target repos show the deterministic lanes `full` with first-party skills only.
