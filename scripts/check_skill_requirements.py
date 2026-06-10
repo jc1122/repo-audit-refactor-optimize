@@ -710,6 +710,9 @@ _LANE_EVALUATORS = {
         lane, skills
     ),
     "coverage": lambda lane, skills, profile: _evaluate_coverage_lane(lane, skills),
+    "audit": lambda lane, skills, profile: _evaluate_preferred_fallback_lane(
+        lane, skills, "Preferred audit skill unavailable; using fallback."
+    ),
     "performance": _evaluate_performance_lane,
     "bootstrap": lambda lane, skills, profile: _evaluate_bootstrap_lane(lane, skills),
     "orchestration": lambda lane, skills, profile: _evaluate_orchestration_lane(

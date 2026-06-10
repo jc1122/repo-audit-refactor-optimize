@@ -398,7 +398,7 @@ def test_test_lane_full_with_optional(tmp_path: Path, sample_manifest: dict, pyt
     write_manifest(manifest_path, sample_manifest)
 
     skills_root = tmp_path / ".agents" / "skills"
-    write_skill(skills_root, "test-audit-pipeline")
+    write_skill(skills_root, "test-audit-pipeline", version="0.3.0")
     write_skill(skills_root, "perf-benchmark")
     write_skill(skills_root, "verification-before-completion")
 
@@ -651,7 +651,7 @@ def test_code_health_python_full_with_optional(tmp_path: Path, sample_manifest: 
     write_manifest(manifest_path, sample_manifest)
 
     skills_root = tmp_path / ".agents" / "skills"
-    write_skill(skills_root, "code-health-audit-pipeline")
+    write_skill(skills_root, "code-health-audit-pipeline", version="0.3.0")
     write_skill(skills_root, "perf-benchmark")
     write_skill(skills_root, "verification-before-completion")
 
@@ -1182,20 +1182,31 @@ EXPECTED_MANIFEST_SKILLS = {
     "verification-before-completion",
     "dispatching-parallel-agents",
     "subagent-driven-development",
+    "hotspot-audit",
+    "dependency-audit",
+    "repo-hygiene-audit",
+    "docs-consistency-audit",
+    "security-audit",
+    "test-effectiveness-audit",
+}
+
+
+EXPECTED_MANIFEST_LANES = {
+    "bootstrap",
+    "test-python",
+    "code-health-python",
+    "coverage-python",
+    "security",
+    "performance",
+    "hygiene",
+    "orchestration",
 }
 
 
 def test_production_manifest_contains_only_first_party_and_process_skills():
     manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
     assert set(manifest["skills"]) == EXPECTED_MANIFEST_SKILLS
-    assert set(manifest["lanes"]) == {
-        "bootstrap",
-        "test-python",
-        "code-health-python",
-        "coverage-python",
-        "performance",
-        "orchestration",
-    }
+    assert set(manifest["lanes"]) == EXPECTED_MANIFEST_LANES
 
 
 def test_python_repo_resolves_all_deterministic_lanes_full(tmp_path: Path, python_pytest_repo: Path):
@@ -1205,7 +1216,7 @@ def test_python_repo_resolves_all_deterministic_lanes_full(tmp_path: Path, pytho
         "code-health-audit-pipeline",
         "coverage-gap-audit",
     ]:
-        write_skill(skills_root, name)
+        write_skill(skills_root, name, version="0.3.0")
 
     report = checker.build_bootstrap_report(
         repo_root=python_pytest_repo,
@@ -1233,7 +1244,7 @@ def test_code_health_python_degrades_to_leaves_on_production_manifest(
         "structure-audit",
         "quality-audit",
     ]:
-        write_skill(skills_root, name)
+        write_skill(skills_root, name, version="0.3.0")
 
     report = checker.build_bootstrap_report(
         repo_root=python_pytest_repo,
@@ -1452,3 +1463,316 @@ def test_no_unreferenced_section_when_all_skills_referenced(tmp_path: Path):
 
     md = checker._markdown_report(report)
     assert "## Unreferenced Skills (advisory)" not in md
+
+
+# ---------------------------------------------------------------------------
+# SP7 B7: hygiene + security lanes, hotspot/test-effectiveness optionals,
+#         min_version pins
+# ---------------------------------------------------------------------------
+
+# -- hygiene lane tests ------------------------------------------------------
+
+
+def test_hygiene_lane_full_with_only_repo_hygiene_audit(
+    tmp_path: Path,
+):
+    """Hygiene lane: full with only repo-hygiene-audit installed."""
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / "src").mkdir(parents=True)
+    (repo / "src" / "app.py").write_text("print('ok')\n", encoding="utf-8")
+
+    manifest_path = tmp_path / "manifest.json"
+    write_manifest(manifest_path, json.loads(MANIFEST_PATH.read_text(encoding="utf-8")))
+
+    skills_root = tmp_path / ".agents" / "skills"
+    write_skill(skills_root, "repo-hygiene-audit", version="0.4.0")
+    write_skill(skills_root, "perf-benchmark")
+    write_skill(skills_root, "verification-before-completion")
+
+    report = checker.build_bootstrap_report(
+        repo_root=repo,
+        manifest_path=manifest_path,
+        out_dir=tmp_path / "out",
+        env={"HOME": str(tmp_path)},
+    )
+
+    lane = report["lanes"]["hygiene"]
+    assert lane["state"] == "full"
+    assert lane["selected_skills"] == ["repo-hygiene-audit"]
+
+
+def test_hygiene_lane_selected_skills_grows_with_optionals(
+    tmp_path: Path,
+):
+    """Hygiene lane: selected skills grow to include installed optionals."""
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / "src").mkdir(parents=True)
+    (repo / "src" / "app.py").write_text("print('ok')\n", encoding="utf-8")
+
+    manifest_path = tmp_path / "manifest.json"
+    write_manifest(manifest_path, json.loads(MANIFEST_PATH.read_text(encoding="utf-8")))
+
+    skills_root = tmp_path / ".agents" / "skills"
+    write_skill(skills_root, "repo-hygiene-audit", version="0.4.0")
+    write_skill(skills_root, "dependency-audit", version="0.4.0")
+    write_skill(skills_root, "docs-consistency-audit", version="0.4.0")
+    write_skill(skills_root, "perf-benchmark")
+    write_skill(skills_root, "verification-before-completion")
+
+    report = checker.build_bootstrap_report(
+        repo_root=repo,
+        manifest_path=manifest_path,
+        out_dir=tmp_path / "out",
+        env={"HOME": str(tmp_path)},
+    )
+
+    lane = report["lanes"]["hygiene"]
+    assert lane["state"] == "full"
+    assert "repo-hygiene-audit" in lane["selected_skills"]
+    assert "dependency-audit" in lane["selected_skills"]
+    assert "docs-consistency-audit" in lane["selected_skills"]
+    assert len(lane["selected_skills"]) == 3
+
+
+# -- security lane tests -----------------------------------------------------
+
+
+def test_security_lane_manual_on_python_without_security_audit(
+    tmp_path: Path,
+    python_pytest_repo: Path,
+):
+    """Security lane is manual on a Python repo without security-audit."""
+    repo = python_pytest_repo
+
+    manifest_path = tmp_path / "manifest.json"
+    write_manifest(manifest_path, json.loads(MANIFEST_PATH.read_text(encoding="utf-8")))
+
+    skills_root = tmp_path / ".agents" / "skills"
+    write_skill(skills_root, "perf-benchmark")
+    write_skill(skills_root, "verification-before-completion")
+
+    report = checker.build_bootstrap_report(
+        repo_root=repo,
+        manifest_path=manifest_path,
+        out_dir=tmp_path / "out",
+        env={"HOME": str(tmp_path)},
+    )
+
+    lane = report["lanes"]["security"]
+    assert lane["state"] == "manual"
+    assert lane["selected_skills"] == []
+
+
+def test_security_lane_full_on_python_with_security_audit(
+    tmp_path: Path,
+    python_pytest_repo: Path,
+):
+    """Security lane is full on a Python repo with security-audit installed."""
+    repo = python_pytest_repo
+
+    manifest_path = tmp_path / "manifest.json"
+    write_manifest(manifest_path, json.loads(MANIFEST_PATH.read_text(encoding="utf-8")))
+
+    skills_root = tmp_path / ".agents" / "skills"
+    write_skill(skills_root, "security-audit", version="0.4.0")
+    write_skill(skills_root, "perf-benchmark")
+    write_skill(skills_root, "verification-before-completion")
+
+    report = checker.build_bootstrap_report(
+        repo_root=repo,
+        manifest_path=manifest_path,
+        out_dir=tmp_path / "out",
+        env={"HOME": str(tmp_path)},
+    )
+
+    lane = report["lanes"]["security"]
+    assert lane["state"] == "full"
+    assert lane["selected_skills"] == ["security-audit"]
+
+
+def test_security_lane_not_active_on_non_python_repo(tmp_path: Path):
+    """Security lane is NOT activated on a non-Python repo."""
+    repo = tmp_path / "repo"
+    (repo / "asm").mkdir(parents=True)
+    (repo / "asm" / "start.S").write_text(".globl _start\n", encoding="utf-8")
+
+    manifest_path = tmp_path / "manifest.json"
+    write_manifest(manifest_path, json.loads(MANIFEST_PATH.read_text(encoding="utf-8")))
+
+    skills_root = tmp_path / ".agents" / "skills"
+    write_skill(skills_root, "perf-benchmark")
+    write_skill(skills_root, "verification-before-completion")
+
+    report = checker.build_bootstrap_report(
+        repo_root=repo,
+        manifest_path=manifest_path,
+        out_dir=tmp_path / "out",
+        env={"HOME": str(tmp_path)},
+    )
+
+    assert "security" not in report["lanes"]
+
+
+# -- production manifest shape tests -----------------------------------------
+
+
+def test_production_manifest_skill_count_is_22():
+    """The production manifest has exactly 22 skills (16 existing + 6 new)."""
+    manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
+    assert len(manifest["skills"]) == 22
+    assert set(manifest["skills"]) == EXPECTED_MANIFEST_SKILLS
+
+
+def test_production_manifest_lane_count_is_8():
+    """The production manifest has exactly 8 lanes (6 existing + hygiene + security)."""
+    manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
+    assert len(manifest["lanes"]) == 8
+    assert set(manifest["lanes"]) == EXPECTED_MANIFEST_LANES
+
+
+def test_production_manifest_code_health_python_optional_is_hotspot_audit():
+    """code-health-python lane has optional: [hotspot-audit]."""
+    manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
+    lane = manifest["lanes"]["code-health-python"]
+    assert lane["optional"] == ["hotspot-audit"]
+
+
+def test_production_manifest_test_python_optional_is_test_effectiveness_audit():
+    """test-python lane has optional: [test-effectiveness-audit]."""
+    manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
+    lane = manifest["lanes"]["test-python"]
+    assert lane["optional"] == ["test-effectiveness-audit"]
+
+
+# -- min_version assertions --------------------------------------------------
+
+_NEW_LEAF_NAMES = [
+    "hotspot-audit",
+    "dependency-audit",
+    "repo-hygiene-audit",
+    "docs-consistency-audit",
+    "security-audit",
+    "test-effectiveness-audit",
+]
+
+_EXISTING_REPO_AUDIT_FAMILY = [
+    "code-health-audit-pipeline",
+    "complexity-audit",
+    "duplication-audit",
+    "dead-code-audit",
+    "structure-audit",
+    "quality-audit",
+    "coverage-gap-audit",
+    "test-audit-pipeline",
+]
+
+
+def test_six_new_leaves_have_min_version_0_4_0():
+    """The six new SP7 leaves have min_version == '0.4.0'."""
+    manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
+    for name in _NEW_LEAF_NAMES:
+        assert name in manifest["skills"], f"{name} not in manifest skills"
+        skill = manifest["skills"][name]
+        assert skill.get("min_version") == "0.4.0", (
+            f"{name} min_version={skill.get('min_version')}, expected 0.4.0"
+        )
+
+
+def test_eight_existing_leaves_have_min_version_0_3_0():
+    """The eight existing repo-audit-skills family entries have min_version == '0.3.0'."""
+    manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
+    for name in _EXISTING_REPO_AUDIT_FAMILY:
+        assert name in manifest["skills"], f"{name} not in manifest skills"
+        skill = manifest["skills"][name]
+        assert skill.get("min_version") == "0.3.0", (
+            f"{name} min_version={skill.get('min_version')}, expected 0.3.0"
+        )
+
+
+# -- literal lane shape assertions -------------------------------------------
+
+
+def test_hygiene_lane_shape_literal():
+    """The hygiene lane shape matches the pinned spec exactly."""
+    manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
+    lane = manifest["lanes"]["hygiene"]
+    assert lane == {
+        "always": True,
+        "lane_type": "audit",
+        "preferred": ["repo-hygiene-audit"],
+        "fallback": [],
+        "optional": ["dependency-audit", "docs-consistency-audit"],
+        "manual_fallback": (
+            "Review repo hygiene manually (tracked artifacts, configs, "
+            "release files) when the leaf is unavailable."
+        ),
+        "blocking": False,
+    }
+
+
+def test_security_lane_shape_literal():
+    """The security lane shape matches the pinned spec exactly."""
+    manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
+    lane = manifest["lanes"]["security"]
+    assert lane == {
+        "when": {"python": True},
+        "lane_type": "audit",
+        "preferred": ["security-audit"],
+        "fallback": [],
+        "manual_fallback": (
+            "Perform a manual security review; "
+            "the bandit-based leaf is unavailable."
+        ),
+        "blocking": False,
+    }
+
+
+def test_hygiene_lane_always_active(tmp_path: Path):
+    """Hygiene lane is active on any repo (always: true)."""
+    repo = tmp_path / "repo"
+    repo.mkdir()
+
+    manifest_path = tmp_path / "manifest.json"
+    write_manifest(manifest_path, json.loads(MANIFEST_PATH.read_text(encoding="utf-8")))
+
+    skills_root = tmp_path / ".agents" / "skills"
+    write_skill(skills_root, "perf-benchmark")
+    write_skill(skills_root, "verification-before-completion")
+
+    report = checker.build_bootstrap_report(
+        repo_root=repo,
+        manifest_path=manifest_path,
+        out_dir=tmp_path / "out",
+        env={"HOME": str(tmp_path)},
+    )
+
+    assert "hygiene" in report["lanes"]
+    assert "hygiene" in report["summary"]["active_lanes"]
+
+
+def test_hygiene_lane_degrades_to_manual_when_preferred_missing(
+    tmp_path: Path,
+):
+    """Hygiene lane is manual when repo-hygiene-audit is not installed."""
+    repo = tmp_path / "repo"
+    repo.mkdir()
+
+    manifest_path = tmp_path / "manifest.json"
+    write_manifest(manifest_path, json.loads(MANIFEST_PATH.read_text(encoding="utf-8")))
+
+    skills_root = tmp_path / ".agents" / "skills"
+    write_skill(skills_root, "perf-benchmark")
+    write_skill(skills_root, "verification-before-completion")
+
+    report = checker.build_bootstrap_report(
+        repo_root=repo,
+        manifest_path=manifest_path,
+        out_dir=tmp_path / "out",
+        env={"HOME": str(tmp_path)},
+    )
+
+    lane = report["lanes"]["hygiene"]
+    assert lane["state"] == "manual"
+    assert lane["selected_skills"] == []
