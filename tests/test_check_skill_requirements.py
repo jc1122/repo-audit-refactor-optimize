@@ -1129,3 +1129,126 @@ def test_unknown_lane_type_falls_back_with_warning(tmp_path: Path, sample_manife
     assert "futuristic-lane" in report["summary"]["active_lanes"]
     lane = report["lanes"]["futuristic-lane"]
     assert any("Unknown lane type" in w for w in lane["warnings"])
+
+
+def _lane_manifest(lane_type: str, *, preferred, fallback=None, optional=None, always=False) -> dict:
+    skills = {}
+    for name in [*preferred, *(fallback or []), *(optional or [])]:
+        skills[name] = {
+            "priority": "preferred",
+            "source_type": "user-local",
+            "install_source": None,
+            "manual_fallback": f"Manual fallback for {name}.",
+            "restart_required_if_installed": True,
+        }
+    lane: dict = {
+        "lane_type": lane_type,
+        "preferred": list(preferred),
+        "manual_fallback": "Manual lane fallback.",
+        "blocking": False,
+    }
+    if always:
+        lane["always"] = True
+    else:
+        lane["when"] = {"python": True}
+    if fallback is not None:
+        lane["fallback"] = list(fallback)
+    if optional is not None:
+        lane["optional"] = list(optional)
+    return {"version": 1, "skills": skills, "lanes": {"lane-under-test": lane}}
+
+
+def _python_repo(tmp_path: Path) -> Path:
+    repo = tmp_path / "repo"
+    (repo / "src").mkdir(parents=True)
+    (repo / "src" / "app.py").write_text("print('ok')\n", encoding="utf-8")
+    return repo
+
+
+def test_code_health_lane_degrades_to_fallback_leaves(tmp_path: Path):
+    repo = _python_repo(tmp_path)
+    manifest_path = tmp_path / "manifest.json"
+    write_manifest(
+        manifest_path,
+        _lane_manifest("code_health", preferred=["umbrella-skill"], fallback=["leaf-a", "leaf-b"]),
+    )
+    skills_root = tmp_path / ".agents" / "skills"
+    write_skill(skills_root, "leaf-a")
+    write_skill(skills_root, "leaf-b")
+
+    report = checker.build_bootstrap_report(
+        repo_root=repo,
+        manifest_path=manifest_path,
+        out_dir=tmp_path / "out",
+        env={"HOME": str(tmp_path)},
+    )
+
+    lane = report["lanes"]["lane-under-test"]
+    assert lane["state"] == "degraded"
+    assert lane["selected_skills"] == ["leaf-a", "leaf-b"]
+    assert lane["warnings"] == [
+        "Preferred code-health umbrella unavailable; using leaf audits directly."
+    ]
+
+
+def test_coverage_lane_full_when_leaf_usable(tmp_path: Path):
+    repo = _python_repo(tmp_path)
+    manifest_path = tmp_path / "manifest.json"
+    write_manifest(manifest_path, _lane_manifest("coverage", preferred=["cov-leaf"]))
+    skills_root = tmp_path / ".agents" / "skills"
+    write_skill(skills_root, "cov-leaf")
+
+    report = checker.build_bootstrap_report(
+        repo_root=repo,
+        manifest_path=manifest_path,
+        out_dir=tmp_path / "out",
+        env={"HOME": str(tmp_path)},
+    )
+
+    lane = report["lanes"]["lane-under-test"]
+    assert lane["state"] == "full"
+    assert lane["selected_skills"] == ["cov-leaf"]
+    assert lane["warnings"] == []
+
+
+def test_coverage_lane_manual_when_leaf_missing(tmp_path: Path):
+    repo = _python_repo(tmp_path)
+    manifest_path = tmp_path / "manifest.json"
+    write_manifest(manifest_path, _lane_manifest("coverage", preferred=["cov-leaf"]))
+
+    report = checker.build_bootstrap_report(
+        repo_root=repo,
+        manifest_path=manifest_path,
+        out_dir=tmp_path / "out",
+        env={"HOME": str(tmp_path)},
+    )
+
+    lane = report["lanes"]["lane-under-test"]
+    assert lane["state"] == "manual"
+    assert lane["selected_skills"] == []
+
+
+def test_performance_lane_full_with_no_fallback_declared(tmp_path: Path):
+    repo = tmp_path / "repo"
+    (repo / "tests").mkdir(parents=True)
+    (repo / "tests" / "test_x.py").write_text("def test_ok(): assert True\n", encoding="utf-8")
+    (repo / "pytest.ini").write_text("[pytest]\n", encoding="utf-8")
+    (repo / "benches").mkdir()
+    (repo / "benches" / "bench_hot.py").write_text("def bench_hot(): pass\n", encoding="utf-8")
+
+    manifest_path = tmp_path / "manifest.json"
+    write_manifest(manifest_path, _lane_manifest("performance", preferred=["bench-skill"], always=True))
+    skills_root = tmp_path / ".agents" / "skills"
+    write_skill(skills_root, "bench-skill")
+
+    report = checker.build_bootstrap_report(
+        repo_root=repo,
+        manifest_path=manifest_path,
+        out_dir=tmp_path / "out",
+        env={"HOME": str(tmp_path)},
+    )
+
+    lane = report["lanes"]["lane-under-test"]
+    assert lane["state"] == "full"
+    assert lane["selected_skills"] == ["bench-skill"]
+    assert lane["warnings"] == []

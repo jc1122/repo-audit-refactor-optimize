@@ -398,7 +398,11 @@ def _usable_optionals(lane: dict[str, Any], skills: dict[str, dict[str, Any]]) -
     return [name for name in lane.get("optional", []) if skills[name]["state"] == "usable_now"]
 
 
-def _evaluate_test_lane(lane: dict[str, Any], skills: dict[str, dict[str, Any]]) -> tuple[str, list[str], list[str]]:
+def _evaluate_preferred_fallback_lane(
+    lane: dict[str, Any],
+    skills: dict[str, dict[str, Any]],
+    fallback_warning: str,
+) -> tuple[str, list[str], list[str]]:
     preferred = lane.get("preferred", [])
     fallback = lane.get("fallback", [])
     warnings: list[str] = []
@@ -406,17 +410,28 @@ def _evaluate_test_lane(lane: dict[str, Any], skills: dict[str, dict[str, Any]])
         selected = list(preferred) + _usable_optionals(lane, skills)
         return "full", selected, warnings
     if fallback and _all_usable(fallback, skills):
-        warnings.append("Preferred test audit skill unavailable; using fallback pair.")
+        warnings.append(fallback_warning)
         selected = list(fallback) + _usable_optionals(lane, skills)
         return "degraded", selected, warnings
     return "manual", [], warnings
 
 
+def _evaluate_test_lane(lane: dict[str, Any], skills: dict[str, dict[str, Any]]) -> tuple[str, list[str], list[str]]:
+    return _evaluate_preferred_fallback_lane(
+        lane, skills, "Preferred test audit skill unavailable; using fallback pair."
+    )
+
+
 def _evaluate_code_health_lane(lane: dict[str, Any], skills: dict[str, dict[str, Any]]) -> tuple[str, list[str], list[str]]:
-    if _all_usable(lane.get("preferred", []), skills):
-        selected = list(lane.get("preferred", [])) + _usable_optionals(lane, skills)
-        return "full", selected, []
-    return "manual", [], []
+    return _evaluate_preferred_fallback_lane(
+        lane, skills, "Preferred code-health umbrella unavailable; using leaf audits directly."
+    )
+
+
+def _evaluate_coverage_lane(lane: dict[str, Any], skills: dict[str, dict[str, Any]]) -> tuple[str, list[str], list[str]]:
+    return _evaluate_preferred_fallback_lane(
+        lane, skills, "Preferred coverage skill unavailable; using fallback."
+    )
 
 
 def _evaluate_performance_lane(
@@ -434,7 +449,10 @@ def _evaluate_performance_lane(
     if _all_usable(lane.get("preferred", []), skills):
         selected = list(lane.get("preferred", []))
         fallback = lane.get("fallback", [])
-        if fallback and _all_usable(fallback, skills):
+        if not fallback:
+            selected.extend(_usable_optionals(lane, skills))
+            return "full", selected, warnings
+        if _all_usable(fallback, skills):
             selected.extend(fallback)
             selected.extend(_usable_optionals(lane, skills))
             return "full", selected, warnings
@@ -460,6 +478,7 @@ def _evaluate_orchestration_lane(lane: dict[str, Any], skills: dict[str, dict[st
 _LANE_EVALUATORS = {
     "test": lambda lane, skills, profile: _evaluate_test_lane(lane, skills),
     "code_health": lambda lane, skills, profile: _evaluate_code_health_lane(lane, skills),
+    "coverage": lambda lane, skills, profile: _evaluate_coverage_lane(lane, skills),
     "performance": _evaluate_performance_lane,
     "bootstrap": lambda lane, skills, profile: _evaluate_bootstrap_lane(lane, skills),
     "orchestration": lambda lane, skills, profile: _evaluate_orchestration_lane(lane, skills),
