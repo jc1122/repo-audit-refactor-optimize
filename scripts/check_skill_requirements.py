@@ -99,11 +99,19 @@ def scan_repo_profile(repo_root: Path) -> dict[str, Any]:
 
             if suffix == ".py":
                 languages.add("python")
-                if "bench" in lower_name or "benchmark" in lower_name or "benches" in parts_lower:
+                if (
+                    "bench" in lower_name
+                    or "benchmark" in lower_name
+                    or "benches" in parts_lower
+                ):
                     benchmark_surfaces.add("python-benchmarks")
             elif suffix in {".c", ".h", ".cc", ".cpp", ".hpp"}:
                 languages.add("c")
-                if "bench" in lower_name or "perf" in lower_name or "benchmark" in parts_lower:
+                if (
+                    "bench" in lower_name
+                    or "perf" in lower_name
+                    or "benchmark" in parts_lower
+                ):
                     benchmark_surfaces.add("native-benchmarks")
             elif suffix == ".rs":
                 languages.add("rust")
@@ -117,7 +125,9 @@ def scan_repo_profile(repo_root: Path) -> dict[str, Any]:
             if name == "pyproject.toml":
                 languages.add("python")
                 try:
-                    content = Path(os.path.join(current_root, name)).read_text(encoding="utf-8")
+                    content = Path(os.path.join(current_root, name)).read_text(
+                        encoding="utf-8"
+                    )
                 except (OSError, UnicodeDecodeError):
                     content = ""
                 if "[tool.pytest.ini_options]" in content or "pytest" in content:
@@ -127,7 +137,9 @@ def scan_repo_profile(repo_root: Path) -> dict[str, Any]:
             languages.add("python")
 
     ordered_languages = [lang for lang in sorted(KNOWN_LANGUAGES) if lang in languages]
-    ordered_tests = [name for name in sorted(KNOWN_TEST_SYSTEMS) if name in test_systems]
+    ordered_tests = [
+        name for name in sorted(KNOWN_TEST_SYSTEMS) if name in test_systems
+    ]
     ordered_benchmarks = [
         name
         for name in ["cargo-benches", "native-benchmarks", "python-benchmarks"]
@@ -184,12 +196,18 @@ def load_dependency_manifest(manifest_path: Path) -> dict[str, Any]:
         payload = json.loads(manifest_path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as exc:
         raise ValueError(f"Malformed dependency manifest: {manifest_path}") from exc
-    if not isinstance(payload, dict) or "skills" not in payload or "lanes" not in payload:
+    if (
+        not isinstance(payload, dict)
+        or "skills" not in payload
+        or "lanes" not in payload
+    ):
         raise ValueError(f"Invalid dependency manifest: {manifest_path}")
     for name, entry in payload["skills"].items():
         missing = _REQUIRED_SKILL_FIELDS - entry.keys()
         if missing:
-            raise ValueError(f"Skill '{name}' missing required fields in manifest: {missing}")
+            raise ValueError(
+                f"Skill '{name}' missing required fields in manifest: {missing}"
+            )
     return payload
 
 
@@ -237,11 +255,15 @@ def load_source_overrides(
         for skill_name, entry in payload["skills"].items():
             if not isinstance(entry, dict) or not _is_skill_override_valid(entry):
                 if skill_name in strict_skill_names:
-                    raise ValueError(f"Invalid override entry for required skill: {skill_name}")
+                    raise ValueError(
+                        f"Invalid override entry for required skill: {skill_name}"
+                    )
                 warnings.append(f"Ignored invalid override entry for {skill_name}.")
                 continue
             if skill_name not in active_skill_names:
-                warnings.append(f"Ignored override for unknown or inactive skill {skill_name}.")
+                warnings.append(
+                    f"Ignored override for unknown or inactive skill {skill_name}."
+                )
                 continue
             merged[skill_name] = entry
 
@@ -329,7 +351,9 @@ def _matches_when(profile: dict[str, Any], conditions: dict[str, Any]) -> bool:
     return True
 
 
-def _relevant_lane_names(profile: dict[str, Any], manifest: dict[str, Any]) -> list[str]:
+def _relevant_lane_names(
+    profile: dict[str, Any], manifest: dict[str, Any]
+) -> list[str]:
     lane_names: list[str] = []
     for name, lane in manifest["lanes"].items():
         if lane.get("always"):
@@ -339,7 +363,9 @@ def _relevant_lane_names(profile: dict[str, Any], manifest: dict[str, Any]) -> l
     return lane_names
 
 
-_REQUIRED_SKILL_FIELDS = frozenset({"priority", "source_type", "manual_fallback", "restart_required_if_installed"})
+_REQUIRED_SKILL_FIELDS = frozenset(
+    {"priority", "source_type", "manual_fallback", "restart_required_if_installed"}
+)
 
 
 def _skill_entry(
@@ -350,7 +376,9 @@ def _skill_entry(
 ) -> dict[str, Any]:
     for field in _REQUIRED_SKILL_FIELDS:
         if field not in skill_config:
-            raise ValueError(f"Skill '{skill_name}' is missing required field '{field}'.")
+            raise ValueError(
+                f"Skill '{skill_name}' is missing required field '{field}'."
+            )
     entry = {
         "name": skill_name,
         "priority": skill_config["priority"],
@@ -394,8 +422,14 @@ def _all_usable(names: list[str], skills: dict[str, dict[str, Any]]) -> bool:
     return all(skills[name]["state"] == "usable_now" for name in names)
 
 
-def _usable_optionals(lane: dict[str, Any], skills: dict[str, dict[str, Any]]) -> list[str]:
-    return [name for name in lane.get("optional", []) if skills[name]["state"] == "usable_now"]
+def _usable_optionals(
+    lane: dict[str, Any], skills: dict[str, dict[str, Any]]
+) -> list[str]:
+    return [
+        name
+        for name in lane.get("optional", [])
+        if skills[name]["state"] == "usable_now"
+    ]
 
 
 def _evaluate_preferred_fallback_lane(
@@ -416,19 +450,27 @@ def _evaluate_preferred_fallback_lane(
     return "manual", [], warnings
 
 
-def _evaluate_test_lane(lane: dict[str, Any], skills: dict[str, dict[str, Any]]) -> tuple[str, list[str], list[str]]:
+def _evaluate_test_lane(
+    lane: dict[str, Any], skills: dict[str, dict[str, Any]]
+) -> tuple[str, list[str], list[str]]:
     return _evaluate_preferred_fallback_lane(
         lane, skills, "Preferred test audit skill unavailable; using fallback pair."
     )
 
 
-def _evaluate_code_health_lane(lane: dict[str, Any], skills: dict[str, dict[str, Any]]) -> tuple[str, list[str], list[str]]:
+def _evaluate_code_health_lane(
+    lane: dict[str, Any], skills: dict[str, dict[str, Any]]
+) -> tuple[str, list[str], list[str]]:
     return _evaluate_preferred_fallback_lane(
-        lane, skills, "Preferred code-health umbrella unavailable; using leaf audits directly."
+        lane,
+        skills,
+        "Preferred code-health umbrella unavailable; using leaf audits directly.",
     )
 
 
-def _evaluate_coverage_lane(lane: dict[str, Any], skills: dict[str, dict[str, Any]]) -> tuple[str, list[str], list[str]]:
+def _evaluate_coverage_lane(
+    lane: dict[str, Any], skills: dict[str, dict[str, Any]]
+) -> tuple[str, list[str], list[str]]:
     return _evaluate_preferred_fallback_lane(
         lane, skills, "Preferred coverage skill unavailable; using fallback."
     )
@@ -442,7 +484,9 @@ def _evaluate_performance_lane(
     warnings: list[str] = []
     if not profile["has_deterministic_perf_surface"]:
         if profile["has_deterministic_test_surface"]:
-            warnings.append("No benchmark surface detected; performance work remains manual.")
+            warnings.append(
+                "No benchmark surface detected; performance work remains manual."
+            )
             return "manual", [], warnings
         return "blocked", [], warnings
 
@@ -462,13 +506,21 @@ def _evaluate_performance_lane(
     return "manual", [], warnings
 
 
-def _evaluate_bootstrap_lane(lane: dict[str, Any], skills: dict[str, dict[str, Any]]) -> tuple[str, list[str], list[str]]:
+def _evaluate_bootstrap_lane(
+    lane: dict[str, Any], skills: dict[str, dict[str, Any]]
+) -> tuple[str, list[str], list[str]]:
     if _all_usable(lane.get("preferred", []), skills):
         return "full", list(lane.get("preferred", [])), []
-    return "degraded", [], ["Bootstrap helper skills unavailable; raw Skills CLI fallback required."]
+    return (
+        "degraded",
+        [],
+        ["Bootstrap helper skills unavailable; raw Skills CLI fallback required."],
+    )
 
 
-def _evaluate_orchestration_lane(lane: dict[str, Any], skills: dict[str, dict[str, Any]]) -> tuple[str, list[str], list[str]]:
+def _evaluate_orchestration_lane(
+    lane: dict[str, Any], skills: dict[str, dict[str, Any]]
+) -> tuple[str, list[str], list[str]]:
     if _all_usable(lane.get("preferred", []), skills):
         selected = list(lane.get("preferred", [])) + _usable_optionals(lane, skills)
         return "full", selected, []
@@ -477,11 +529,15 @@ def _evaluate_orchestration_lane(lane: dict[str, Any], skills: dict[str, dict[st
 
 _LANE_EVALUATORS = {
     "test": lambda lane, skills, profile: _evaluate_test_lane(lane, skills),
-    "code_health": lambda lane, skills, profile: _evaluate_code_health_lane(lane, skills),
+    "code_health": lambda lane, skills, profile: _evaluate_code_health_lane(
+        lane, skills
+    ),
     "coverage": lambda lane, skills, profile: _evaluate_coverage_lane(lane, skills),
     "performance": _evaluate_performance_lane,
     "bootstrap": lambda lane, skills, profile: _evaluate_bootstrap_lane(lane, skills),
-    "orchestration": lambda lane, skills, profile: _evaluate_orchestration_lane(lane, skills),
+    "orchestration": lambda lane, skills, profile: _evaluate_orchestration_lane(
+        lane, skills
+    ),
 }
 
 
@@ -493,7 +549,9 @@ def _evaluate_lane(
 ) -> dict[str, Any]:
     lane_type = lane["lane_type"]
     if lane_type not in _LANE_EVALUATORS:
-        warnings_list = [f"Unknown lane type '{lane_type}'; using orchestration evaluator."]
+        warnings_list = [
+            f"Unknown lane type '{lane_type}'; using orchestration evaluator."
+        ]
     else:
         warnings_list = []
     evaluator = _LANE_EVALUATORS.get(lane_type, _LANE_EVALUATORS["orchestration"])
@@ -543,11 +601,15 @@ def _build_merged_skills(
         skill_config = dict(manifest["skills"][skill_name])
         if skill_name in overrides:
             skill_config.update(overrides[skill_name])
-        merged[skill_name] = _skill_entry(skill_name, skill_config, usable_skills, advisory_skills)
+        merged[skill_name] = _skill_entry(
+            skill_name, skill_config, usable_skills, advisory_skills
+        )
     return merged
 
 
-def _build_install_candidates(merged_skills: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
+def _build_install_candidates(
+    merged_skills: dict[str, dict[str, Any]],
+) -> list[dict[str, Any]]:
     return [
         {
             "name": skill_name,
@@ -601,7 +663,9 @@ def build_bootstrap_report(
     profile = scan_repo_profile(repo_root)
     active_lanes = _relevant_lane_names(profile, manifest)
     active_skills, strict_skills = _collect_active_and_strict_skills(
-        active_lanes, manifest, required_skill_names,
+        active_lanes,
+        manifest,
+        required_skill_names,
     )
 
     overrides, warnings = load_source_overrides(
@@ -612,15 +676,21 @@ def build_bootstrap_report(
         user_override_path=user_override_path,
         repo_override_path=repo_override_path,
     )
-    roots = resolve_skill_roots(repo_root, extra_roots=extra_roots, foreign_roots=foreign_roots, env=env)
+    roots = resolve_skill_roots(
+        repo_root, extra_roots=extra_roots, foreign_roots=foreign_roots, env=env
+    )
     usable_skills = _discover_skills(roots["usable_roots"])
     advisory_skills = _discover_skills(roots["advisory_roots"])
 
-    merged_skills = _build_merged_skills(active_skills, manifest, overrides, usable_skills, advisory_skills)
+    merged_skills = _build_merged_skills(
+        active_skills, manifest, overrides, usable_skills, advisory_skills
+    )
 
     lanes: dict[str, dict[str, Any]] = {}
     for lane_name in active_lanes:
-        lanes[lane_name] = _evaluate_lane(lane_name, manifest["lanes"][lane_name], merged_skills, profile)
+        lanes[lane_name] = _evaluate_lane(
+            lane_name, manifest["lanes"][lane_name], merged_skills, profile
+        )
         warnings.extend(lanes[lane_name]["warnings"])
 
     _mark_blocking_skills(lanes, manifest, merged_skills)
@@ -630,7 +700,8 @@ def build_bootstrap_report(
     restart_required = any(
         item["restart_required"]
         for item in install_candidates
-        if item["post_install_state"] == "available_next_run" and item["name"] in strict_skills
+        if item["post_install_state"] == "available_next_run"
+        and item["name"] in strict_skills
     )
 
     return {
@@ -674,7 +745,9 @@ def _markdown_report(report: dict[str, Any]) -> str:
     for lane_name, lane in report["lanes"].items():
         lines.append(f"- `{lane_name}`: `{lane['state']}`")
         if lane["selected_skills"]:
-            lines.append(f"  selected: {', '.join(f'`{name}`' for name in lane['selected_skills'])}")
+            lines.append(
+                f"  selected: {', '.join(f'`{name}`' for name in lane['selected_skills'])}"
+            )
     lines.extend(["", "## Skill States", ""])
     for skill_name, skill in report["skills"].items():
         lines.append(f"- `{skill_name}`: `{skill['state']}`")
@@ -729,15 +802,21 @@ def write_bootstrap_outputs(report: dict[str, Any], out_dir: Path) -> None:
 
 
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Check metaskill bootstrap requirements.")
-    parser.add_argument("--repo", required=True, type=Path, help="Repository root to scan.")
+    parser = argparse.ArgumentParser(
+        description="Check metaskill bootstrap requirements."
+    )
+    parser.add_argument(
+        "--repo", required=True, type=Path, help="Repository root to scan."
+    )
     parser.add_argument(
         "--manifest",
         type=Path,
         default=Path(__file__).with_name("skill_bootstrap_manifest.json"),
         help="Dependency manifest path.",
     )
-    parser.add_argument("--out-dir", required=True, type=Path, help="Output directory root.")
+    parser.add_argument(
+        "--out-dir", required=True, type=Path, help="Output directory root."
+    )
     parser.add_argument("--extra-root", action="append", default=[], type=Path)
     parser.add_argument("--foreign-root", action="append", default=[], type=Path)
     parser.add_argument("--user-override", type=Path)
