@@ -39,11 +39,13 @@ If the repository is mixed-language, note which language owns the dominant runti
 
 ## Diagnose Stage
 
-Prefer three diagnosis lanes:
+Prefer five diagnosis lanes:
 
-- test lane
-- code health lane
+- test-python lane
+- code-health-python lane
+- coverage-python lane
 - performance lane
+- orchestration lane
 
 Run independent lanes in parallel only after Bootstrap and Discovery are complete.
 
@@ -79,12 +81,23 @@ Store:
 - `repo_profile.json`
 - `test/`
 - `code_health/`
+- `coverage/`
 - `perf/`
+- `orchestration/`
 - `backlog.json`
 - `summary.md`
 - `verification/`
 
 Preserve raw outputs from subskills instead of overwriting them with summaries.
+
+## Coverage Artifact Handoff
+
+The test lane produces a single `coverage.json` (coverage.py JSON format) under its artifact directory. Two consumers depend on it:
+
+1. `coverage-gap-audit --coverage-json <path> --root <repo>` — the coverage lane's TEST findings.
+2. `code-health-audit-pipeline ... --coverage-json <path>` — enables the umbrella's artifact-gated coverage leaf (repo-audit-skills v0.3.0+).
+
+Sequencing rule: the coverage and code-health lanes may start before the test lane completes, but their coverage-dependent outputs must be produced (or re-produced) after `coverage.json` exists. If no coverage artifact can be produced, run the code-health lane without `--coverage-json` and mark the coverage lane `manual` in the run summary — never fabricate testedness.
 
 ## Synthesis Stage
 

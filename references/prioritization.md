@@ -20,9 +20,21 @@ Prefer findings with:
 - low to moderate risk
 - low to moderate effort
 
+## Coverage-Gated Actionability
+
+Cross-join every finding with the coverage lane's TEST findings before ranking:
+
+- A finding in a file **with** a TEST finding (untested / under-tested) is **not auto-executable**. Demote it to characterize-first: write behavior/golden tests for the file's current contract, then remediate under that protection. This rule has priority over impact scores.
+- A finding in a covered file keeps its computed rank.
+- TEST findings themselves rank as test-debt work items (add tests), never as refactor licenses.
+
+This generalizes the Actionability Rule proven in the repo-audit-skills dogfooding runs: advisory findings in untested code are frozen until tests exist.
+
 ## Finding Types
 
 ### Safe Cleanup
+
+Signal: `LINT`, `FORMAT`, `DELETE` (high-confidence), same-file `MERGE`. See `references/remediation-playbook.md` for per-signal procedure.
 
 Examples:
 
@@ -35,6 +47,8 @@ Examples:
 Default policy: execute automatically if verification is straightforward.
 
 ### Structural Refactor
+
+Signal: `EXTRACT`, `DECOMPOSE`, `RESTRUCTURE`, `SIMPLIFY`, cross-file `MERGE`. See `references/remediation-playbook.md` for per-signal procedure.
 
 Examples:
 

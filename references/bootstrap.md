@@ -50,6 +50,8 @@ Precedence is:
 
 Malformed override files hard-fail bootstrap. Invalid entries for inactive or unknown skills are ignored with warnings. Invalid entries for explicitly required skills or skills needed by a blocking lane are fatal.
 
+The repo-audit-skills family installs via `node bin/install-repo-audit-skills.js --dest <skills-root> --force` from github.com/jc1122/repo-audit-skills (v0.3.0+); a session restart is required after install.
+
 ## Dependency States
 
 Use these states:
