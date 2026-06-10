@@ -1393,3 +1393,62 @@ def test_manifest_without_min_version_behaves_as_today(tmp_path: Path):
 
     lane = report["lanes"]["lane-under-test"]
     assert lane["state"] == "full"
+
+
+# ---------------------------------------------------------------------------
+# SP7 B2: advisory unreferenced-skills section
+# ---------------------------------------------------------------------------
+
+
+def test_unreferenced_skill_appears_in_report_and_markdown(tmp_path: Path):
+    """An on-disk skill not referenced by the manifest is listed as unreferenced."""
+    repo = _python_repo(tmp_path)
+    manifest = _lane_manifest("test", preferred=["audit-skill"])
+
+    manifest_path = tmp_path / "manifest.json"
+    write_manifest(manifest_path, manifest)
+
+    skills_root = tmp_path / ".agents" / "skills"
+    write_skill(skills_root, "audit-skill")
+    write_skill(skills_root, "orphan-skill")
+
+    report = checker.build_bootstrap_report(
+        repo_root=repo,
+        manifest_path=manifest_path,
+        out_dir=tmp_path / "out",
+        env={"HOME": str(tmp_path)},
+    )
+
+    assert report["unreferenced_skills"] == ["orphan-skill"]
+    assert report["summary"]["stop_before_discovery"] is False
+
+    md = checker._markdown_report(report)
+    assert "## Unreferenced Skills (advisory)" in md
+    assert "`orphan-skill`" in md
+    assert "`audit-skill`" not in md.split("## Unreferenced Skills (advisory)")[-1] \
+        if "## Unreferenced Skills (advisory)" in md else True
+
+
+def test_no_unreferenced_section_when_all_skills_referenced(tmp_path: Path):
+    """No orphan skills → unreferenced_skills is empty and markdown omits section."""
+    repo = _python_repo(tmp_path)
+    manifest = _lane_manifest("test", preferred=["audit-skill"])
+
+    manifest_path = tmp_path / "manifest.json"
+    write_manifest(manifest_path, manifest)
+
+    skills_root = tmp_path / ".agents" / "skills"
+    write_skill(skills_root, "audit-skill")
+
+    report = checker.build_bootstrap_report(
+        repo_root=repo,
+        manifest_path=manifest_path,
+        out_dir=tmp_path / "out",
+        env={"HOME": str(tmp_path)},
+    )
+
+    assert report["unreferenced_skills"] == []
+    assert report["summary"]["stop_before_discovery"] is False
+
+    md = checker._markdown_report(report)
+    assert "## Unreferenced Skills (advisory)" not in md

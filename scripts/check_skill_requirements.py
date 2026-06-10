@@ -858,6 +858,9 @@ def build_bootstrap_report(
     )
     usable_skills = _discover_skills(roots["usable_roots"])
     advisory_skills = _discover_skills(roots["advisory_roots"])
+    unreferenced_skills = sorted(
+        set(usable_skills) - set(manifest["skills"])
+    )
 
     merged_skills = _build_merged_skills(
         active_skills, manifest, overrides, usable_skills, advisory_skills
@@ -894,6 +897,7 @@ def build_bootstrap_report(
         "skills": merged_skills,
         "lanes": lanes,
         "install_candidates": install_candidates,
+        "unreferenced_skills": unreferenced_skills,
         "summary": {
             "stop_before_discovery": stop_before_discovery,
             "restart_required": restart_required,
@@ -940,6 +944,10 @@ def _markdown_report(report: dict[str, Any]) -> str:
         lines.extend(["", "## Warnings", ""])
         for warning in report["warnings"]:
             lines.append(f"- {warning}")
+    if report.get("unreferenced_skills"):
+        lines.extend(["", "## Unreferenced Skills (advisory)", ""])
+        for name in report["unreferenced_skills"]:
+            lines.append(f"- `{name}`")
     lines.append("")
     return "\n".join(lines)
 
