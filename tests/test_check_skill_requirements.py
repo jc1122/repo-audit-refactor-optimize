@@ -16,11 +16,14 @@ if str(REPO_ROOT) not in sys.path:
 checker = importlib.import_module("scripts.check_skill_requirements")
 
 
-def write_skill(root: Path, name: str) -> None:
+def write_skill(root: Path, name: str, version: str | None = None) -> None:
     skill_dir = root / name
     skill_dir.mkdir(parents=True, exist_ok=True)
+    frontmatter = f"name: {name}"
+    if version is not None:
+        frontmatter += f"\nversion: {version}"
     (skill_dir / "SKILL.md").write_text(
-        f"---\nname: {name}\ndescription: test skill\n---\n",
+        f"---\n{frontmatter}\ndescription: test skill\n---\n",
         encoding="utf-8",
     )
 
@@ -1266,3 +1269,127 @@ def test_non_python_repo_activates_no_code_health_lane(tmp_path: Path):
     assert "code-health-python" not in active
     assert "coverage-python" not in active
     assert not any(name.startswith("code-health-") and name != "code-health-python" for name in report["lanes"])
+
+
+# ---------------------------------------------------------------------------
+# SP7 B1: min_version-aware skill resolution
+# ---------------------------------------------------------------------------
+
+
+def test_skill_with_old_version_is_stale_installed(tmp_path: Path):
+    """Skill at version 1.0.0 < min_version 2.0.0 → stale_installed, lane manual."""
+    repo = _python_repo(tmp_path)
+    manifest = _lane_manifest("test", preferred=["audit-skill"])
+    manifest["skills"]["audit-skill"]["min_version"] = "2.0.0"
+
+    manifest_path = tmp_path / "manifest.json"
+    write_manifest(manifest_path, manifest)
+
+    skills_root = tmp_path / ".agents" / "skills"
+    write_skill(skills_root, "audit-skill", version="1.0.0")
+
+    report = checker.build_bootstrap_report(
+        repo_root=repo,
+        manifest_path=manifest_path,
+        out_dir=tmp_path / "out",
+        env={"HOME": str(tmp_path)},
+    )
+
+    skill = report["skills"]["audit-skill"]
+    assert skill["state"] == "stale_installed"
+    assert skill["found_version"] == "1.0.0"
+    assert skill["min_version"] == "2.0.0"
+    assert any(
+        "audit-skill" in w and "1.0.0" in w and "2.0.0" in w
+        for w in report["warnings"]
+    )
+
+    lane = report["lanes"]["lane-under-test"]
+    assert lane["state"] == "manual"
+
+
+def test_skill_meeting_min_version_is_usable(tmp_path: Path):
+    """Skill at version 2.0.0 ≥ min_version 2.0.0 → usable_now, lane full."""
+    repo = _python_repo(tmp_path)
+    manifest = _lane_manifest("test", preferred=["audit-skill"])
+    manifest["skills"]["audit-skill"]["min_version"] = "2.0.0"
+
+    manifest_path = tmp_path / "manifest.json"
+    write_manifest(manifest_path, manifest)
+
+    skills_root = tmp_path / ".agents" / "skills"
+    write_skill(skills_root, "audit-skill", version="2.0.0")
+
+    report = checker.build_bootstrap_report(
+        repo_root=repo,
+        manifest_path=manifest_path,
+        out_dir=tmp_path / "out",
+        env={"HOME": str(tmp_path)},
+    )
+
+    skill = report["skills"]["audit-skill"]
+    assert skill["state"] == "usable_now"
+
+    lane = report["lanes"]["lane-under-test"]
+    assert lane["state"] == "full"
+
+
+def test_skill_without_version_frontmatter_is_stale_when_min_version_set(
+    tmp_path: Path,
+):
+    """Skill without version frontmatter + min_version → stale_installed, lane manual."""
+    repo = _python_repo(tmp_path)
+    manifest = _lane_manifest("test", preferred=["audit-skill"])
+    manifest["skills"]["audit-skill"]["min_version"] = "1.0.0"
+
+    manifest_path = tmp_path / "manifest.json"
+    write_manifest(manifest_path, manifest)
+
+    skills_root = tmp_path / ".agents" / "skills"
+    write_skill(skills_root, "audit-skill")  # no version frontmatter
+
+    report = checker.build_bootstrap_report(
+        repo_root=repo,
+        manifest_path=manifest_path,
+        out_dir=tmp_path / "out",
+        env={"HOME": str(tmp_path)},
+    )
+
+    skill = report["skills"]["audit-skill"]
+    assert skill["state"] == "stale_installed"
+    assert skill["found_version"] == "unknown"
+    assert skill["min_version"] == "1.0.0"
+    assert any(
+        "audit-skill" in w and "unknown" in w
+        for w in report["warnings"]
+    )
+
+    lane = report["lanes"]["lane-under-test"]
+    assert lane["state"] == "manual"
+
+
+def test_manifest_without_min_version_behaves_as_today(tmp_path: Path):
+    """No min_version at all → usable_now, no version fields, lane full."""
+    repo = _python_repo(tmp_path)
+    manifest = _lane_manifest("test", preferred=["audit-skill"])
+
+    manifest_path = tmp_path / "manifest.json"
+    write_manifest(manifest_path, manifest)
+
+    skills_root = tmp_path / ".agents" / "skills"
+    write_skill(skills_root, "audit-skill", version="1.0.0")
+
+    report = checker.build_bootstrap_report(
+        repo_root=repo,
+        manifest_path=manifest_path,
+        out_dir=tmp_path / "out",
+        env={"HOME": str(tmp_path)},
+    )
+
+    skill = report["skills"]["audit-skill"]
+    assert skill["state"] == "usable_now"
+    assert "min_version" not in skill
+    assert "found_version" not in skill
+
+    lane = report["lanes"]["lane-under-test"]
+    assert lane["state"] == "full"

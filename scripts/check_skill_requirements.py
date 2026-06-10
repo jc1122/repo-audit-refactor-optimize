@@ -378,16 +378,47 @@ def load_source_overrides(
     return merged, warnings
 
 
-def _extract_skill_name(skill_path: Path) -> str | None:
+def _parse_version(v: str | None) -> tuple[int, int, int]:
+    """Parse a semver-like string into a (major, minor, patch) tuple.
+
+    Only the first three dot-separated integer parts are considered.
+    Any failure (None, empty, non-numeric, etc.) returns (0, 0, 0).
+    """
+    if v is None:
+        return (0, 0, 0)
+    try:
+        parts = v.split(".")
+        nums: list[int] = []
+        for part in parts[:3]:
+            nums.append(int(part))
+        while len(nums) < 3:
+            nums.append(0)
+        return (nums[0], nums[1], nums[2])
+    except (ValueError, TypeError):
+        return (0, 0, 0)
+
+
+def _extract_skill_meta(skill_path: Path) -> tuple[str | None, str | None]:
+    """Return (name, version) from the first 2048 bytes / 20 lines of a SKILL.md."""
     try:
         with open(skill_path, encoding="utf-8", errors="replace") as fh:
             head = fh.read(2048)
     except OSError:
-        return None
+        return None, None
+    name = None
+    version = None
     for line in head.splitlines()[:20]:
-        if line.startswith("name:"):
-            return line.split(":", 1)[1].strip().strip('"')
-    return None
+        if line.startswith("name:") and name is None:
+            name = line.split(":", 1)[1].strip().strip('"')
+        elif line.startswith("version:") and version is None:
+            version = line.split(":", 1)[1].strip().strip('"')
+    return name, version
+
+
+def _extract_skill_name(skill_path: Path) -> str | None:
+    """Thin backward-compatible wrapper around ``_extract_skill_meta``."""
+    name, _version = _extract_skill_meta(skill_path)
+    return name
 
 
 def _scan_skill_subdir(
@@ -445,13 +476,16 @@ def _register_skill(
     root_path: Path,
     discovered: dict[str, dict[str, Any]],
 ) -> None:
-    skill_name = _extract_skill_name(skill_file)
+    skill_name, version = _extract_skill_meta(skill_file)
     if skill_name and skill_name not in discovered:
-        discovered[skill_name] = {
+        entry: dict[str, Any] = {
             "root_kind": root["kind"],
             "root_path": str(root_path),
             "skill_path": str(skill_file),
         }
+        if version is not None:
+            entry["version"] = version
+        discovered[skill_name] = entry
 
 
 def _matches_when(profile: dict[str, Any], conditions: dict[str, Any]) -> bool:
@@ -513,13 +547,33 @@ def _skill_entry(
 
     if skill_name in usable_skills:
         discovered = usable_skills[skill_name]
+        state: str = "usable_now"
+        entry_warnings: list[str] = []
+        min_version_str = skill_config.get("min_version")
+        discovered_version_str = discovered.get("version")
+
+        if min_version_str is not None:
+            min_ver = _parse_version(min_version_str)
+            disc_ver = _parse_version(discovered_version_str)
+            if disc_ver < min_ver:
+                state = "stale_installed"
+                found = discovered_version_str or "unknown"
+                entry_warnings.append(
+                    f"Skill {skill_name} found at {found} < required {min_version_str}; treated as stale_installed."
+                )
+
         entry.update(
             {
-                "state": "usable_now",
+                "state": state,
                 "root_kind": discovered["root_kind"],
                 "skill_path": discovered["skill_path"],
             }
         )
+        if min_version_str is not None:
+            entry["min_version"] = min_version_str
+            entry["found_version"] = discovered_version_str or "unknown"
+        if entry_warnings:
+            entry["warnings"] = entry_warnings
     elif skill_name in advisory_skills:
         discovered = advisory_skills[skill_name]
         entry.update(
@@ -815,6 +869,11 @@ def build_bootstrap_report(
             lane_name, manifest["lanes"][lane_name], merged_skills, profile
         )
         warnings.extend(lanes[lane_name]["warnings"])
+
+    # Fold per-skill entry warnings into the top-level warnings list.
+    for skill in merged_skills.values():
+        if "warnings" in skill:
+            warnings.extend(skill["warnings"])
 
     _mark_blocking_skills(lanes, manifest, merged_skills)
     install_candidates = _build_install_candidates(merged_skills)
