@@ -325,6 +325,23 @@ def _is_skill_override_valid(payload: dict[str, Any]) -> bool:
     )
 
 
+def _read_override_payload(scope: str, path: Path) -> dict[str, Any]:
+    """Read and validate the ``"skills"`` map from a single source override file.
+
+    Returns an empty dict when *path* does not exist so the caller can skip
+    the source without additional branches.
+    """
+    if not path.exists():
+        return {}
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"Malformed {scope} override file: {path}") from exc
+    if not isinstance(payload, dict) or not isinstance(payload.get("skills"), dict):
+        raise ValueError(f"Invalid {scope} override file: {path}")
+    return payload["skills"]
+
+
 def load_source_overrides(
     *,
     repo_root: Path,
@@ -342,16 +359,8 @@ def load_source_overrides(
     ]
 
     for scope, path in sources:
-        if not path.exists():
-            continue
-        try:
-            payload = json.loads(path.read_text(encoding="utf-8"))
-        except json.JSONDecodeError as exc:
-            raise ValueError(f"Malformed {scope} override file: {path}") from exc
-        if not isinstance(payload, dict) or not isinstance(payload.get("skills"), dict):
-            raise ValueError(f"Invalid {scope} override file: {path}")
-
-        for skill_name, entry in payload["skills"].items():
+        skills = _read_override_payload(scope, path)
+        for skill_name, entry in skills.items():
             if not isinstance(entry, dict) or not _is_skill_override_valid(entry):
                 if skill_name in strict_skill_names:
                     raise ValueError(
@@ -381,35 +390,52 @@ def _extract_skill_name(skill_path: Path) -> str | None:
     return None
 
 
+def _scan_skill_subdir(
+    sub_path: Path,
+    root: dict[str, str],
+    root_path: Path,
+    discovered: dict[str, dict[str, Any]],
+) -> None:
+    """Scan one level deeper for ``<root>/<subdir>/<skill>/SKILL.md`` layouts."""
+    try:
+        sub_entries = sorted(os.scandir(sub_path), key=lambda e: e.name)
+    except OSError:
+        return
+    for sub_entry in sub_entries:
+        if not sub_entry.is_dir(follow_symlinks=True):
+            continue
+        nested = sub_path / sub_entry.name / "SKILL.md"
+        if nested.exists():
+            _register_skill(nested, root, root_path, discovered)
+
+
+def _scan_skill_root(
+    root: dict[str, str],
+    discovered: dict[str, dict[str, Any]],
+) -> None:
+    """Scan one skill root directory and register all discovered SKILL.md files."""
+    root_path = Path(root["path"])
+    if not root_path.is_dir():
+        return
+    try:
+        entries = sorted(os.scandir(root_path), key=lambda e: e.name)
+    except OSError:
+        return
+    for entry in entries:
+        if not entry.is_dir(follow_symlinks=True):
+            continue
+        skill_file = root_path / entry.name / "SKILL.md"
+        if skill_file.exists():
+            _register_skill(skill_file, root, root_path, discovered)
+        else:
+            # Support <root>/<subdir>/<skill>/SKILL.md (e.g. extra roots).
+            _scan_skill_subdir(root_path / entry.name, root, root_path, discovered)
+
+
 def _discover_skills(roots: list[dict[str, str]]) -> dict[str, dict[str, Any]]:
     discovered: dict[str, dict[str, Any]] = {}
     for root in roots:
-        root_path = Path(root["path"])
-        if not root_path.is_dir():
-            continue
-        try:
-            entries = sorted(os.scandir(root_path), key=lambda e: e.name)
-        except OSError:
-            continue
-        for entry in entries:
-            if not entry.is_dir(follow_symlinks=True):
-                continue
-            skill_file = root_path / entry.name / "SKILL.md"
-            if skill_file.exists():
-                _register_skill(skill_file, root, root_path, discovered)
-            else:
-                # Support <root>/<subdir>/<skill>/SKILL.md (e.g. extra roots).
-                sub_path = root_path / entry.name
-                try:
-                    sub_entries = sorted(os.scandir(sub_path), key=lambda e: e.name)
-                except OSError:
-                    continue
-                for sub_entry in sub_entries:
-                    if not sub_entry.is_dir(follow_symlinks=True):
-                        continue
-                    nested = sub_path / sub_entry.name / "SKILL.md"
-                    if nested.exists():
-                        _register_skill(nested, root, root_path, discovered)
+        _scan_skill_root(root, discovered)
     return discovered
 
 
