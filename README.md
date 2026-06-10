@@ -1,12 +1,14 @@
 # Repo Audit Refactor Optimize
 
-`repo-audit-refactor-optimize` is a repository-local skill for running a structured audit and remediation workflow across Python, C, Rust, and assembly codebases.
+`repo-audit-refactor-optimize` is a repository-local skill for running a structured audit and remediation workflow. Its deterministic diagnosis lanes (test, code-health, coverage) are Python-first, built on the repo-audit-skills family; C, Rust, and assembly codebases are handled in manual mode with the tooling gap recorded.
 
 It focuses on:
 - bootstrapping required subskills
 - profiling repository structure and verification surfaces
 - synthesizing a ranked remediation backlog
 - executing safe cleanup, refactors, and performance work in verified batches
+
+**Requirement:** the deterministic diagnosis lanes require `repo-audit-skills` v0.3.0+ installed (from github.com/jc1122/repo-audit-skills).
 
 ## Repository Layout
 
