@@ -191,29 +191,6 @@ def test_missing_public_skill_generates_exact_install_command(tmp_path: Path, sa
     assert report["skills"]["public-helper"]["state"] == "installable_now"
 
 
-def test_assembly_repo_activates_code_health_lane(tmp_path: Path, sample_manifest: dict):
-    repo = tmp_path / "repo"
-    (repo / "asm").mkdir(parents=True)
-    (repo / "asm" / "start.S").write_text(".globl _start\n", encoding="utf-8")
-
-    manifest_path = tmp_path / "manifest.json"
-    write_manifest(manifest_path, sample_manifest)
-
-    skills_root = tmp_path / ".agents" / "skills"
-    write_skill(skills_root, "m15-anti-pattern")
-
-    report = checker.build_bootstrap_report(
-        repo_root=repo,
-        manifest_path=manifest_path,
-        out_dir=tmp_path / "out",
-        env={"HOME": str(tmp_path)},
-    )
-
-    assert "code-health-assembly" in report["summary"]["active_lanes"]
-    assert report["lanes"]["code-health-assembly"]["state"] == "full"
-    assert report["lanes"]["code-health-assembly"]["selected_skills"] == ["m15-anti-pattern"]
-
-
 def test_missing_local_skill_without_source_mapping_is_manual_only(
     tmp_path: Path,
     sample_manifest: dict,
@@ -229,10 +206,10 @@ def test_missing_local_skill_without_source_mapping_is_manual_only(
         manifest_path=manifest_path,
         out_dir=tmp_path / "out",
         env={"HOME": str(tmp_path)},
-        required_skill_names=["m15-anti-pattern"],
+        required_skill_names=["complexity-audit"],
     )
 
-    assert report["skills"]["m15-anti-pattern"]["state"] == "manual_only"
+    assert report["skills"]["complexity-audit"]["state"] == "manual_only"
 
 
 def test_malformed_override_file_hard_fails(tmp_path: Path, sample_manifest: dict):
@@ -301,7 +278,7 @@ def test_bad_active_optional_override_entry_is_ignored(tmp_path: Path, sample_ma
             {
                 "version": 1,
                 "skills": {
-                    "hypothesis-testing": {
+                    "quality-audit": {
                         "restart_required_if_installed": "yes"
                     }
                 },
@@ -318,8 +295,8 @@ def test_bad_active_optional_override_entry_is_ignored(tmp_path: Path, sample_ma
         user_override_path=user_override,
     )
 
-    assert report["skills"]["hypothesis-testing"]["restart_required_if_installed"] is True
-    assert any("hypothesis-testing" in warning for warning in report["warnings"])
+    assert report["skills"]["quality-audit"]["restart_required_if_installed"] is True
+    assert any("quality-audit" in warning for warning in report["warnings"])
 
 
 def test_bad_blocking_override_entry_hard_fails(tmp_path: Path, sample_manifest: dict):
@@ -419,7 +396,6 @@ def test_test_lane_full_with_optional(tmp_path: Path, sample_manifest: dict, pyt
 
     skills_root = tmp_path / ".agents" / "skills"
     write_skill(skills_root, "test-audit-pipeline")
-    write_skill(skills_root, "hypothesis-testing")
     write_skill(skills_root, "perf-benchmark")
     write_skill(skills_root, "verification-before-completion")
 
@@ -433,7 +409,6 @@ def test_test_lane_full_with_optional(tmp_path: Path, sample_manifest: dict, pyt
     lane = report["lanes"]["test-python"]
     assert lane["state"] == "full"
     assert "test-audit-pipeline" in lane["selected_skills"]
-    assert "hypothesis-testing" in lane["selected_skills"]
 
 
 def test_test_lane_manual_when_nothing_available(tmp_path: Path, sample_manifest: dict, python_pytest_repo: Path):
@@ -457,31 +432,27 @@ def test_test_lane_manual_when_nothing_available(tmp_path: Path, sample_manifest
     assert report["lanes"]["test-python"]["selected_skills"] == []
 
 
-def test_performance_lane_full_and_degraded(tmp_path: Path, sample_manifest: dict):
+def test_performance_lane_full_with_perf_benchmark_only(tmp_path: Path, sample_manifest: dict):
+    repo = tmp_path / "repo"
+    (repo / "benches").mkdir(parents=True)
+    (repo / "benches" / "bench_hot.py").write_text("pass\n", encoding="utf-8")
 
-    for install_fallback, expected_state in [(True, "full"), (False, "degraded")]:
-        repo = tmp_path / f"repo-{expected_state}"
-        (repo / "benches").mkdir(parents=True)
-        (repo / "benches" / "bench_hot.py").write_text("pass\n", encoding="utf-8")
+    manifest_path = tmp_path / "manifest.json"
+    write_manifest(manifest_path, sample_manifest)
 
-        manifest_path = tmp_path / f"manifest-{expected_state}.json"
-        write_manifest(manifest_path, sample_manifest)
+    skills_root = tmp_path / ".agents" / "skills"
+    write_skill(skills_root, "perf-benchmark")
+    write_skill(skills_root, "verification-before-completion")
 
-        skills_root = tmp_path / f".agents-{expected_state}" / "skills"
-        write_skill(skills_root, "perf-benchmark")
-        write_skill(skills_root, "verification-before-completion")
-        if install_fallback:
-            write_skill(skills_root, "m10-performance")
+    report = checker.build_bootstrap_report(
+        repo_root=repo,
+        manifest_path=manifest_path,
+        out_dir=tmp_path / "out",
+        env={"HOME": str(tmp_path)},
+        extra_roots=[skills_root.parent],
+    )
 
-        report = checker.build_bootstrap_report(
-            repo_root=repo,
-            manifest_path=manifest_path,
-            out_dir=tmp_path / f"out-{expected_state}",
-            env={"HOME": str(tmp_path)},
-            extra_roots=[skills_root.parent],
-        )
-
-        assert report["lanes"]["performance"]["state"] == expected_state
+    assert report["lanes"]["performance"]["state"] == "full"
 
 
 def test_performance_lane_manual_with_test_surface_no_benchmarks(
@@ -532,7 +503,7 @@ def test_advisory_only_skill_state(tmp_path: Path, sample_manifest: dict):
     write_manifest(manifest_path, sample_manifest)
 
     foreign = tmp_path / "foreign-skills"
-    write_skill(foreign, "m15-anti-pattern")
+    write_skill(foreign, "verification-before-completion")
 
     report = checker.build_bootstrap_report(
         repo_root=repo,
@@ -542,8 +513,8 @@ def test_advisory_only_skill_state(tmp_path: Path, sample_manifest: dict):
         foreign_roots=[foreign],
     )
 
-    assert report["skills"]["m15-anti-pattern"]["state"] == "advisory_only"
-    assert report["skills"]["m15-anti-pattern"]["root_kind"] == "foreign"
+    assert report["skills"]["verification-before-completion"]["state"] == "advisory_only"
+    assert report["skills"]["verification-before-completion"]["root_kind"] == "foreign"
 
 
 def test_repo_level_override_applies(tmp_path: Path, sample_manifest: dict):
@@ -559,11 +530,11 @@ def test_repo_level_override_applies(tmp_path: Path, sample_manifest: dict):
         json.dumps(
             {
                 "version": 1,
-                "skills": {
-                    "m15-anti-pattern": {
-                        "manual_fallback": "Custom fallback from repo override.",
-                    }
-                },
+                    "skills": {
+                        "verification-before-completion": {
+                            "manual_fallback": "Custom fallback from repo override.",
+                        }
+                    },
             }
         ),
         encoding="utf-8",
@@ -577,7 +548,7 @@ def test_repo_level_override_applies(tmp_path: Path, sample_manifest: dict):
         repo_override_path=repo_override,
     )
 
-    assert report["skills"]["m15-anti-pattern"]["manual_fallback"] == "Custom fallback from repo override."
+    assert report["skills"]["verification-before-completion"]["manual_fallback"] == "Custom fallback from repo override."
 
 
 def test_pyproject_toml_detects_pytest(tmp_path: Path):
@@ -677,11 +648,7 @@ def test_code_health_python_full_with_optional(tmp_path: Path, sample_manifest: 
     write_manifest(manifest_path, sample_manifest)
 
     skills_root = tmp_path / ".agents" / "skills"
-    write_skill(skills_root, "m15-anti-pattern")
-    write_skill(skills_root, "refactoring")
-    write_skill(skills_root, "python-code-quality")
-    write_skill(skills_root, "python-code-style")
-    write_skill(skills_root, "dignified-code-simplifier")
+    write_skill(skills_root, "code-health-audit-pipeline")
     write_skill(skills_root, "perf-benchmark")
     write_skill(skills_root, "verification-before-completion")
 
@@ -694,13 +661,7 @@ def test_code_health_python_full_with_optional(tmp_path: Path, sample_manifest: 
 
     lane = report["lanes"]["code-health-python"]
     assert lane["state"] == "full"
-    assert lane["selected_skills"] == [
-        "m15-anti-pattern",
-        "refactoring",
-        "python-code-quality",
-        "python-code-style",
-        "dignified-code-simplifier",
-    ]
+    assert lane["selected_skills"] == ["code-health-audit-pipeline"]
 
 
 def test_markdown_report_structure(tmp_path: Path, sample_manifest: dict, python_pytest_repo: Path):
@@ -760,7 +721,7 @@ def test_matches_when_unknown_key_is_fail_closed(tmp_path: Path, sample_manifest
     sample_manifest["lanes"]["impossible-lane"] = {
         "when": {"nonexistent_thing": True},
         "lane_type": "code_health",
-        "preferred": ["m15-anti-pattern"],
+        "preferred": ["helper-a"],
         "manual_fallback": "Manual.",
         "blocking": False,
     }
@@ -815,59 +776,6 @@ def test_scan_repo_profile_no_false_positive_from_parent_dir(tmp_path: Path):
     assert profile["has_deterministic_perf_surface"] is False
 
 
-def test_code_health_c_lane_activation(tmp_path: Path, sample_manifest: dict):
-    repo = tmp_path / "repo"
-    (repo / "src").mkdir(parents=True)
-    (repo / "src" / "main.c").write_text("int main(void) { return 0; }\n", encoding="utf-8")
-
-    manifest_path = tmp_path / "manifest.json"
-    write_manifest(manifest_path, sample_manifest)
-
-    skills_root = tmp_path / ".agents" / "skills"
-    write_skill(skills_root, "m15-anti-pattern")
-    write_skill(skills_root, "refactoring")
-    write_skill(skills_root, "cpp-coding-standards")
-    write_skill(skills_root, "perf-benchmark")
-    write_skill(skills_root, "verification-before-completion")
-
-    report = checker.build_bootstrap_report(
-        repo_root=repo,
-        manifest_path=manifest_path,
-        out_dir=tmp_path / "out",
-        env={"HOME": str(tmp_path)},
-    )
-
-    assert "code-health-c" in report["summary"]["active_lanes"]
-    assert report["lanes"]["code-health-c"]["state"] == "full"
-
-
-def test_code_health_rust_lane_activation(tmp_path: Path, sample_manifest: dict):
-    repo = tmp_path / "repo"
-    (repo / "src").mkdir(parents=True)
-    (repo / "Cargo.toml").write_text("[package]\nname='demo'\nversion='0.1.0'\n", encoding="utf-8")
-    (repo / "src" / "lib.rs").write_text("pub fn hello() {}\n", encoding="utf-8")
-
-    manifest_path = tmp_path / "manifest.json"
-    write_manifest(manifest_path, sample_manifest)
-
-    skills_root = tmp_path / ".agents" / "skills"
-    write_skill(skills_root, "m15-anti-pattern")
-    write_skill(skills_root, "refactoring")
-    write_skill(skills_root, "rust-best-practices")
-    write_skill(skills_root, "perf-benchmark")
-    write_skill(skills_root, "verification-before-completion")
-
-    report = checker.build_bootstrap_report(
-        repo_root=repo,
-        manifest_path=manifest_path,
-        out_dir=tmp_path / "out",
-        env={"HOME": str(tmp_path)},
-    )
-
-    assert "code-health-rust" in report["summary"]["active_lanes"]
-    assert report["lanes"]["code-health-rust"]["state"] == "full"
-
-
 def test_optional_install_candidate_does_not_force_restart_summary(
     tmp_path: Path,
     sample_manifest: dict,
@@ -875,12 +783,12 @@ def test_optional_install_candidate_does_not_force_restart_summary(
 ):
     repo = python_pytest_repo
 
-    sample_manifest["skills"]["hypothesis-testing"] = {
-        **sample_manifest["skills"]["hypothesis-testing"],
+    sample_manifest["skills"]["quality-audit"] = {
+        **sample_manifest["skills"]["quality-audit"],
         "source_type": "public",
         "install_source": {
             "method": "skills_cli",
-            "package": "acme/skills@hypothesis-testing",
+            "package": "acme/skills@quality-audit",
         },
     }
 
@@ -894,7 +802,7 @@ def test_optional_install_candidate_does_not_force_restart_summary(
         env={"HOME": str(tmp_path)},
     )
 
-    assert report["skills"]["hypothesis-testing"]["state"] == "installable_now"
+    assert report["skills"]["quality-audit"]["state"] == "installable_now"
     assert report["summary"]["restart_required"] is False
 
 
@@ -1057,7 +965,7 @@ def test_extract_skill_name_unreadable_file(tmp_path: Path):
 
 
 def test_manifest_skill_missing_required_field(tmp_path: Path, sample_manifest: dict):
-    sample_manifest["skills"]["m15-anti-pattern"].pop("priority")
+    sample_manifest["skills"]["complexity-audit"].pop("priority")
 
     manifest_path = tmp_path / "manifest.json"
     write_manifest(manifest_path, sample_manifest)
@@ -1252,3 +1160,109 @@ def test_performance_lane_full_with_no_fallback_declared(tmp_path: Path):
     assert lane["state"] == "full"
     assert lane["selected_skills"] == ["bench-skill"]
     assert lane["warnings"] == []
+
+
+EXPECTED_MANIFEST_SKILLS = {
+    "find-skills",
+    "skill-installer",
+    "test-audit-pipeline",
+    "test-quality-assurance",
+    "test-redundancy-triage",
+    "code-health-audit-pipeline",
+    "complexity-audit",
+    "duplication-audit",
+    "dead-code-audit",
+    "structure-audit",
+    "quality-audit",
+    "coverage-gap-audit",
+    "perf-benchmark",
+    "verification-before-completion",
+    "dispatching-parallel-agents",
+    "subagent-driven-development",
+}
+
+
+def test_production_manifest_contains_only_first_party_and_process_skills():
+    manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
+    assert set(manifest["skills"]) == EXPECTED_MANIFEST_SKILLS
+    assert set(manifest["lanes"]) == {
+        "bootstrap",
+        "test-python",
+        "code-health-python",
+        "coverage-python",
+        "performance",
+        "orchestration",
+    }
+
+
+def test_python_repo_resolves_all_deterministic_lanes_full(tmp_path: Path, python_pytest_repo: Path):
+    skills_root = tmp_path / ".agents" / "skills"
+    for name in [
+        "test-audit-pipeline",
+        "code-health-audit-pipeline",
+        "coverage-gap-audit",
+    ]:
+        write_skill(skills_root, name)
+
+    report = checker.build_bootstrap_report(
+        repo_root=python_pytest_repo,
+        manifest_path=MANIFEST_PATH,
+        out_dir=tmp_path / "out",
+        env={"HOME": str(tmp_path)},
+    )
+
+    assert report["lanes"]["test-python"]["state"] == "full"
+    assert report["lanes"]["test-python"]["selected_skills"] == ["test-audit-pipeline"]
+    assert report["lanes"]["code-health-python"]["state"] == "full"
+    assert report["lanes"]["code-health-python"]["selected_skills"] == ["code-health-audit-pipeline"]
+    assert report["lanes"]["coverage-python"]["state"] == "full"
+    assert report["lanes"]["coverage-python"]["selected_skills"] == ["coverage-gap-audit"]
+
+
+def test_code_health_python_degrades_to_leaves_on_production_manifest(
+    tmp_path: Path, python_pytest_repo: Path
+):
+    skills_root = tmp_path / ".agents" / "skills"
+    for name in [
+        "complexity-audit",
+        "duplication-audit",
+        "dead-code-audit",
+        "structure-audit",
+        "quality-audit",
+    ]:
+        write_skill(skills_root, name)
+
+    report = checker.build_bootstrap_report(
+        repo_root=python_pytest_repo,
+        manifest_path=MANIFEST_PATH,
+        out_dir=tmp_path / "out",
+        env={"HOME": str(tmp_path)},
+    )
+
+    lane = report["lanes"]["code-health-python"]
+    assert lane["state"] == "degraded"
+    assert lane["selected_skills"] == [
+        "complexity-audit",
+        "duplication-audit",
+        "dead-code-audit",
+        "structure-audit",
+        "quality-audit",
+    ]
+
+
+def test_non_python_repo_activates_no_code_health_lane(tmp_path: Path):
+    repo = tmp_path / "repo"
+    (repo / "asm").mkdir(parents=True)
+    (repo / "asm" / "start.S").write_text(".globl _start\n", encoding="utf-8")
+
+    report = checker.build_bootstrap_report(
+        repo_root=repo,
+        manifest_path=MANIFEST_PATH,
+        out_dir=tmp_path / "out",
+        env={"HOME": str(tmp_path)},
+    )
+
+    active = set(report["summary"]["active_lanes"])
+    assert "code-health-python" not in active
+    assert "coverage-python" not in active
+    assert not any(name.startswith("code-health-") and name != "code-health-python" for name in report["lanes"])
