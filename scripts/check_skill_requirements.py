@@ -46,10 +46,7 @@ def _home_dir(env: dict[str, str] | None) -> Path:
 
 def _default_user_override_path(env: dict[str, str] | None) -> Path:
     config_home = _env_value(env, "XDG_CONFIG_HOME")
-    if config_home:
-        base = Path(config_home).expanduser()
-    else:
-        base = _home_dir(env) / ".config"
+    base = Path(config_home).expanduser() if config_home else _home_dir(env) / ".config"
     return base / CONFIG_DIR_NAME / "skill-sources.json"
 
 
@@ -356,9 +353,7 @@ def _relevant_lane_names(
 ) -> list[str]:
     lane_names: list[str] = []
     for name, lane in manifest["lanes"].items():
-        if lane.get("always"):
-            lane_names.append(name)
-        elif _matches_when(profile, lane.get("when", {})):
+        if lane.get("always") or _matches_when(profile, lane.get("when", {})):
             lane_names.append(name)
     return lane_names
 
@@ -736,8 +731,10 @@ def _markdown_report(report: dict[str, Any]) -> str:
         "",
         f"- Repo: `{report['repo_root']}`",
         f"- Active lanes: {', '.join(report['summary']['active_lanes']) or 'none'}",
-        f"- Stop before discovery: `{str(report['summary']['stop_before_discovery']).lower()}`",
-        f"- Restart required before using strict installs: `{str(report['summary']['restart_required']).lower()}`",
+        f"- Stop before discovery: "
+        f"`{str(report['summary']['stop_before_discovery']).lower()}`",
+        f"- Restart required before using strict installs: "
+        f"`{str(report['summary']['restart_required']).lower()}`",
         "",
         "## Lane States",
         "",
@@ -746,7 +743,8 @@ def _markdown_report(report: dict[str, Any]) -> str:
         lines.append(f"- `{lane_name}`: `{lane['state']}`")
         if lane["selected_skills"]:
             lines.append(
-                f"  selected: {', '.join(f'`{name}`' for name in lane['selected_skills'])}"
+                f"  selected: "
+                f"{', '.join(f'`{name}`' for name in lane['selected_skills'])}"
             )
     lines.extend(["", "## Skill States", ""])
     for skill_name, skill in report["skills"].items():
@@ -763,7 +761,8 @@ def _markdown_install_plan(report: dict[str, Any]) -> str:
     lines = [
         "# Install Plan",
         "",
-        "This checker never installs skills. Use the commands below only after explicit approval.",
+        "This checker never installs skills. Use the commands below "
+        "only after explicit approval.",
         "",
     ]
     if not report["install_candidates"]:
@@ -777,7 +776,8 @@ def _markdown_install_plan(report: dict[str, Any]) -> str:
         lines.append(f"- Command: `{candidate['command']}`")
         lines.append(f"- Post-install state: `{candidate['post_install_state']}`")
         lines.append(
-            f"- Restart required before reuse: `{str(candidate['restart_required']).lower()}`"
+            f"- Restart required before reuse: "
+            f"`{str(candidate['restart_required']).lower()}`"
         )
         lines.append("")
     return "\n".join(lines)
