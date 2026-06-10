@@ -1,6 +1,7 @@
 ---
 name: repo-audit-refactor-optimize
-description: End-to-end repository diagnosis, remediation, and optimization orchestration for Python, C, Rust, and assembly codebases. Use when the agent needs to audit a repository, assess test quality and redundancy, bootstrap the relevant subskills, stabilize deterministic tests and benchmarks, propose or execute refactors and cleanups, benchmark and optimize performance, or run a full repo optimization pipeline from diagnosis through verified completion.
+version: 0.2.0
+description: End-to-end repository diagnosis, remediation, and optimization orchestration built on the deterministic repo-audit-skills family. Use when the agent needs to audit a repository with deterministic code-health, coverage-gap, and test-audit lanes, synthesize a coverage-gated remediation backlog, execute safe refactor batches, benchmark and optimize performance, or run a full repo optimization pipeline from diagnosis through verified completion.
 ---
 
 # Repo Audit Refactor Optimize
@@ -16,6 +17,7 @@ Keep the top-level flow here and load the reference files only when needed:
 - `references/activation-matrix.md` for lane-specific preferred, fallback, manual, and blocked behavior
 - `references/prioritization.md` for ranking findings and defining execution batches
 - `references/verification.md` for baseline, rerun, and claim-evidence standards
+- `references/remediation-playbook.md` for batch execution discipline; load before the Execution stage
 
 ## Operating Model
 
@@ -84,9 +86,8 @@ Activate only the lanes that match the repository profile and the bootstrap resu
 
 Use:
 
-- `test-audit-pipeline` as the preferred Python audit lane
+- `test-audit-pipeline` as the preferred Python audit lane (also produces the `coverage.json` artifact)
 - `test-quality-assurance` plus `test-redundancy-triage` as the degraded fallback
-- `hypothesis-testing` when invariants, parsers, graph logic, numeric code, or serialization surfaces are present
 - `verification-before-completion` only as the final gate, not as a replacement for diagnosis
 
 For non-Python test ecosystems, perform deterministic test-loop assessment and structural review, and keep the tooling gap explicit.
@@ -95,23 +96,29 @@ For non-Python test ecosystems, perform deterministic test-loop assessment and s
 
 Use:
 
-- `m15-anti-pattern` to diagnose code smells, anti-patterns, and risky structure
-- `refactoring` to execute structural changes once the findings are concrete
-- `python-code-quality`, `python-code-style`, and `dignified-code-simplifier` for Python
-- `cpp-coding-standards` for C-heavy repositories
-- `rust-best-practices` for Rust-heavy repositories
+- `code-health-audit-pipeline` as the preferred deterministic diagnosis (complexity, duplication, dead-code, structure, quality leaves; merged, ranked findings; exit 0/1/2)
+- the five leaf skills directly (`complexity-audit`, `duplication-audit`, `dead-code-audit`, `structure-audit`, `quality-audit`) as the degraded fallback
+- pass the test lane's `coverage.json` via `--coverage-json` so the artifact-gated coverage leaf runs
 
-Do not start with refactoring. Start with evidence, then restructure.
+Findings are advisory and deterministic; execution discipline lives in `references/remediation-playbook.md`. Do not start with restructuring. Start with findings, gate on coverage, then remediate in single-signal batches.
+
+For C, Rust, and assembly code health no first-party lane exists: review manually, record the tooling gap, and keep changes perf-first and evidence-driven.
+
+### Coverage Lane
+
+Use:
+
+- `coverage-gap-audit` on the test lane's `coverage.json` to emit TEST findings (untested / under-tested production files)
+
+TEST findings gate the backlog (see `references/prioritization.md`): findings in uncovered files are characterize-first, never auto-executed.
 
 ### Performance Lane
 
 Use:
 
-- `perf-benchmark` to establish baselines, hotspot rankings, and benchmark discipline
-- `m10-performance` only after a bottleneck is proven
-- `performance-testing` only when the repository is throughput or latency oriented and the question is service-level performance rather than local code-path performance
+- `perf-benchmark` to establish baselines, hotspot rankings, and benchmark discipline; optimize only after a bottleneck is proven
 
-Treat assembly as a perf-first, evidence-driven lane. No dedicated assembly audit subskill is currently available, so prefer profiling evidence and conservative change control over broad structural edits.
+Treat assembly as a perf-first, evidence-driven lane: profiling evidence and conservative change control over broad structural edits.
 
 ## Synthesis
 
@@ -126,7 +133,7 @@ Load `references/prioritization.md` to score and group findings.
 
 ## Execution
 
-Execute changes in batches.
+Execute changes in batches following references/remediation-playbook.md.
 
 - Apply safe cleanup automatically when behavior is preserved and the blast radius is low.
 - Pause before risky API changes, speculative optimizations, or broad architectural rewrites.
@@ -163,3 +170,4 @@ Consult these files during execution:
 - `references/activation-matrix.md`
 - `references/prioritization.md`
 - `references/verification.md`
+- `references/remediation-playbook.md`
