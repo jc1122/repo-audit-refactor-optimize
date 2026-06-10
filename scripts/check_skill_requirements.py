@@ -31,6 +31,146 @@ KNOWN_LANGUAGES = frozenset({"python", "c", "rust", "assembly"})
 KNOWN_TEST_SYSTEMS = frozenset({"pytest", "cargo", "cmake", "meson", "make"})
 
 
+# ---------------------------------------------------------------------------
+# Lookup tables for file classification and benchmark detection
+# ---------------------------------------------------------------------------
+_LANG_MAP: dict[str, str] = {
+    ".py": "python",
+    ".c": "c",
+    ".h": "c",
+    ".cc": "c",
+    ".cpp": "c",
+    ".hpp": "c",
+    ".rs": "rust",
+    ".s": "assembly",
+    ".S": "assembly",
+    ".asm": "assembly",
+}
+
+_BENCH_NAME_KW: dict[str, tuple[str, ...]] = {
+    ".py": ("bench", "benchmark"),
+    ".c": ("bench", "perf"),
+    ".h": ("bench", "perf"),
+    ".cc": ("bench", "perf"),
+    ".cpp": ("bench", "perf"),
+    ".hpp": ("bench", "perf"),
+    ".rs": ("bench",),
+    ".s": ("bench", "perf"),
+    ".S": ("bench", "perf"),
+    ".asm": ("bench", "perf"),
+}
+
+_BENCH_PATH_KW: dict[str, tuple[str, ...]] = {
+    ".py": ("benches",),
+    ".c": ("benchmark",),
+    ".h": ("benchmark",),
+    ".cc": ("benchmark",),
+    ".cpp": ("benchmark",),
+    ".hpp": ("benchmark",),
+    ".rs": ("benches",),
+}
+
+_BENCH_SURFACE: dict[str, str] = {
+    ".py": "python-benchmarks",
+    ".c": "native-benchmarks",
+    ".h": "native-benchmarks",
+    ".cc": "native-benchmarks",
+    ".cpp": "native-benchmarks",
+    ".hpp": "native-benchmarks",
+    ".rs": "cargo-benches",
+    ".s": "native-benchmarks",
+    ".S": "native-benchmarks",
+    ".asm": "native-benchmarks",
+}
+
+
+def _has_any_keyword(text: str, keywords: tuple[str, ...]) -> bool:
+    """Return True when *text* contains any of the given *keywords*."""
+    return any(kw in text for kw in keywords)
+
+
+def _dir_marker_contributions(
+    file_names: list[str],
+) -> tuple[set[str], set[str]]:
+    """Detect test systems and languages from directory marker files."""
+    test_systems: set[str] = set()
+    languages: set[str] = set()
+
+    if "pytest.ini" in file_names:
+        test_systems.add("pytest")
+    if "Cargo.toml" in file_names:
+        test_systems.add("cargo")
+        languages.add("rust")
+    if "CMakeLists.txt" in file_names:
+        test_systems.add("cmake")
+    if "meson.build" in file_names:
+        test_systems.add("meson")
+    if "Makefile" in file_names or "GNUmakefile" in file_names:
+        test_systems.add("make")
+
+    return test_systems, languages
+
+
+def _ordered_list(allowed_order: list[str], found_set: set[str]) -> list[str]:
+    """Return items from *allowed_order* that are also in *found_set*."""
+    return [item for item in allowed_order if item in found_set]
+
+
+def _has_any_suffix_py(file_names: list[str]) -> bool:
+    """Return True when any file in *file_names* ends with '.py'."""
+    return any(name.endswith(".py") for name in file_names)
+
+
+def _benchmark_surface(
+    suffix: str, lower_name: str, parts_lower: set[str]
+) -> str | None:
+    """Return the benchmark surface for a file, or None."""
+    bench_kws = _BENCH_NAME_KW.get(suffix)
+    if bench_kws and _has_any_keyword(lower_name, bench_kws):
+        return _BENCH_SURFACE.get(suffix)
+    path_kws = _BENCH_PATH_KW.get(suffix)
+    if path_kws:
+        for kw in path_kws:
+            if kw in parts_lower:
+                return _BENCH_SURFACE.get(suffix)
+    return None
+
+
+def _classify_file_full(
+    name: str, parts_lower: set[str]
+) -> tuple[str | None, str | None]:
+    """Classify a single source file: (language, benchmark_surface)."""
+    suffix = os.path.splitext(name)[1]
+    lang = _LANG_MAP.get(suffix)
+    if lang is None:
+        return None, None
+    return lang, _benchmark_surface(suffix, name.lower(), parts_lower)
+
+
+def _path_parts_lower(current_root: str, repo_root: Path) -> set[str]:
+    """Compute the lowercased path components relative to *repo_root*."""
+    rel = os.path.relpath(current_root, repo_root)
+    return {part.lower() for part in rel.replace("\\", "/").split("/")}
+
+
+def _is_python_test_dir(parts_lower: set[str], file_names: list[str]) -> bool:
+    """Return True when the directory looks like a Python test directory."""
+    return "tests" in parts_lower and _has_any_suffix_py(file_names)
+
+
+def _pyproject_contributions(pyproject_path: Path) -> tuple[set[str], set[str]]:
+    """Return (languages, test_systems) contributions from a pyproject.toml."""
+    languages = {"python"}
+    test_systems: set[str] = set()
+    try:
+        content = pyproject_path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return languages, test_systems
+    if "[tool.pytest.ini_options]" in content or "pytest" in content:
+        test_systems.add("pytest")
+    return languages, test_systems
+
+
 def _env_value(env: dict[str, str] | None, key: str) -> str | None:
     if env is None:
         return os.environ.get(key)
@@ -75,73 +215,35 @@ def scan_repo_profile(repo_root: Path) -> dict[str, Any]:
     for current_root, dir_names, file_names in os.walk(repo_root):
         dir_names[:] = [name for name in dir_names if name not in SKIP_DIRS]
 
-        if "pytest.ini" in file_names:
-            test_systems.add("pytest")
-        if "Cargo.toml" in file_names:
-            test_systems.add("cargo")
-            languages.add("rust")
-        if "CMakeLists.txt" in file_names:
-            test_systems.add("cmake")
-        if "meson.build" in file_names:
-            test_systems.add("meson")
-        if "Makefile" in file_names or "GNUmakefile" in file_names:
-            test_systems.add("make")
+        ts, langs = _dir_marker_contributions(file_names)
+        test_systems.update(ts)
+        languages.update(langs)
 
-        rel = os.path.relpath(current_root, repo_root)
-        parts_lower = {part.lower() for part in rel.replace("\\", "/").split("/")}
+        parts_lower = _path_parts_lower(current_root, repo_root)
 
         for name in file_names:
-            suffix = os.path.splitext(name)[1]
-            lower_name = name.lower()
-
-            if suffix == ".py":
-                languages.add("python")
-                if (
-                    "bench" in lower_name
-                    or "benchmark" in lower_name
-                    or "benches" in parts_lower
-                ):
-                    benchmark_surfaces.add("python-benchmarks")
-            elif suffix in {".c", ".h", ".cc", ".cpp", ".hpp"}:
-                languages.add("c")
-                if (
-                    "bench" in lower_name
-                    or "perf" in lower_name
-                    or "benchmark" in parts_lower
-                ):
-                    benchmark_surfaces.add("native-benchmarks")
-            elif suffix == ".rs":
-                languages.add("rust")
-                if "bench" in lower_name or "benches" in parts_lower:
-                    benchmark_surfaces.add("cargo-benches")
-            elif suffix in {".s", ".S", ".asm"}:
-                languages.add("assembly")
-                if "bench" in lower_name or "perf" in lower_name:
-                    benchmark_surfaces.add("native-benchmarks")
+            lang, bench = _classify_file_full(name, parts_lower)
+            if lang:
+                languages.add(lang)
+            if bench:
+                benchmark_surfaces.add(bench)
 
             if name == "pyproject.toml":
-                languages.add("python")
-                try:
-                    content = Path(os.path.join(current_root, name)).read_text(
-                        encoding="utf-8"
-                    )
-                except (OSError, UnicodeDecodeError):
-                    content = ""
-                if "[tool.pytest.ini_options]" in content or "pytest" in content:
-                    test_systems.add("pytest")
+                langs2, ts2 = _pyproject_contributions(
+                    Path(os.path.join(current_root, name))
+                )
+                languages.update(langs2)
+                test_systems.update(ts2)
 
-        if "tests" in parts_lower and any(name.endswith(".py") for name in file_names):
+        if _is_python_test_dir(parts_lower, file_names):
             languages.add("python")
 
-    ordered_languages = [lang for lang in sorted(KNOWN_LANGUAGES) if lang in languages]
-    ordered_tests = [
-        name for name in sorted(KNOWN_TEST_SYSTEMS) if name in test_systems
-    ]
-    ordered_benchmarks = [
-        name
-        for name in ["cargo-benches", "native-benchmarks", "python-benchmarks"]
-        if name in benchmark_surfaces
-    ]
+    ordered_languages = _ordered_list(sorted(KNOWN_LANGUAGES), languages)
+    ordered_tests = _ordered_list(sorted(KNOWN_TEST_SYSTEMS), test_systems)
+    ordered_benchmarks = _ordered_list(
+        ["cargo-benches", "native-benchmarks", "python-benchmarks"],
+        benchmark_surfaces,
+    )
 
     return {
         "languages": ordered_languages,
