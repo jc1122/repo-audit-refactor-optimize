@@ -144,6 +144,13 @@ handoff, coverage-gated per `references/prioritization.md`, remediated in
 single-signal batches per `references/remediation-playbook.md`. Findings may only
 SHRINK. Max 4 rounds.
 
+Round 1 baseline self-audit (this repo, `--source-prefix scripts/`, with coverage
+handoff): **49 findings**, all in `scripts/check_skill_requirements.py`
+(LINT 40, DECOMPOSE 5, SIMPLIFY 3, FORMAT 1). Coverage-gap leaf active; **no TEST
+finding** on that file (well-covered), so all findings are auto-executable (no
+characterize-first demotion). Each batch was re-audited by the orchestrator with
+the full pipeline + coverage before acceptance.
+
 | Round | Findings before → after | Batches accepted / discarded | Freezes (justified) |
 |---|---|---|---|
-| _(populated during Phase 2 below)_ | | | |
+| 1 (mechanical) | 49 → 8 | FORMAT `ruff format` (49→15, cleared FORMAT + 33 E501) ; LINT `ruff --fix` + value-preserving E501 wraps (15→8, LINT→0) — **2 accepted / 0 discarded** | none |
