@@ -30,6 +30,8 @@ Cross-join every finding with the coverage lane's TEST findings before ranking:
 
 This generalizes the Actionability Rule proven in the repo-audit-skills dogfooding runs: advisory findings in untested code are frozen until tests exist.
 
+PERF findings rank by dimension priority (algorithmic scaling above all hardware dimensions) and are coverage-gated like all others: an uncovered hot file is characterize-first.
+
 ## Finding Types
 
 ### Safe Cleanup

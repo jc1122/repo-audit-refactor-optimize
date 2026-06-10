@@ -24,6 +24,7 @@ Maps every finding signal from the shared code-health finding schema (repo-audit
 | `DECOMPOSE` | complexity-audit | Oversized function/module, too many params | Group parameters into a dataclass or split by responsibility. Check the result against the producing leaf before committing: helpers with 5+ params or new clones are regressions. |
 | `RESTRUCTURE` | structure-audit | Import cycle / god module | Break cycles by extracting the shared dependency downward (never by inline imports as a permanent fix). For god modules, split by fan-in clusters. Highest-risk class: always characterize-first even in covered files if the public surface is unclear. |
 | `TEST` | coverage-gap-audit | Untested / under-tested file | Not a refactor license. Add behavior tests for the file's JSON/stdout/exit-code contract (in-process where coverage tracing requires it) until the file clears the threshold, or record a concrete justification. |
+| `PERF` | perf-benchmark | Failing perf rubric dimension | Follow the perf-benchmark skill's references/perf-remediation-playbook.md: algorithmic STOP gate, one dimension per batch, >=5% median win within CV bounds, before/after fingerprints must match. |
 
 ## Batch Protocol
 
