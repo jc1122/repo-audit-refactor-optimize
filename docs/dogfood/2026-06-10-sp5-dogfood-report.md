@@ -151,6 +151,23 @@ finding** on that file (well-covered), so all findings are auto-executable (no
 characterize-first demotion). Each batch was re-audited by the orchestrator with
 the full pipeline + coverage before acceptance.
 
-| Round | Findings before → after | Batches accepted / discarded | Freezes (justified) |
+| Round | Findings before → after | Batches accepted / discarded | Notes |
 |---|---|---|---|
-| 1 (mechanical) | 49 → 8 | FORMAT `ruff format` (49→15, cleared FORMAT + 33 E501) ; LINT `ruff --fix` + value-preserving E501 wraps (15→8, LINT→0) — **2 accepted / 0 discarded** | none |
+| 1 (mechanical) | 49 → 8 | FORMAT `ruff format` (49→15, cleared FORMAT + 33 E501) ; LINT `ruff --fix` + value-preserving E501 wraps (15→8, LINT→0) — **2 accepted / 0 discarded** | all auto-executable (covered file) |
+| 2 (structural) | 8 → 6 | DECOMPOSE `scan_repo_profile` CC 39→ok + nloc 62→ok — **1 accepted / 1 discarded then retried** | first attempt cleared the DECOMPOSE but introduced 2 new `SIM110` LINT (8→8, no net progress); orchestrator caught it via full re-audit, retried via continue-session with `any()` helpers → 8→6 clean |
+| 3 (structural) | 6 → 4 | DECOMPOSE `load_source_overrides` CC 13→ok + `_discover_skills` CC 11→ok — **1 accepted / 0 discarded** | net 6→4, LINT 0, signatures preserved |
+
+**Acceptance discipline:** every batch was accepted only after the orchestrator independently re-ran `pytest -q` (53 green) **and** the full `code-health-audit-pipeline --coverage-json` over `scripts/` and confirmed findings strictly shrank with nothing new. Round 2's first attempt was **discarded** under exactly this rule (it introduced new LINT) and retried until clean — proof the ratchet is enforced by the orchestrator, not the worker's self-report.
+
+### Convergence — 49 → 4 (CONVERGED at Round 3, within the 4-round bound)
+
+The remaining 4 findings are each individually justified; none is force-fixable without violating the playbook or the contract:
+
+| # | Finding | Why it is a justified residual |
+|---|---|---|
+| 1 | `<module>` maintainability_index = 5.15 (SIMPLIFY, med) | Whole-module metric; threshold 65 is unreachable without splitting the single-file checker into multiple modules, which would change its public import surface — an architectural change out of proportion to the signal. **Bounded.** (MI rose 3.0 → 4.24 → 5.15 across rounds as functions decomposed.) |
+| 2 | `build_bootstrap_report` function_nloc = 72 (DECOMPOSE, med) | The public orchestration entry point (34 test references). Its length is the cohesive pipeline *gather config → resolve lanes/skills → assemble report dict → render → write artifacts*. Per `remediation-playbook.md`, splitting a cohesive pipeline relocates rather than reduces; conservative call on the public core. **Bounded.** |
+| 3 | `load_source_overrides` parameter_count = 6 (SIMPLIFY, low) | 7 keyword-only params form the internal override-loading interface; only 1 over threshold. Bundling into a dataclass is a cross-cutting signature change for marginal benefit. **Bounded.** |
+| 4 | `build_bootstrap_report` parameter_count = 9 (SIMPLIFY, low) | Reducing the params of the public, 34-test API changes its call contract → **out-of-scope, requires explicit human approval** (playbook stop condition). **Frozen.** |
+
+Final self-audit on `main`: **4 findings** (SIMPLIFY 3, DECOMPOSE 1), coverage-gap leaf active, **0 TEST findings** (the checker is well-covered), `pytest -q` = **53 passed**. The rewired skill has demonstrably audited and remediated its own repository with the deterministic family it orchestrates, including a real discard/retry cycle and a principled, justified convergence.
