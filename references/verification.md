@@ -77,4 +77,5 @@ Before completion:
 - apply `verification-before-completion`
 - ensure every executed batch has verification evidence
 - ensure every unexecuted item is labeled as deferred or unverified
+- verify that `docs/audits/<run-id>/run_report.json` and `docs/audits/<run-id>/run_report.md` both exist and contain all required schema keys (see references/pipeline.md, Run Report) — absence of either file or any required key is a gate failure, not a warning
 - avoid summary language that implies proof where only intuition exists

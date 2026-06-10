@@ -29,6 +29,7 @@ Follow this sequence:
 3. Synthesize a ranked remediation backlog.
 4. Execute safe cleanup, refactor, and optimization batches.
 5. Verify the resulting claims before completion.
+6. Write the run report into the audited repository (see references/pipeline.md, Run Report).
 
 Treat this skill as an orchestrator. Reuse specialized subskills instead of re-implementing their internals. Keep raw outputs from each lane, then merge them into a single backlog and verification summary.
 
@@ -158,6 +159,7 @@ Apply these rules:
 - Compare benchmark results using the same environment, inputs, and methodology as the baseline.
 - Distinguish verified improvements from verified-neutral cleanup and from unverified hypotheses.
 - Use `verification-before-completion` as the final evidence gate.
+- Write the run report (see references/pipeline.md, Run Report). Verification fails closed if `docs/audits/<run-id>/run_report.json` + `.md` are absent or missing schema keys — omission is a gate failure, not a warning.
 
 Never claim that the repository is improved merely because the code looks cleaner. Claims require test or benchmark evidence.
 

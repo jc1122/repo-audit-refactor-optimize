@@ -90,6 +90,29 @@ Store:
 
 Preserve raw outputs from subskills instead of overwriting them with summaries.
 
+## Run Report (required artifact)
+
+Every orchestration run MUST end by writing a run report into the AUDITED repository at:
+
+    docs/audits/<YYYYMMDDTHHMMSSZ>/run_report.json
+    docs/audits/<YYYYMMDDTHHMMSSZ>/run_report.md
+
+(timestamp = run start, UTC, compact ISO). `run_report.json` minimal schema (all keys required):
+
+- `schema_version`: 1
+- `repo_root`: absolute path audited
+- `started_utc`, `finished_utc`: ISO timestamps
+- `orchestrator_skill_version`: this SKILL.md frontmatter version
+- `lanes`: {lane_name: state} from the bootstrap report
+- `findings_totals`: {signal: count} across all diagnosis lanes
+- `backlog`: {"accepted": N, "deferred": N, "coverage_gated": N}
+- `batches`: [{"id", "signal", "files", "result": "accepted"|"discarded", "evidence"}]
+- `verification`: [{"command", "exit_code"}]
+- `warnings`: [str]
+
+`run_report.md` is the human rendering of the same content. A run that did not write both
+files is NOT complete: the Verification stage fails closed on their absence.
+
 ## Coverage Artifact Handoff
 
 The test lane produces a single `coverage.json` (coverage.py JSON format) under its artifact directory. Two consumers depend on it:
