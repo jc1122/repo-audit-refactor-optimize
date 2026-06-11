@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.4.2
+
+SP11 iteration 2 -- wave policy, bootstrap request, and runner config support.
+
+- Pinned the hotspot wave window and counted declared coupling suppressions.
+- Grouped bootstrap report inputs behind `BootstrapReportRequest` while keeping
+  keyword-call compatibility.
+- Updated CI workflow actions to current majors.
+- Added wave-runner forwarding for security audit config files.
+- Ratcheted the wave baseline from 9 to 6 normalized identities.
+
 ## 0.4.1
 
 SP10 T5 -- diagnosis wave scope precision and convergence ratchet.
