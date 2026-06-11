@@ -559,7 +559,8 @@ def _skill_entry(
                 state = "stale_installed"
                 found = discovered_version_str or "unknown"
                 entry_warnings.append(
-                    f"Skill {skill_name} found at {found} < required {min_version_str}; treated as stale_installed."
+                    f"Skill {skill_name} found at {found} < required "
+                    f"{min_version_str}; treated as stale_installed."
                 )
 
         entry.update(
