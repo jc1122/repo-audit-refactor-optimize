@@ -1,11 +1,21 @@
 #!/usr/bin/env python3
-"""Convergence gate: diagnosis wave on this repo, equality-ratcheted against wave_baseline.json."""
+"""Convergence gate: diagnosis wave on this repo.
 
-import argparse, json, os, subprocess, sys
+Equality-ratcheted against `wave_baseline.json`.
+"""
+
+import argparse
+import json
+import os
+import subprocess  # nosec B404: local trusted wave runner
+import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
 BASELINE = Path(__file__).with_name("wave_baseline.json")
+RUNNER_REL = ".claude/skills/repo-audit-refactor-optimize/scripts/run_diagnosis_wave.py"
+DEFAULT_RUNNER = str(Path.home() / RUNNER_REL)
+DEFAULT_SKILLS_ROOT = str(Path.home() / ".claude/skills")
 
 
 def identities(fs):
@@ -16,41 +26,57 @@ def _load_json(path):
     return json.loads(Path(path).read_text(encoding="utf-8"))
 
 
-def main(argv=None):
+def _parse_args(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--snapshot")
     ap.add_argument("--baseline")
-    a = ap.parse_args(argv)
-    if a.snapshot:
-        current = _load_json(a.snapshot)
-    else:
-        runner = os.environ.get(
-            "WAVE_RUNNER",
-            str(Path.home() / ".claude/skills/repo-audit-refactor-optimize/scripts/run_diagnosis_wave.py"),
-        )
-        out = REPO / ".wave_out"
-        subprocess.run(
-            [sys.executable, runner, "--repo", str(REPO), "--out-dir", str(out),
-             "--skills-root", os.environ.get("SKILLS_ROOT", str(Path.home() / ".claude/skills")),
-             "--source-prefix", "scripts"], check=False
-        )
-        current = _load_json(out / "wave_findings.json")
+    return ap.parse_args(argv)
 
-    baseline = _load_json(a.baseline or BASELINE)
+
+def _run_wave():
+    runner = os.environ.get("WAVE_RUNNER", DEFAULT_RUNNER)
+    out = REPO / ".wave_out"
+    cmd = [sys.executable, runner, "--repo", str(REPO), "--out-dir", str(out)]
+    cmd += ["--skills-root", os.environ.get("SKILLS_ROOT", DEFAULT_SKILLS_ROOT)]
+    cmd += ["--source-prefix", "scripts"]
+    # Runner path may come from WAVE_RUNNER; shell stays disabled.
+    subprocess.run(cmd, check=False)  # nosec B603: shell=False
+    return _load_json(out / "wave_findings.json")
+
+
+def _emit(payload):
+    print(json.dumps(payload, indent=2))
+
+
+def _fail(payload):
+    _emit(payload)
+    return 1
+
+
+def _stale_payload(stale):
+    return {
+        "status": "fail",
+        "stale_baseline": sorted(map(list, stale)),
+        "message": f"ratchet: remove them from {BASELINE.name} in the same commit",
+    }
+
+
+def _compare(current, baseline):
     cur, base = identities(current), identities(baseline)
     new, stale = cur - base, base - cur
     if new:
-        print(json.dumps({"status": "fail", "new_findings": sorted(map(list, new))}, indent=2))
-        return 1
+        return _fail({"status": "fail", "new_findings": sorted(map(list, new))})
     if stale:
-        print(json.dumps({
-            "status": "fail",
-            "stale_baseline": sorted(map(list, stale)),
-            "message": f"ratchet: remove them from {BASELINE.name} in the same commit",
-        }, indent=2))
-        return 1
-    print(json.dumps({"status": "pass", "count": len(cur), "baseline": len(base)}, indent=2))
+        return _fail(_stale_payload(stale))
+    _emit({"status": "pass", "count": len(cur), "baseline": len(base)})
     return 0
+
+
+def main(argv=None):
+    args = _parse_args(argv)
+    current = _load_json(args.snapshot) if args.snapshot else _run_wave()
+    baseline = _load_json(args.baseline or BASELINE)
+    return _compare(current, baseline)
 
 
 if __name__ == "__main__":

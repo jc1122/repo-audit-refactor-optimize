@@ -5,26 +5,32 @@ from __future__ import annotations
 
 import argparse
 import json
-import subprocess
+import subprocess  # nosec B404: intentional execution of configured leaves
 import sys
+from collections.abc import Iterable
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 
 LANES = {
-    "code-health": (
-        "code-health-audit-pipeline/scripts/code_health_pipeline.py",
-        "prefixes",
-    ),
-    "security": ("security-audit/scripts/security_audit.py", "prefixes"),
-    "hygiene": ("repo-hygiene-audit/scripts/repo_hygiene_audit.py", "none"),
-    "docs": (
-        "docs-consistency-audit/scripts/docs_consistency_audit.py",
-        "living-docs",
-    ),
-    "dependency": ("dependency-audit/scripts/dependency_audit.py", "prefixes"),
-    "hotspot": ("hotspot-audit/scripts/hotspot_audit.py", "rev"),
+    "code-health": "code-health-audit-pipeline/scripts/code_health_pipeline.py",
+    "security": "security-audit/scripts/security_audit.py",
+    "hygiene": "repo-hygiene-audit/scripts/repo_hygiene_audit.py",
+    "docs": "docs-consistency-audit/scripts/docs_consistency_audit.py",
+    "dependency": "dependency-audit/scripts/dependency_audit.py",
+    "hotspot": "hotspot-audit/scripts/hotspot_audit.py",
 }
+DOC_EXCLUDES = ("audits", "dogfood", "plans")
+
+
+@dataclass(frozen=True)
+class _LaneContext:
+    repo: Path
+    out_root: Path
+    source_prefixes: list[str]
+    rev: str | None
+    coverage_json: Path | None
 
 
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -51,41 +57,49 @@ def _selected_lanes(raw_csv: str | None) -> tuple[list[str], list[str]]:
 
 def _leaf_supports_exclude_prefix(leaf: Path) -> bool:
     try:
-        proc = subprocess.run(
-            [sys.executable, str(leaf), "--help"],
-            check=False,
-            capture_output=True,
-            text=True,
+        cmd = [sys.executable, str(leaf), "--help"]
+        proc = subprocess.run(  # nosec B603: shell=False and trusted leaf path
+            cmd, check=False, capture_output=True, text=True
         )
     except OSError:
         return False
-    return "--exclude-prefix" in (proc.stdout or "") or "--exclude-prefix" in (
-        proc.stderr or ""
-    )
+    help_text = f"{proc.stdout or ''}{proc.stderr or ''}"
+    return "--exclude-prefix" in help_text
 
 
 def _doc_prefixes(repo: Path) -> list[str]:
-    includes = ["README.md", "SKILL.md", "CHANGELOG.md", "references", "agents", "scripts"]
+    includes = list(
+        ("README.md", "SKILL.md", "CHANGELOG.md") + ("references", "agents", "scripts")
+    )
     docs_dir = repo / "docs"
     if docs_dir.exists():
-        for child in sorted(docs_dir.iterdir(), key=lambda p: p.name):
-            if child.name in {"audits", "dogfood", "plans"}:
-                continue
-            includes.append(str(Path("docs") / child.name))
+        includes.extend(
+            str(Path("docs") / child.name)
+            for child in sorted(docs_dir.iterdir(), key=lambda p: p.name)
+            if child.name not in DOC_EXCLUDES
+        )
     return includes
 
 
+def _string_value(value: Any, fallback: Any = "") -> str:
+    if isinstance(value, str):
+        return value
+    return fallback if isinstance(fallback, str) else ""
+
+
 def _normalize_finding(finding: dict[str, Any], lane: str) -> dict[str, str]:
-    location = finding.get("location") if isinstance(finding.get("location"), dict) else {}
+    location = finding.get("location")
+    if not isinstance(location, dict):
+        location = {}
     metric = finding.get("metric")
     if isinstance(metric, dict):
         metric = metric.get("name")
     if metric is None:
         metric = finding.get("signal", "")
     return {
-        "leaf": finding.get("leaf") or lane,
-        "path": finding.get("path") or location.get("path") or "",
-        "symbol": location.get("symbol") or finding.get("symbol") or "",
+        "leaf": _string_value(finding.get("leaf"), lane),
+        "path": _string_value(finding.get("path"), location.get("path", "")),
+        "symbol": _string_value(finding.get("symbol"), location.get("symbol", "")),
         "metric": "" if metric is None else str(metric),
     }
 
@@ -99,7 +113,9 @@ def _read_findings_file(path: Path, lane: str) -> list[dict[str, str]]:
         payload = payload.get("findings", [])
     if not isinstance(payload, list):
         return []
-    return [_normalize_finding(item, lane) for item in payload if isinstance(item, dict)]
+    return [
+        _normalize_finding(item, lane) for item in payload if isinstance(item, dict)
+    ]
 
 
 def _collect_lane_findings(lane_dir: Path, lane: str) -> list[dict[str, str]]:
@@ -112,111 +128,120 @@ def _collect_lane_findings(lane_dir: Path, lane: str) -> list[dict[str, str]]:
     return findings
 
 
+def _append_flagged(cmd: list[str], flag: str, values: Iterable[str]) -> None:
+    for value in values:
+        cmd.extend([flag, value])
+
+
+def _append_scope_args(
+    cmd: list[str],
+    lane: str,
+    leaf: Path,
+    context: _LaneContext,
+) -> None:
+    if lane in {"code-health", "security", "dependency"}:
+        _append_flagged(cmd, "--source-prefix", context.source_prefixes)
+    elif lane == "docs":
+        if _leaf_supports_exclude_prefix(leaf):
+            cmd.extend(["--source-prefix", "docs"])
+            excludes = (f"docs/{p}" for p in DOC_EXCLUDES)
+            _append_flagged(cmd, "--exclude-prefix", excludes)
+        else:
+            _append_flagged(cmd, "--source-prefix", _doc_prefixes(context.repo))
+    elif lane == "hotspot" and context.rev is not None:
+        cmd.extend(["--rev", context.rev])
+
+
 def _run_lane(
     lane: str,
-    path: str,
-    args: argparse.Namespace,
-    out_root: Path,
-    repo: Path,
-    source_prefixes: list[str],
+    leaf: Path,
+    context: _LaneContext,
 ) -> tuple[int, list[dict[str, str]]]:
-    lane_out = out_root / lane
+    lane_out = context.out_root / lane
     lane_out.mkdir(parents=True, exist_ok=True)
-    cmd = [sys.executable, path, "--root", str(repo), "--out-dir", str(lane_out)]
-
-    if lane in {"code-health", "security", "dependency"}:
-        for source_prefix in source_prefixes:
-            cmd.extend(["--source-prefix", source_prefix])
-    elif lane == "docs":
-        supports = _leaf_supports_exclude_prefix(Path(path))
-        if supports:
-            cmd.extend(["--source-prefix", "docs"])
-            for prefix in ["docs/audits", "docs/dogfood", "docs/plans"]:
-                cmd.extend(["--exclude-prefix", prefix])
-        else:
-            for prefix in _doc_prefixes(repo):
-                cmd.extend(["--source-prefix", prefix])
-    elif lane == "hotspot" and args.rev:
-        cmd.extend(["--rev", args.rev])
-    if lane == "code-health" and args.coverage_json is not None:
-        cmd.extend(["--coverage-json", str(args.coverage_json)])
+    cmd = [
+        sys.executable,
+        str(leaf),
+        "--root",
+        str(context.repo),
+        "--out-dir",
+        str(lane_out),
+    ]
+    _append_scope_args(cmd, lane, leaf, context)
+    if lane == "code-health" and context.coverage_json is not None:
+        cmd.extend(["--coverage-json", str(context.coverage_json)])
 
     try:
-        proc = subprocess.run(cmd, check=False, capture_output=True, text=True)
-        exit_code = proc.returncode
+        exit_code = subprocess.run(  # nosec B603: shell=False
+            cmd, check=False, capture_output=True, text=True
+        ).returncode
     except OSError:
-        return 2, []
-
+        exit_code = 2
     return exit_code, _collect_lane_findings(lane_out, lane)
 
 
 def _status_for_exit(exit_code: int) -> str:
-    if exit_code == 0:
-        return "ok"
-    if exit_code == 1:
-        return "findings"
-    return "error"
+    return {0: "ok", 1: "findings"}.get(exit_code, "error")
 
 
-def main(argv: list[str] | None = None) -> int:
-    args = _parse_args(argv)
-    selected, unknown = _selected_lanes(args.lanes)
-    if unknown:
-        print(
-            json.dumps(
-                {"status": "error", "error": "Unknown lane(s)", "lanes": unknown},
-                sort_keys=True,
-            )
-        )
-        return 2
-
-    repo = args.repo
-    out_root = args.out_dir
-    out_root.mkdir(parents=True, exist_ok=True)
-
+def _run_wave(
+    selected: list[str],
+    skills_root: Path,
+    context: _LaneContext,
+) -> tuple[int, dict[str, dict[str, Any]], list[dict[str, str]]]:
     summary: dict[str, dict[str, Any]] = {}
     wave_findings: list[dict[str, str]] = []
     wave_exit = 0
 
     for lane in selected:
-        path_rel, _scope = LANES[lane]
-        leaf = args.skills_root / path_rel
+        leaf = skills_root / LANES[lane]
         if not leaf.exists():
             summary[lane] = {"exit": 2, "status": "error", "findings": 0}
             wave_exit = 1
             continue
 
-        exit_code, findings = _run_lane(
-            lane,
-            str(leaf),
-            args,
-            out_root,
-            repo,
-            args.source_prefix,
-        )
+        exit_code, findings = _run_lane(lane, leaf, context)
         summary[lane] = {
             "exit": exit_code,
             "status": _status_for_exit(exit_code),
             "findings": len(findings),
         }
         wave_findings.extend(findings)
-
         if exit_code >= 2:
             wave_exit = 1
 
-    (out_root / "wave_summary.json").write_text(
-        json.dumps(summary, indent=2), encoding="utf-8"
-    )
-    (out_root / "wave_findings.json").write_text(
-        json.dumps(wave_findings, indent=2), encoding="utf-8"
-    )
-    print(
-        json.dumps(
-            {"status": "ok" if wave_exit == 0 else "error", "summary": summary},
-            sort_keys=True,
-        )
-    )
+    return wave_exit, summary, wave_findings
+
+
+def _write_wave_outputs(
+    out_root: Path,
+    wave_exit: int,
+    summary: dict[str, dict[str, Any]],
+    wave_findings: list[dict[str, str]],
+) -> int:
+    summary_path = out_root / "wave_summary.json"
+    findings_path = out_root / "wave_findings.json"
+    summary_path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
+    findings_path.write_text(json.dumps(wave_findings, indent=2), encoding="utf-8")
+    payload = {"status": "ok" if wave_exit == 0 else "error", "summary": summary}
+    print(json.dumps(payload, sort_keys=True))
     return wave_exit
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = _parse_args(argv)
+    selected, unknown = _selected_lanes(args.lanes)
+    if unknown:
+        payload = {"status": "error", "error": "Unknown lane(s)", "lanes": unknown}
+        print(json.dumps(payload, sort_keys=True))
+        return 2
+
+    args.out_dir.mkdir(parents=True, exist_ok=True)
+    context = _LaneContext(
+        args.repo, args.out_dir, args.source_prefix, args.rev, args.coverage_json
+    )
+    run = _run_wave(selected, args.skills_root, context)
+    return _write_wave_outputs(args.out_dir, *run)
 
 
 if __name__ == "__main__":
