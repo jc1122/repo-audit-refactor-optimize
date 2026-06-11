@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.4.1
+
+SP10 T5 -- diagnosis wave scope precision and convergence ratchet.
+
+- Excludes historical `docs/superpowers` plan/spec files from living-doc
+  diagnosis scope.
+- Ratcheted the wave baseline from 13 to 9 after v0.5.1 entrypoint module-MI
+  relaxation dissolved CLI script module-MI rows.
+
 ## 0.4.0
 
 SP9 K3-T4 -- checkpoint/docs brevity pass and diagnosis orchestration updates.
