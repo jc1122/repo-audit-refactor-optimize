@@ -35,6 +35,21 @@ Source: live SP9 K3 wave artifact, normalized and sorted into `scripts/wave_base
   `build_bootstrap_report` `parameter_count`.
 - Current baseline has 6 normalized identities.
 
+## SP11 iteration 2 C-6 hotspot re-anchor
+
+- Ratchet timestamp: 2026-06-11T22:18:00Z
+- Advanced `scripts/wave_anchor.txt` to
+  `5fe3b5bd9838bb62617d3466820dc57944750ca6`.
+- Added declared coupling pairs for the release ledger
+  `CHANGELOG.md<->SKILL.md` and the ratchet ledger
+  `scripts/wave_baseline.json<->scripts/wave_frozen.md`; both are counted by
+  the hotspot leaf under `declared_coupling`.
+- Re-anchor surfaced one loop-induced churn row on
+  `scripts/run_diagnosis_wave.py` from the accepted security-config forwarding
+  work. Per SP11 pre-flight rule 5, it is recorded as real re-anchor residue
+  for the next iteration rather than hidden or treated as unfixable growth.
+- Current baseline has 7 normalized identities.
+
 | Row | Finding | Class | Justification | Expires |
 |---:|---|---|---|---|
 | 1 | complexity `scripts/_bootstrap_report.py` `maintainability_index` for `<module>` | `deferred-structural` | K3 already split bootstrap report assembly out of the bootstrap checker while preserving public JSON, Markdown, and test contracts; remaining module-level decomposition is future structural work, not a mechanical SP9 K3 fix. | post-v0.5.x decomposition |
@@ -43,3 +58,4 @@ Source: live SP9 K3 wave artifact, normalized and sorted into `scripts/wave_base
 | 4 | hotspot `scripts/check_skill_requirements.py` `churn_complexity_product` for `scripts/check_skill_requirements.py` | `deferred-structural` | The checker remains a historically high-churn orchestration surface after the K3 split; further reduction crosses CLI and bootstrap contracts and belongs in future decomposition. | post-v0.5.x decomposition |
 | 5 | hotspot `scripts/skill_bootstrap_manifest.json` `churn_complexity_product` for `scripts/skill_bootstrap_manifest.json` | `deferred-structural` | The manifest is central configuration with expected release churn; changes should be evaluated during convergence rather than as a K3 mechanical fix. | v0.5.1 convergence review |
 | 6 | hotspot `tests/test_check_skill_requirements.py` `churn_complexity_product` for `tests/test_check_skill_requirements.py` | `deferred-structural` | The checker test suite is intentionally high-churn while contract behavior stabilizes; broader test decomposition is deferred until after convergence. | v0.5.1 convergence review |
+| 7 | hotspot `scripts/run_diagnosis_wave.py` `churn_complexity_product` for `scripts/run_diagnosis_wave.py` | `loop-reanchor-residue` | The iteration accepted runner changes to forward security and hotspot configs, pushing the file over the hotspot churn threshold at the new anchor. The row is real and remains in the baseline for the next structural visit. | SP11 iteration 3 |

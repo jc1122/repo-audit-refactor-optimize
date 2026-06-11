@@ -7,6 +7,14 @@
     [
       "scripts/skill_bootstrap_manifest.json",
       "tests/test_check_skill_requirements.py"
+    ],
+    [
+      "CHANGELOG.md",
+      "SKILL.md"
+    ],
+    [
+      "scripts/wave_baseline.json",
+      "scripts/wave_frozen.md"
     ]
   ]
 }
