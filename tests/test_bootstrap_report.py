@@ -83,6 +83,40 @@ def test_build_bootstrap_report_happy_path(tmp_path: Path) -> None:
     assert (bootstrap_dir / "install_plan.md").exists()
 
 
+def test_build_bootstrap_report_accepts_request_object(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    (repo / "src").mkdir(parents=True)
+    (repo / "src" / "app.py").write_text("print('ok')\n", encoding="utf-8")
+
+    agents_skills = tmp_path / ".agents" / "skills"
+    write_skill(agents_skills, "demo-skill")
+
+    manifest_path = tmp_path / "manifest.json"
+    write_manifest(manifest_path, _minimal_manifest())
+
+    request = boot.BootstrapReportRequest(
+        repo_root=repo,
+        manifest_path=manifest_path,
+        out_dir=tmp_path / "out",
+        env={"HOME": str(tmp_path)},
+    )
+
+    report = boot.build_bootstrap_report(request)
+
+    assert report["lanes"]["demo-lane"]["state"] == "full"
+
+
+def test_build_bootstrap_report_rejects_request_plus_kwargs(tmp_path: Path) -> None:
+    request = boot.BootstrapReportRequest(
+        repo_root=tmp_path / "repo",
+        manifest_path=tmp_path / "manifest.json",
+        out_dir=tmp_path / "out",
+    )
+
+    with pytest.raises(TypeError, match="either a BootstrapReportRequest"):
+        boot.build_bootstrap_report(request, env={"HOME": str(tmp_path)})
+
+
 def test_build_bootstrap_report_missing_repo_raises(tmp_path: Path) -> None:
     manifest_path = tmp_path / "manifest.json"
     write_manifest(manifest_path, _minimal_manifest())

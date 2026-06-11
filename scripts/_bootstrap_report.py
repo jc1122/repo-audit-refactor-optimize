@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 import json
 import os
 from pathlib import Path
@@ -128,6 +129,36 @@ class _BuildBootstrapOptions(TypedDict):
     user_override_path: Path | None
     repo_override_path: Path | None
     required_skill_names: list[str] | None
+
+
+@dataclass(frozen=True)
+class BootstrapReportRequest:
+    """Inputs required to build a bootstrap report."""
+
+    repo_root: Path
+    manifest_path: Path
+    out_dir: Path
+    env: dict[str, str] | None = None
+    extra_roots: list[Path] | None = None
+    foreign_roots: list[Path] | None = None
+    user_override_path: Path | None = None
+    repo_override_path: Path | None = None
+    required_skill_names: list[str] | None = None
+
+
+def _coerce_bootstrap_report_request(
+    request: BootstrapReportRequest | None,
+    kwargs: dict[str, Any],
+) -> BootstrapReportRequest:
+    if request is not None:
+        if kwargs:
+            names = ", ".join(sorted(kwargs))
+            raise TypeError(
+                "build_bootstrap_report accepts either a BootstrapReportRequest "
+                f"or keyword arguments, not both: {names}"
+            )
+        return request
+    return BootstrapReportRequest(**kwargs)
 
 
 def _has_any_keyword(text: str, keywords: tuple[str, ...]) -> bool:
@@ -455,32 +486,25 @@ def _build_bootstrap_report_payload(
 
 
 def build_bootstrap_report(
-    *,
-    repo_root: Path,
-    manifest_path: Path,
-    out_dir: Path,
-    env: dict[str, str] | None = None,
-    extra_roots: list[Path] | None = None,
-    foreign_roots: list[Path] | None = None,
-    user_override_path: Path | None = None,
-    repo_override_path: Path | None = None,
-    required_skill_names: list[str] | None = None,
+    request: BootstrapReportRequest | None = None,
+    **kwargs: Any,
 ) -> dict[str, Any]:
     """Build the full bootstrap report for a repository."""
-    repo_root = _normalize_repo_root(repo_root)
-    manifest = load_dependency_manifest(manifest_path)
+    request = _coerce_bootstrap_report_request(request, kwargs)
+    repo_root = _normalize_repo_root(request.repo_root)
+    manifest = load_dependency_manifest(request.manifest_path)
     return _build_bootstrap_report_payload(
         repo_root,
         manifest,
-        out_dir.resolve(),
+        request.out_dir.resolve(),
         scan_repo_profile(repo_root),
         {
-            "env": env,
-            "extra_roots": extra_roots,
-            "foreign_roots": foreign_roots,
-            "user_override_path": user_override_path,
-            "repo_override_path": repo_override_path,
-            "required_skill_names": required_skill_names,
+            "env": request.env,
+            "extra_roots": request.extra_roots,
+            "foreign_roots": request.foreign_roots,
+            "user_override_path": request.user_override_path,
+            "repo_override_path": request.repo_override_path,
+            "required_skill_names": request.required_skill_names,
         },
     )
 
