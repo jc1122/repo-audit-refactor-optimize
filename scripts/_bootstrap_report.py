@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
-from typing import Any
+from typing import Any, TypedDict
 
 from scripts._lane_resolve import (
     KNOWN_LANGUAGES,
@@ -88,6 +88,46 @@ _BENCH_SURFACE: dict[str, str] = {
     ".S": "native-benchmarks",
     ".asm": "native-benchmarks",
 }
+
+
+class _CollectDiscoveryInput(TypedDict):
+    env: dict[str, str] | None
+    active_skills: set[str]
+    strict_skills: set[str]
+    user_override_path: Path | None
+    repo_override_path: Path | None
+    extra_roots: list[Path] | None
+    foreign_roots: list[Path] | None
+
+
+class _CollectDiscoveryOutput(TypedDict):
+    warnings: list[str]
+    roots: dict[str, list[dict[str, str]]]
+    merged_skills: dict[str, dict[str, Any]]
+    unreferenced_skills: list[str]
+
+
+class _ReportPayloadContext(TypedDict):
+    repo_root: Path
+    out_dir: Path
+    profile: dict[str, Any]
+    active_lanes: list[str]
+    strict_skills: set[str]
+    roots: dict[str, list[dict[str, str]]]
+    warnings: list[str]
+    merged_skills: dict[str, dict[str, Any]]
+    lanes: dict[str, dict[str, Any]]
+    install_candidates: list[dict[str, Any]]
+    unreferenced_skills: list[str]
+
+
+class _BuildBootstrapOptions(TypedDict):
+    env: dict[str, str] | None
+    extra_roots: list[Path] | None
+    foreign_roots: list[Path] | None
+    user_override_path: Path | None
+    repo_override_path: Path | None
+    required_skill_names: list[str] | None
 
 
 def _has_any_keyword(text: str, keywords: tuple[str, ...]) -> bool:
@@ -225,6 +265,195 @@ def scan_repo_profile(repo_root: Path) -> dict[str, Any]:
     }
 
 
+def _normalize_repo_root(repo_root: Path) -> Path:
+    """Normalize and validate repository root path."""
+    normalized_root = repo_root.resolve()
+    if not normalized_root.exists():
+        raise ValueError(f"Repository root does not exist: {normalized_root}")
+    if not normalized_root.is_dir():
+        raise ValueError(f"Repository root is not a directory: {normalized_root}")
+    return normalized_root
+
+
+def _collect_active_skills(
+    profile: dict[str, Any],
+    manifest: dict[str, Any],
+    required_skill_names: list[str] | None,
+) -> tuple[list[str], set[str], set[str]]:
+    """Collect lane activity and active/strict skill names."""
+    active_lanes = _relevant_lane_names(profile, manifest)
+    active_skills, strict_skills = _collect_active_and_strict_skills(
+        active_lanes,
+        manifest,
+        required_skill_names,
+    )
+    return active_lanes, active_skills, strict_skills
+
+
+def _collect_discovery_inputs(
+    repo_root: Path,
+    manifest: dict[str, Any],
+    options: _CollectDiscoveryInput,
+) -> _CollectDiscoveryOutput:
+    """Collect all skill roots, discovered names, and warnings."""
+    overrides, warnings = load_source_overrides(
+        repo_root=repo_root,
+        env=options["env"],
+        active_skill_names=options["active_skills"],
+        strict_skill_names=options["strict_skills"],
+        user_override_path=options["user_override_path"],
+        repo_override_path=options["repo_override_path"],
+    )
+    roots = resolve_skill_roots(
+        repo_root,
+        extra_roots=options["extra_roots"],
+        foreign_roots=options["foreign_roots"],
+        env=options["env"],
+    )
+    usable_skills = _discover_skills(roots["usable_roots"])
+    advisory_skills = _discover_skills(roots["advisory_roots"])
+    unreferenced_skills = sorted(
+        set(usable_skills) - set(manifest["skills"])
+    )
+    merged_skills = _build_merged_skills(
+        options["active_skills"],
+        manifest,
+        overrides,
+        usable_skills,
+        advisory_skills,
+    )
+    return {
+        "warnings": warnings,
+        "roots": roots,
+        "merged_skills": merged_skills,
+        "unreferenced_skills": unreferenced_skills,
+    }
+
+
+def _bootstrap_report_payload(context: _ReportPayloadContext) -> dict[str, Any]:
+    """Build the final bootstrap report payload."""
+    summary = _build_summary(
+        context["lanes"],
+        context["active_lanes"],
+        context["install_candidates"],
+        context["strict_skills"],
+    )
+    return {
+        "repo_root": str(context["repo_root"]),
+        "artifact_root": str(context["out_dir"] / "bootstrap"),
+        "repo_profile": context["profile"],
+        "roots": context["roots"],
+        "skills": context["merged_skills"],
+        "lanes": context["lanes"],
+        "install_candidates": context["install_candidates"],
+        "unreferenced_skills": context["unreferenced_skills"],
+        "summary": summary,
+        "warnings": sorted(set(context["warnings"])),
+    }
+
+
+def _evaluate_lanes(
+    active_lanes: list[str],
+    profile: dict[str, Any],
+    manifest: dict[str, Any],
+    merged_skills: dict[str, dict[str, Any]],
+    warnings: list[str],
+) -> dict[str, dict[str, Any]]:
+    """Evaluate all active lanes and fold lane warnings."""
+    lanes: dict[str, dict[str, Any]] = {}
+    for lane_name in active_lanes:
+        lane = _evaluate_lane(
+            lane_name,
+            manifest["lanes"][lane_name],
+            merged_skills,
+            profile,
+        )
+        lanes[lane_name] = lane
+        warnings.extend(lane["warnings"])
+    return lanes
+
+
+def _collect_skill_warnings(
+    merged_skills: dict[str, Any], warnings: list[str]
+) -> None:
+    """Append warnings from merged skill descriptors."""
+    for skill in merged_skills.values():
+        if "warnings" in skill:
+            warnings.extend(skill["warnings"])
+
+
+def _build_summary(
+    lanes: dict[str, dict[str, Any]],
+    active_lanes: list[str],
+    install_candidates: list[dict[str, Any]],
+    strict_skills: set[str],
+) -> dict[str, Any]:
+    """Build summary fields for the bootstrap report."""
+    stop_before_discovery = any(lane["blocking"] for lane in lanes.values())
+    restart_required = any(
+        item["restart_required"]
+        for item in install_candidates
+        if item["post_install_state"] == "available_next_run"
+        and item["name"] in strict_skills
+    )
+    return {
+        "stop_before_discovery": stop_before_discovery,
+        "restart_required": restart_required,
+        "active_lanes": active_lanes,
+    }
+
+
+def _build_bootstrap_report_payload(
+    repo_root: Path,
+    manifest: dict[str, Any],
+    out_dir: Path,
+    profile: dict[str, Any],
+    options: _BuildBootstrapOptions,
+) -> dict[str, Any]:
+    """Build the core bootstrap report payload."""
+    active_lanes, active_skills, strict_skills = _collect_active_skills(
+        profile, manifest, options["required_skill_names"]
+    )
+    discovery = _collect_discovery_inputs(
+        repo_root,
+        manifest,
+        {
+            "env": options["env"],
+            "active_skills": active_skills,
+            "strict_skills": strict_skills,
+            "user_override_path": options["user_override_path"],
+            "repo_override_path": options["repo_override_path"],
+            "extra_roots": options["extra_roots"],
+            "foreign_roots": options["foreign_roots"],
+        },
+    )
+    lanes = _evaluate_lanes(
+        active_lanes,
+        profile,
+        manifest,
+        discovery["merged_skills"],
+        discovery["warnings"],
+    )
+    _collect_skill_warnings(discovery["merged_skills"], discovery["warnings"])
+    _mark_blocking_skills(lanes, manifest, discovery["merged_skills"])
+    install_candidates = _build_install_candidates(discovery["merged_skills"])
+    return _bootstrap_report_payload(
+        {
+            "repo_root": repo_root,
+            "out_dir": out_dir,
+            "profile": profile,
+            "active_lanes": active_lanes,
+            "strict_skills": strict_skills,
+            "roots": discovery["roots"],
+            "warnings": discovery["warnings"],
+            "merged_skills": discovery["merged_skills"],
+            "lanes": lanes,
+            "install_candidates": install_candidates,
+            "unreferenced_skills": discovery["unreferenced_skills"],
+        }
+    )
+
+
 def build_bootstrap_report(
     *,
     repo_root: Path,
@@ -238,81 +467,22 @@ def build_bootstrap_report(
     required_skill_names: list[str] | None = None,
 ) -> dict[str, Any]:
     """Build the full bootstrap report for a repository."""
-    repo_root = repo_root.resolve()
-    out_dir = out_dir.resolve()
-    if not repo_root.exists():
-        raise ValueError(f"Repository root does not exist: {repo_root}")
-    if not repo_root.is_dir():
-        raise ValueError(f"Repository root is not a directory: {repo_root}")
+    repo_root = _normalize_repo_root(repo_root)
     manifest = load_dependency_manifest(manifest_path)
-    profile = scan_repo_profile(repo_root)
-    active_lanes = _relevant_lane_names(profile, manifest)
-    active_skills, strict_skills = _collect_active_and_strict_skills(
-        active_lanes,
+    return _build_bootstrap_report_payload(
+        repo_root,
         manifest,
-        required_skill_names,
-    )
-
-    overrides, warnings = load_source_overrides(
-        repo_root=repo_root,
-        env=env,
-        active_skill_names=active_skills,
-        strict_skill_names=strict_skills,
-        user_override_path=user_override_path,
-        repo_override_path=repo_override_path,
-    )
-    roots = resolve_skill_roots(
-        repo_root, extra_roots=extra_roots, foreign_roots=foreign_roots, env=env
-    )
-    usable_skills = _discover_skills(roots["usable_roots"])
-    advisory_skills = _discover_skills(roots["advisory_roots"])
-    unreferenced_skills = sorted(
-        set(usable_skills) - set(manifest["skills"])
-    )
-
-    merged_skills = _build_merged_skills(
-        active_skills, manifest, overrides, usable_skills, advisory_skills
-    )
-
-    lanes: dict[str, dict[str, Any]] = {}
-    for lane_name in active_lanes:
-        lanes[lane_name] = _evaluate_lane(
-            lane_name, manifest["lanes"][lane_name], merged_skills, profile
-        )
-        warnings.extend(lanes[lane_name]["warnings"])
-
-    # Fold per-skill entry warnings into the top-level warnings list.
-    for skill in merged_skills.values():
-        if "warnings" in skill:
-            warnings.extend(skill["warnings"])
-
-    _mark_blocking_skills(lanes, manifest, merged_skills)
-    install_candidates = _build_install_candidates(merged_skills)
-
-    stop_before_discovery = any(lane["blocking"] for lane in lanes.values())
-    restart_required = any(
-        item["restart_required"]
-        for item in install_candidates
-        if item["post_install_state"] == "available_next_run"
-        and item["name"] in strict_skills
-    )
-
-    return {
-        "repo_root": str(repo_root),
-        "artifact_root": str(out_dir / "bootstrap"),
-        "repo_profile": profile,
-        "roots": roots,
-        "skills": merged_skills,
-        "lanes": lanes,
-        "install_candidates": install_candidates,
-        "unreferenced_skills": unreferenced_skills,
-        "summary": {
-            "stop_before_discovery": stop_before_discovery,
-            "restart_required": restart_required,
-            "active_lanes": active_lanes,
+        out_dir.resolve(),
+        scan_repo_profile(repo_root),
+        {
+            "env": env,
+            "extra_roots": extra_roots,
+            "foreign_roots": foreign_roots,
+            "user_override_path": user_override_path,
+            "repo_override_path": repo_override_path,
+            "required_skill_names": required_skill_names,
         },
-        "warnings": sorted(set(warnings)),
-    }
+    )
 
 
 def _markdown_report(report: dict[str, Any]) -> str:

@@ -1,152 +1,46 @@
 from __future__ import annotations
 
 import argparse
+import importlib
+import importlib.util
 import json
 import sys
 from pathlib import Path
 
-try:
-    from scripts._skill_probe import (
-        _REQUIRED_SKILL_FIELDS,
-        _discover_skills,
-        _extract_skill_meta,
-        _extract_skill_name,
-        _install_command_for_skill,
-        _parse_version,
-        _register_skill,
-        _scan_skill_root,
-        _scan_skill_subdir,
-        _skill_entry,
-    )
-except ModuleNotFoundError:
-    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-    from scripts._skill_probe import (
-        _REQUIRED_SKILL_FIELDS,
-        _discover_skills,
-        _extract_skill_meta,
-        _extract_skill_name,
-        _install_command_for_skill,
-        _parse_version,
-        _register_skill,
-        _scan_skill_root,
-        _scan_skill_subdir,
-        _skill_entry,
-    )
-try:
-    from scripts._lane_resolve import (
-        CONFIG_DIR_NAME,
-        DEFAULT_REPO_OVERRIDE,
-        KNOWN_LANGUAGES,
-        KNOWN_TEST_SYSTEMS,
-        _LANE_EVALUATORS,
-        _all_usable,
-        _build_install_candidates,
-        _build_merged_skills,
-        _collect_active_and_strict_skills,
-        _default_orchestrator_home,
-        _default_user_override_path,
-        _env_value,
-        _evaluate_bootstrap_lane,
-        _evaluate_code_health_lane,
-        _evaluate_coverage_lane,
-        _evaluate_lane,
-        _evaluate_orchestration_lane,
-        _evaluate_performance_lane,
-        _evaluate_preferred_fallback_lane,
-        _evaluate_test_lane,
-        _home_dir,
-        _is_skill_override_valid,
-        _mark_blocking_skills,
-        _matches_when,
-        _OVERRIDE_SCHEMA,
-        _read_override_payload,
-        _relevant_lane_names,
-        _usable_optionals,
-        load_dependency_manifest,
-        load_source_overrides,
-        resolve_skill_roots,
-    )
-except ModuleNotFoundError:
-    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-    from scripts._lane_resolve import (
-        CONFIG_DIR_NAME,
-        DEFAULT_REPO_OVERRIDE,
-        KNOWN_LANGUAGES,
-        KNOWN_TEST_SYSTEMS,
-        _LANE_EVALUATORS,
-        _all_usable,
-        _build_install_candidates,
-        _build_merged_skills,
-        _collect_active_and_strict_skills,
-        _default_orchestrator_home,
-        _default_user_override_path,
-        _env_value,
-        _evaluate_bootstrap_lane,
-        _evaluate_code_health_lane,
-        _evaluate_coverage_lane,
-        _evaluate_lane,
-        _evaluate_orchestration_lane,
-        _evaluate_performance_lane,
-        _evaluate_preferred_fallback_lane,
-        _evaluate_test_lane,
-        _home_dir,
-        _is_skill_override_valid,
-        _mark_blocking_skills,
-        _matches_when,
-        _OVERRIDE_SCHEMA,
-        _read_override_payload,
-        _relevant_lane_names,
-        _usable_optionals,
-        load_dependency_manifest,
-        load_source_overrides,
-        resolve_skill_roots,
-    )
 
-try:
-    from scripts._bootstrap_report import (
-        SKIP_DIRS,
-        _BENCH_NAME_KW,
-        _BENCH_PATH_KW,
-        _BENCH_SURFACE,
-        _LANG_MAP,
-        _benchmark_surface,
-        _classify_file_full,
-        _dir_marker_contributions,
-        _has_any_keyword,
-        _has_any_suffix_py,
-        _is_python_test_dir,
-        _markdown_install_plan,
-        _markdown_report,
-        _ordered_list,
-        _path_parts_lower,
-        _pyproject_contributions,
-        build_bootstrap_report,
-        scan_repo_profile,
-        write_bootstrap_outputs,
-    )
-except ModuleNotFoundError:
-    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-    from scripts._bootstrap_report import (
-        SKIP_DIRS,
-        _BENCH_NAME_KW,
-        _BENCH_PATH_KW,
-        _BENCH_SURFACE,
-        _LANG_MAP,
-        _benchmark_surface,
-        _classify_file_full,
-        _dir_marker_contributions,
-        _has_any_keyword,
-        _has_any_suffix_py,
-        _is_python_test_dir,
-        _markdown_install_plan,
-        _markdown_report,
-        _ordered_list,
-        _path_parts_lower,
-        _pyproject_contributions,
-        build_bootstrap_report,
-        scan_repo_profile,
-        write_bootstrap_outputs,
-    )
+def _ensure_scripts_importable() -> None:
+    """Ensure ``import scripts.*`` resolves when running as a standalone file."""
+    if importlib.util.find_spec("scripts"):
+        return
+    repo_root = Path(__file__).resolve().parent.parent
+    sys.path.insert(0, str(repo_root))
+
+
+_RE_EXPORT_MODULES = (
+    "scripts._skill_probe",
+    "scripts._lane_resolve",
+    "scripts._bootstrap_report",
+)
+
+
+_ensure_scripts_importable()
+_BOOTSTRAP_REPORT = importlib.import_module("scripts._bootstrap_report")
+_build_bootstrap_report = _BOOTSTRAP_REPORT.build_bootstrap_report
+_write_bootstrap_outputs = _BOOTSTRAP_REPORT.write_bootstrap_outputs
+
+for _module_name in _RE_EXPORT_MODULES:
+    _module = importlib.import_module(_module_name)
+    for _name in dir(_module):
+        if _name.startswith("__"):
+            continue
+        globals()[_name] = getattr(_module, _name)
+    del _name
+del _module
+del _module_name
+del _ensure_scripts_importable
+del _RE_EXPORT_MODULES
+
+
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Check metaskill bootstrap requirements."
@@ -174,7 +68,7 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 def main(argv: list[str] | None = None) -> int:
     args = _parse_args(argv)
     try:
-        report = build_bootstrap_report(
+        report = _build_bootstrap_report(
             repo_root=args.repo,
             manifest_path=args.manifest,
             out_dir=args.out_dir,
@@ -188,7 +82,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Error: {exc}", file=sys.stderr)
         return 2
 
-    write_bootstrap_outputs(report, args.out_dir)
+    _write_bootstrap_outputs(report, args.out_dir)
     print(json.dumps(report["summary"], indent=2, sort_keys=True))
     return 0
 

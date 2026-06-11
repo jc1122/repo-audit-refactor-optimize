@@ -53,6 +53,87 @@ def _extract_skill_name(skill_path: Path) -> str | None:
     return name
 
 
+def _build_skill_entry_base(
+    skill_name: str, skill_config: dict[str, Any]
+) -> dict[str, Any]:
+    """Build the common fields present in every skill report entry."""
+    return {
+        "name": skill_name,
+        "priority": skill_config["priority"],
+        "source_type": skill_config["source_type"],
+        "install_source": skill_config.get("install_source"),
+        "manual_fallback": skill_config["manual_fallback"],
+        "restart_required_if_installed": skill_config[
+            "restart_required_if_installed"
+        ],
+    }
+
+
+def _validate_skill_entry_fields(
+    skill_name: str, skill_config: dict[str, Any]
+) -> None:
+    for field in _REQUIRED_SKILL_FIELDS:
+        if field not in skill_config:
+            raise ValueError(
+                f"Skill '{skill_name}' is missing required field '{field}'."
+            )
+
+
+def _apply_installable_or_manual_state(entry: dict[str, Any]) -> dict[str, Any]:
+    if _install_command_for_skill(entry):
+        return {
+            **entry,
+            "state": "installable_now",
+            "post_install_state": "available_next_run",
+        }
+    return {**entry, "state": "manual_only"}
+
+
+def _apply_advisory_state(
+    entry: dict[str, Any], advisory: dict[str, Any]
+) -> dict[str, Any]:
+    return {
+        **entry,
+        "state": "advisory_only",
+        "root_kind": advisory["root_kind"],
+        "skill_path": advisory["skill_path"],
+    }
+
+
+def _evaluate_installed_skill(
+    skill_name: str,
+    skill_config: dict[str, Any],
+    discovered: dict[str, Any],
+) -> dict[str, Any]:
+    min_version_str = skill_config.get("min_version")
+    discovered_version_str = discovered.get("version")
+    state = "usable_now"
+    entry_warnings: list[str] = []
+
+    if min_version_str is not None:
+        min_ver = _parse_version(min_version_str)
+        disc_ver = _parse_version(discovered_version_str)
+        if disc_ver < min_ver:
+            state = "stale_installed"
+            found = discovered_version_str or "unknown"
+            entry_warnings.append(
+                f"Skill {skill_name} found at {found} < required "
+                f"{min_version_str}; treated as stale_installed."
+            )
+
+    entry = {
+        "state": state,
+        "root_kind": discovered["root_kind"],
+        "skill_path": discovered["skill_path"],
+    }
+    if min_version_str is not None:
+        entry["min_version"] = min_version_str
+        entry["found_version"] = discovered_version_str or "unknown"
+    if entry_warnings:
+        entry["warnings"] = entry_warnings
+    return entry
+
+
 def _scan_skill_subdir(
     sub_path: Path,
     root: dict[str, str],
@@ -126,69 +207,18 @@ def _skill_entry(
     usable_skills: dict[str, dict[str, Any]],
     advisory_skills: dict[str, dict[str, Any]],
 ) -> dict[str, Any]:
-    for field in _REQUIRED_SKILL_FIELDS:
-        if field not in skill_config:
-            raise ValueError(
-                f"Skill '{skill_name}' is missing required field '{field}'."
-            )
-    entry = {
-        "name": skill_name,
-        "priority": skill_config["priority"],
-        "source_type": skill_config["source_type"],
-        "install_source": skill_config.get("install_source"),
-        "manual_fallback": skill_config["manual_fallback"],
-        "restart_required_if_installed": skill_config["restart_required_if_installed"],
-    }
-
+    _validate_skill_entry_fields(skill_name, skill_config)
+    entry = _build_skill_entry_base(skill_name, skill_config)
     if skill_name in usable_skills:
-        discovered = usable_skills[skill_name]
-        state: str = "usable_now"
-        entry_warnings: list[str] = []
-        min_version_str = skill_config.get("min_version")
-        discovered_version_str = discovered.get("version")
-
-        if min_version_str is not None:
-            min_ver = _parse_version(min_version_str)
-            disc_ver = _parse_version(discovered_version_str)
-            if disc_ver < min_ver:
-                state = "stale_installed"
-                found = discovered_version_str or "unknown"
-                entry_warnings.append(
-                    f"Skill {skill_name} found at {found} < required "
-                    f"{min_version_str}; treated as stale_installed."
-                )
-
-        entry.update(
-            {
-                "state": state,
-                "root_kind": discovered["root_kind"],
-                "skill_path": discovered["skill_path"],
-            }
-        )
-        if min_version_str is not None:
-            entry["min_version"] = min_version_str
-            entry["found_version"] = discovered_version_str or "unknown"
-        if entry_warnings:
-            entry["warnings"] = entry_warnings
-    elif skill_name in advisory_skills:
-        discovered = advisory_skills[skill_name]
-        entry.update(
-            {
-                "state": "advisory_only",
-                "root_kind": discovered["root_kind"],
-                "skill_path": discovered["skill_path"],
-            }
-        )
-    elif _install_command_for_skill(entry):
-        entry.update(
-            {
-                "state": "installable_now",
-                "post_install_state": "available_next_run",
-            }
-        )
-    else:
-        entry["state"] = "manual_only"
-    return entry
+        return {
+            **entry,
+            **_evaluate_installed_skill(
+                skill_name, skill_config, usable_skills[skill_name]
+            ),
+        }
+    if skill_name in advisory_skills:
+        return _apply_advisory_state(entry, advisory_skills[skill_name])
+    return _apply_installable_or_manual_state(entry)
 
 
 def _install_command_for_skill(skill: dict[str, Any]) -> str | None:

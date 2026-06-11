@@ -3,9 +3,13 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
-from typing import Any
+from typing import Any, TypedDict
 
-from scripts._skill_probe import _REQUIRED_SKILL_FIELDS, _install_command_for_skill, _skill_entry
+from scripts._skill_probe import (
+    _REQUIRED_SKILL_FIELDS,
+    _install_command_for_skill,
+    _skill_entry,
+)
 
 
 CONFIG_DIR_NAME = "repo-audit-refactor-optimize"
@@ -47,6 +51,15 @@ def _default_orchestrator_home(env: dict[str, str] | None) -> Path:
     if codex_home:
         return Path(codex_home).expanduser()
     return _home_dir(env) / ".codex"
+
+
+class SourceOverrideRequest(TypedDict, total=True):
+    repo_root: Path
+    env: dict[str, str] | None
+    active_skill_names: set[str]
+    strict_skill_names: set[str]
+    user_override_path: Path | None
+    repo_override_path: Path | None
 
 
 def resolve_skill_roots(
@@ -138,14 +151,16 @@ def _read_override_payload(scope: str, path: Path) -> dict[str, Any]:
 
 
 def load_source_overrides(
-    *,
-    repo_root: Path,
-    env: dict[str, str] | None,
-    active_skill_names: set[str],
-    strict_skill_names: set[str],
-    user_override_path: Path | None = None,
-    repo_override_path: Path | None = None,
+    request: SourceOverrideRequest | None = None,
+    **kwargs: Any,
 ) -> tuple[dict[str, dict[str, Any]], list[str]]:
+    values: dict[str, Any] = dict(request or {}, **kwargs)
+    repo_root = values["repo_root"]
+    env = values["env"]
+    active_skill_names = values["active_skill_names"]
+    strict_skill_names = values["strict_skill_names"]
+    user_override_path = values.get("user_override_path")
+    repo_override_path = values.get("repo_override_path")
     warnings: list[str] = []
     merged: dict[str, dict[str, Any]] = {}
     sources = [
