@@ -51,6 +51,22 @@ Run independent lanes in parallel only after Bootstrap and Discovery are complet
 
 Bootstrap and Discovery form a sequential barrier. All diagnosis lanes must wait for both artifacts. Once available, dispatch lanes concurrently — they read shared files but do not write.
 
+### Diagnosis Wave Runner
+
+When installed leaves are available, prefer running one deterministic wave:
+
+```bash
+python3 scripts/run_diagnosis_wave.py --repo <repo> --out-dir <diagnose-dir> --skills-root <skills-root> --lanes code-health,security,hygiene,docs,dependency,hotspot
+```
+
+The wave emits:
+
+- `wave_findings.json` (merged findings for all requested lanes)
+- `wave_summary.json` (lane completion states)
+- per-lane output folders: `code-health/`, `security/`, `hygiene/`, `docs/`, `dependency/`, `hotspot/`
+
+Use `--coverage-json` when present in the test artifact so code-health can run artifact-gated checks.
+
 ### Parallelism Rules
 
 Allow parallel execution when:

@@ -83,6 +83,12 @@ Once bootstrap and discovery artifacts are available, dispatch independent diagn
 
 Activate only the lanes that match the repository profile and the bootstrap result.
 
+Use the deterministic wave when installed diagnosis leaves are available:
+
+- `python3 scripts/run_diagnosis_wave.py --repo <repo> --out-dir <diag-dir> --skills-root <skills-root> --lanes code-health,security,hygiene,docs,dependency,hotspot`
+- Pass `--coverage-json` from the test lane to enable coverage-gated findings in the code-health lane.
+- Script output includes `wave_findings.json`, `wave_summary.json`, and one per-lane directory.
+
 ### Test Lane
 
 Use:
