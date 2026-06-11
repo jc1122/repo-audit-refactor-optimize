@@ -31,6 +31,7 @@ class _LaneContext:
     source_prefixes: list[str]
     rev: str | None
     coverage_json: Path | None
+    security_config: Path | None
     hotspot_config: Path | None
 
 
@@ -42,6 +43,7 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--source-prefix", action="append", default=[])
     parser.add_argument("--coverage-json", type=Path)
     parser.add_argument("--rev")
+    parser.add_argument("--security-config", type=Path)
     parser.add_argument("--hotspot-config", type=Path)
     parser.add_argument("--lanes")
     return parser.parse_args(argv)
@@ -155,6 +157,8 @@ def _append_scope_args(
             cmd.extend(["--rev", context.rev])
         if context.hotspot_config is not None:
             cmd.extend(["--config", str(context.hotspot_config)])
+    if lane == "security" and context.security_config is not None:
+        cmd.extend(["--config", str(context.security_config)])
 
 
 def _run_lane(
@@ -248,6 +252,7 @@ def main(argv: list[str] | None = None) -> int:
         args.source_prefix,
         args.rev,
         args.coverage_json,
+        args.security_config,
         args.hotspot_config,
     )
     run = _run_wave(selected, args.skills_root, context)

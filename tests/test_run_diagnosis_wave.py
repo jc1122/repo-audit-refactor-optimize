@@ -332,3 +332,43 @@ def test_hotspot_config_is_forwarded_to_hotspot_lane(tmp_path: Path) -> None:
     assert argv[argv.index("--rev") + 1] == "abc123"
     assert "--config" in argv
     assert argv[argv.index("--config") + 1] == str(config)
+
+
+def test_security_config_is_forwarded_to_security_lane(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    _prepare_repo_root(repo)
+    config = repo / "scripts" / "security_config.json"
+    config.write_text('{"trusted_subprocess": {"enabled": true}}\n', encoding="utf-8")
+
+    skills_root = tmp_path / "skills"
+    security = skills_root / "security-audit" / "scripts" / "security_audit.py"
+    _make_fake_leaf_with_findings(
+        security,
+        "security_findings.json",
+        [],
+        0,
+        write_argv=True,
+    )
+
+    out_dir = tmp_path / "wave"
+    assert (
+        mod.main(
+            [
+                "--repo",
+                str(repo),
+                "--out-dir",
+                str(out_dir),
+                "--skills-root",
+                str(skills_root),
+                "--lanes",
+                "security",
+                "--security-config",
+                str(config),
+            ]
+        )
+        == 0
+    )
+
+    argv = json.loads((out_dir / "security" / "argv.json").read_text(encoding="utf-8"))
+    assert "--config" in argv
+    assert argv[argv.index("--config") + 1] == str(config)

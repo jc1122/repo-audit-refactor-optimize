@@ -14,6 +14,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[1]
 BASELINE = Path(__file__).with_name("wave_baseline.json")
 WAVE_ANCHOR = Path(__file__).with_name("wave_anchor.txt")
+SECURITY_CONFIG = Path(__file__).with_name("security_audit_config.json")
 HOTSPOT_CONFIG = Path(__file__).with_name("hotspot_audit_config.json")
 RUNNER_REL = ".claude/skills/repo-audit-refactor-optimize/scripts/run_diagnosis_wave.py"
 DEFAULT_RUNNER = str(Path.home() / RUNNER_REL)
@@ -46,6 +47,11 @@ def _run_wave():
         rev = WAVE_ANCHOR.read_text(encoding="utf-8").strip()
     if rev:
         cmd += ["--rev", rev]
+    security_config = os.environ.get("SECURITY_CONFIG")
+    if not security_config and SECURITY_CONFIG.exists():
+        security_config = str(SECURITY_CONFIG)
+    if security_config:
+        cmd += ["--security-config", security_config]
     hotspot_config = os.environ.get("HOTSPOT_CONFIG")
     if not hotspot_config and HOTSPOT_CONFIG.exists():
         hotspot_config = str(HOTSPOT_CONFIG)
