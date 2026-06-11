@@ -21,13 +21,7 @@ Load the reference docs on demand:
 
 ## Stage Order
 
-0. Bootstrap.
-1. Discovery.
-2. Diagnosis.
-3. Synthesis.
-4. Execution.
-5. Verification.
-6. Run report write.
+0. Bootstrap. 1. Discovery. 2. Diagnosis. 3. Synthesis. 4. Execution. 5. Verification. 6. Run report write.
 
 ## Stage 0: Bootstrap
 
@@ -39,11 +33,7 @@ python3 scripts/check_skill_requirements.py \
   --out-dir /tmp/repo-audit-refactor-optimize/<repo-name>/<timestamp>
 ```
 
-The checker is deterministic and non-mutating. It reads the manifest and writes:
-
-- `bootstrap/bootstrap_report.json`
-- `bootstrap/bootstrap_report.md`
-- `bootstrap/install_plan.md`
+The checker is deterministic and non-mutating. It reads the manifest and writes `bootstrap/bootstrap_report.json`, `bootstrap/bootstrap_report.md`, and `bootstrap/install_plan.md`.
 
 Rules:
 
@@ -80,32 +70,17 @@ Pass test coverage with `--coverage-json` where supported. Wave output includes 
 
 ## Stage 3: Synthesis
 
-Merge findings into one backlog:
-
-- deduplicate overlaps
-- separate safe cleanup, structural work, and performance work
-- rank by impact, confidence, effort, and risk
-- group into executable batches
+Merge findings into one backlog: deduplicate overlaps, separate cleanup/structural/performance work, rank by impact/confidence/effort/risk, and group executable batches.
 
 ## Stage 4: Execution
 
-Use `references/remediation-playbook.md`. Execute in verified batches:
-
-- apply low-risk cleanup automatically
-- pause on risky API changes or broad rewrites
-- isolate performance work unless evidence supports joint change
-- rebaseline after meaningful batches
+Use `references/remediation-playbook.md`. Execute verified batches: apply low-risk cleanup, pause on risky API or broad rewrites, isolate performance work unless evidence supports joint change, and rebaseline after meaningful batches.
 
 Use `subagent-driven-development` for sequential multi-batch execution; use dispatch parallelism only for independent, non-overlapping subsystems.
 
 ## Stage 5: Verification
 
-Load `references/verification.md`. Before completion:
-
-- rerun smallest sufficient checks first
-- rerun full relevant suite before closing batch
-- compare benchmark deltas with same inputs/methodology
-- separate verified vs unverified claims
+Load `references/verification.md`. Before completion, rerun smallest sufficient checks first, rerun the full relevant suite before closing batch, compare benchmark deltas with the same method, and separate verified from unverified claims.
 
 Use `verification-before-completion` as final gate.
 
