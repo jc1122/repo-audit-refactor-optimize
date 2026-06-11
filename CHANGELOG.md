@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.3
+
+SP11 iteration 3 -- wave runner decomposition.
+
+- Extracted diagnosis-wave finding normalization into scripts/_wave_findings.py.
+- Ratcheted the wave baseline from 7 to 6 normalized identities by removing the
+  loop-induced run_diagnosis_wave.py churn row after the helper extraction.
+
 ## 0.4.2
 
 SP11 iteration 2 -- wave policy, bootstrap request, and runner config support.
