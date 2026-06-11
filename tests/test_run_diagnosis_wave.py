@@ -186,6 +186,7 @@ def test_docs_living_docs_fallback_scope_no_excludes_flag(tmp_path: Path) -> Non
     (docs_root / "audits").mkdir(parents=True)
     (docs_root / "dogfood").mkdir(parents=True)
     (docs_root / "plans").mkdir(parents=True)
+    (docs_root / "superpowers").mkdir(parents=True)
     (docs_root / "guide").mkdir(parents=True)
 
     skills_root = tmp_path / "skills"
@@ -227,5 +228,63 @@ def test_docs_living_docs_fallback_scope_no_excludes_flag(tmp_path: Path) -> Non
     assert "docs/audits" not in source_prefixes
     assert "docs/dogfood" not in source_prefixes
     assert "docs/plans" not in source_prefixes
+    assert "docs/superpowers" not in source_prefixes
     assert "--exclude-prefix" not in argv
     assert "docs/guide" in source_prefixes
+
+
+def test_docs_living_docs_supporting_excludes_add_superpowers(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    _prepare_repo_root(repo)
+    docs_root = repo / "docs"
+    (docs_root / "audits").mkdir(parents=True)
+    (docs_root / "dogfood").mkdir(parents=True)
+    (docs_root / "plans").mkdir(parents=True)
+    (docs_root / "superpowers").mkdir(parents=True)
+
+    skills_root = tmp_path / "skills"
+    docs_leaf = (
+        skills_root / "docs-consistency-audit" / "scripts" / "docs_consistency_audit.py"
+    )
+    _make_fake_leaf_with_findings(
+        docs_leaf,
+        "docs_findings.json",
+        [],
+        0,
+        has_exclude_arg=True,
+        write_argv=True,
+    )
+
+    out_dir = tmp_path / "wave"
+    assert (
+        mod.main(
+            [
+                "--repo",
+                str(repo),
+                "--out-dir",
+                str(out_dir),
+                "--skills-root",
+                str(skills_root),
+                "--lanes",
+                "docs",
+            ]
+        )
+        == 0
+    )
+    argv = json.loads((out_dir / "docs" / "argv.json").read_text(encoding="utf-8"))
+    source_prefixes = [
+        argv[i + 1]
+        for i, value in enumerate(argv)
+        if value == "--source-prefix" and i + 1 < len(argv)
+    ]
+    exclude_prefixes = [
+        argv[i + 1]
+        for i, value in enumerate(argv)
+        if value == "--exclude-prefix" and i + 1 < len(argv)
+    ]
+    assert "docs" in source_prefixes
+    assert "--source-prefix" in argv
+    assert "docs/audits" in exclude_prefixes
+    assert "docs/dogfood" in exclude_prefixes
+    assert "docs/plans" in exclude_prefixes
+    assert "docs/superpowers" in exclude_prefixes

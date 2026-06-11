@@ -21,7 +21,7 @@ LANES = {
     "dependency": "dependency-audit/scripts/dependency_audit.py",
     "hotspot": "hotspot-audit/scripts/hotspot_audit.py",
 }
-DOC_EXCLUDES = ("audits", "dogfood", "plans")
+DOC_EXCLUDES = ("audits", "dogfood", "plans", "superpowers")
 
 
 @dataclass(frozen=True)
