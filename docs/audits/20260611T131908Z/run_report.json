@@ -1,0 +1,64 @@
+{
+  "schema_version": 2,
+  "repo_root": "/home/jakub/projects/repo-audit-refactor-optimize",
+  "started_utc": "2026-06-11T13:19:08Z",
+  "finished_utc": "2026-06-11T13:19:08Z",
+  "orchestrator_skill_version": "0.4.0",
+  "lanes": {
+    "wave": {
+      "skills_root": "/home/jakub/projects/repo-audit-skills/skills",
+      "pre_ratchet_baseline": 23,
+      "post_ratchet_baseline": 13,
+      "run1": {
+        "status": "pass",
+        "count": 13,
+        "baseline": 13
+      },
+      "run2": {
+        "status": "pass",
+        "count": 13,
+        "baseline": 13
+      }
+    },
+    "tests": {
+      "pytest": "100 passed"
+    }
+  },
+  "findings_totals": {
+    "wave_baseline_before": 23,
+    "wave_baseline_after": 13,
+    "stale_removed": 10,
+    "new_findings": 0
+  },
+  "backlog": {
+    "accepted": 0,
+    "deferred": 13,
+    "coverage_gated": 0,
+    "wont_fix": 0
+  },
+  "batches": [
+    {
+      "name": "K5-T3 shrink-only wave ratchet",
+      "commit": "49e0450",
+      "evidence": "Removed 10 expired v0.4.0 precision freezes; wave equality passes at 13/13 twice"
+    }
+  ],
+  "verification": [
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "status": "pass",
+      "evidence": "100 passed"
+    },
+    {
+      "command": "WAVE_RUNNER=/home/jakub/projects/repo-audit-refactor-optimize/scripts/run_diagnosis_wave.py SKILLS_ROOT=/home/jakub/projects/repo-audit-skills/skills python3 scripts/check_wave_baseline.py",
+      "status": "pass",
+      "evidence": "run 1 and run 2 both status pass, count 13, baseline 13"
+    },
+    {
+      "command": "python3 scripts/validate_run_report.py --run-dir docs/audits/20260611T100212Z --schema 2",
+      "status": "pass",
+      "evidence": "historical SP9 K3 report remained validator-green"
+    }
+  ],
+  "warnings": []
+}
