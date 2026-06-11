@@ -115,19 +115,24 @@ Every orchestration run MUST end by writing a run report into the AUDITED reposi
 
 (timestamp = run start, UTC, compact ISO). `run_report.json` minimal schema (all keys required):
 
-- `schema_version`: 1
+- `schema_version`: 2
 - `repo_root`: absolute path audited
 - `started_utc`, `finished_utc`: ISO timestamps
 - `orchestrator_skill_version`: this SKILL.md frontmatter version
 - `lanes`: {lane_name: state} from the bootstrap report
 - `findings_totals`: {signal: count} across all diagnosis lanes
-- `backlog`: {"accepted": N, "deferred": N, "coverage_gated": N}
+- `backlog`: {"accepted": N, "deferred": N, "coverage_gated": N, "wont_fix": N}
 - `batches`: [{"id", "signal", "files", "result": "accepted"|"discarded", "evidence"}]
 - `verification`: [{"command", "exit_code"}]
 - `warnings`: [str]
 
 `run_report.md` is the human rendering of the same content. A run that did not write both
 files is NOT complete: the Verification stage fails closed on their absence.
+
+Validation is required:
+
+- run `scripts/validate_run_report.py --run-dir <run-dir>`
+- `--schema 1` is accepted only for historical reports
 
 ## Coverage Artifact Handoff
 

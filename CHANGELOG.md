@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.4.0
+
+SP9 K3-T4 -- checkpoint/docs brevity pass and diagnosis orchestration updates.
+
+- Decomposed checker scripts into smaller responsibilities and updated bootstrap
+  behavior to match phase-based handoff.
+- Added run-report v2 validator flow and enforced verification failures when report
+  artifacts or schema keys are missing.
+- Added diagnosis wave runner to the canonical workflow for installed diagnosis leaves.
+- Expanded coverage of taxonomy, docs-repair, and run-report documentation references.
+- Ran a brevity pass to condense operational text and preserve core contracts.
+
 ## 0.3.1
 
 SP7 C4 -- perf-optimization joins the performance lane as a preferred fallback.

@@ -10,6 +10,15 @@ Maps every finding signal from the shared code-health finding schema (repo-audit
 4. **Tests green before and after** every batch, on the smallest sufficient surface first, full relevant suite before closing the batch.
 5. **Goldens are contracts.** If a remediation changes observable output and a golden test catches it, investigate and explain; never silently regenerate a golden to make a fix pass.
 
+## Docs Repair
+
+Use this for markdown/reference-surface findings and run this after the coverage checks above:
+
+1. **Correct real-target refs.** Resolve each reported ref to a real in-repo file/section/object and patch the target path/id directly.
+2. **Delete truly dead refs.** If no valid target exists and no generated artifact path can be derived, remove the ref entirely.
+3. **Handle placeholders and output-path refs as won't-fix.** Refs that intentionally point to templates, placeholders, or unknown output locations are not deletions unless they are false signals; mark them `won't-fix-FP` with explicit justification (why it cannot be fixed now).
+4. **Protect immutable records.** Exclude baseline/frozen historical artifacts from editing scope and never mutate immutable records; fix only in current source docs and working outputs.
+
 ## Signal Procedures
 
 | Signal | Emitted by | Meaning | Procedure |

@@ -32,6 +32,25 @@ This generalizes the Actionability Rule proven in the repo-audit-skills dogfoodi
 
 PERF findings rank by dimension priority (algorithmic scaling above all hardware dimensions) and are coverage-gated like all others: an uncovered hot file is characterize-first.
 
+## T4 Taxonomy v2
+
+Every finding is assigned exactly one class below before scheduling:
+
+| Class | Meaning | Primary action | Justification rule |
+|---|---|---|---|
+| `accepted-mechanical` | High-confidence, low-risk, local mechanical signal | Execute when coverage rules pass | Required: one sentence naming why the work is safe and the expected gain |
+| `deferred-structural` | Architectural, API-boundary, or broad refactor risk | Defer to a structural batch with explicit architecture owners | Required: one sentence naming boundary risk and owning team/piece |
+| `coverage-gated` | Any file in scope with a `TEST` finding or weak behavioral lock | Characterize-first then remediate | Required: one sentence naming the missing/insufficient coverage gap |
+| `won't-fix-FP` | Confirmed false positive, environment mismatch, or unverifiable legacy intent | Keep as non-actionable debt and explain in backlog notes | Required: one sentence naming why it is not actionable now |
+
+Apply these classes to the same findings backlog that is already maintained for execution.
+
+Notes:
+
+- A `won't-fix-FP` row is never silently dropped.
+- It must remain present in run reports and in baseline/frozen logs when present in that source so trend analysis stays complete.
+- A justification entry is mandatory for every finding row, even when the row is not planned for execution.
+
 ## Finding Types
 
 ### Safe Cleanup

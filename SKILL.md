@@ -1,6 +1,6 @@
 ---
 name: repo-audit-refactor-optimize
-version: 0.3.1
+version: 0.4.0
 description: End-to-end repository diagnosis, remediation, and optimization orchestration built on the deterministic repo-audit-skills family. Use when the agent needs to audit a repository with deterministic code-health, coverage-gap, and test-audit lanes, synthesize a coverage-gated remediation backlog, execute safe refactor batches, benchmark and optimize performance, or run a full repo optimization pipeline from diagnosis through verified completion.
 ---
 
@@ -8,34 +8,30 @@ description: End-to-end repository diagnosis, remediation, and optimization orch
 
 ## Overview
 
-Run an end-to-end repository optimization program. Start with a bootstrap pass that checks which subskills are relevant and usable in the current agent session. Only after bootstrap succeeds or degrades safely should the workflow continue into repository discovery, diagnosis, execution, and verification.
+Run a deterministic pipeline from bootstrap to verified completion. Start with capability discovery, then diagnosis, then execution, then verification.
 
-Keep the top-level flow here and load the reference files only when needed:
+Load the reference docs on demand:
 
-- `references/bootstrap.md` for root search order, dependency states, override files, and install policy
-- `references/pipeline.md` for stage order, concurrency rules, artifact layout, and batch structure
-- `references/activation-matrix.md` for lane-specific preferred, fallback, manual, and blocked behavior
-- `references/prioritization.md` for ranking findings and defining execution batches
-- `references/verification.md` for baseline, rerun, and claim-evidence standards
-- `references/remediation-playbook.md` for batch execution discipline; load before the Execution stage
+- `references/bootstrap.md` - bootstrap policy, dependency state, overrides
+- `references/pipeline.md` - stage order, artifacts, run report
+- `references/activation-matrix.md` - preferred/fallback/manual/blocked behavior
+- `references/prioritization.md` - backlog ranking and batching
+- `references/verification.md` - evidence and rerun standards
+- `references/remediation-playbook.md` - execution discipline
 
-## Operating Model
+## Stage Order
 
-Follow this sequence:
-
-0. Bootstrap subskills and current-session capabilities.
-1. Discover repository shape and verification surfaces.
-2. Diagnose tests, code health, and performance.
-3. Synthesize a ranked remediation backlog.
-4. Execute safe cleanup, refactor, and optimization batches.
-5. Verify the resulting claims before completion.
-6. Write the run report into the audited repository (see references/pipeline.md, Run Report).
-
-Treat this skill as an orchestrator. Reuse specialized subskills instead of re-implementing their internals. Keep raw outputs from each lane, then merge them into a single backlog and verification summary.
+0. Bootstrap.
+1. Discovery.
+2. Diagnosis.
+3. Synthesis.
+4. Execution.
+5. Verification.
+6. Run report write.
 
 ## Stage 0: Bootstrap
 
-Run the checker before Discovery:
+Run the checker first and only move forward on green or safe degraded mode:
 
 ```bash
 python3 scripts/check_skill_requirements.py \
@@ -43,140 +39,76 @@ python3 scripts/check_skill_requirements.py \
   --out-dir /tmp/repo-audit-refactor-optimize/<repo-name>/<timestamp>
 ```
 
-Run `python3 scripts/check_skill_requirements.py --help` for override and extra-root flags.
-
-The checker is deterministic and non-mutating. It reads `scripts/skill_bootstrap_manifest.json`, pre-scans the target repository, resolves the relevant lanes, checks usable skill roots, and writes:
+The checker is deterministic and non-mutating. It reads the manifest and writes:
 
 - `bootstrap/bootstrap_report.json`
 - `bootstrap/bootstrap_report.md`
 - `bootstrap/install_plan.md`
 
-Then read the report and apply these rules:
+Rules:
 
-- Continue immediately when all blocking lanes are usable.
-- Continue in degraded mode when only non-blocking skills are missing and the report provides a safe manual fallback.
-- Install public skills only after explicit user approval.
-- Prefer `skill-installer` when it is already available; otherwise fall back to raw `npx skills add` or `npx skills find`.
-- Never auto-install local or private skills. Without a configured source mapping they remain `manual_only`.
-- If a blocking skill is installed during bootstrap, stop and restart the agent session before continuing.
-- If only optional skills were installed, continue the current run in degraded mode and mark them as `available_next_run`.
-
-Load `references/bootstrap.md` before interpreting the report.
+- Continue when all blocking lanes are usable.
+- Continue degraded when only non-blocking lanes are missing.
+- Keep bootstrap installs explicit by user approval.
+- Prefer `skill-installer` if available; otherwise use `npx skills add/find`.
+- Never auto-install local/private skills.
+- If new blocking skills are installed, restart the session before continuing.
+- If optional skills are newly installed, continue in degraded mode and mark `available_next_run`.
 
 ## Stage 1: Discovery
 
-Begin by building a repository profile.
+Build repository profile: languages, build/test systems, generated/vendor boundaries, existing deterministic checks, and flaky loops.
 
-- Identify primary languages and major directories.
-- Detect build and test systems such as `pytest`, `cargo`, `cmake`, `meson`, `make`, and benchmark runners.
-- Separate product code from generated code, vendor code, fixtures, snapshots, and benchmark artifacts.
-- Detect whether deterministic verification is already available.
-- If tests or benchmarks are flaky, stabilize the verification loop before broad optimization work.
+## Stage 2: Diagnosis
 
-Load `references/activation-matrix.md` once the repo profile is clear.
+Load `references/pipeline.md`, then run lanes relevant to repository profile and bootstrap result. Keep lanes read-only, run in parallel when independent, and merge outputs.
 
-## Diagnosis Lanes
+- Test lane: prefer `test-audit-pipeline` (coverage json), fallback `test-quality-assurance` and `test-redundancy-triage`.
+- Code health lane: prefer `code-health-audit-pipeline`, fallback five leaf skills.
+- Coverage lane: `coverage-gap-audit` from test coverage.
+- Performance lane: `perf-benchmark` then `perf-optimization`.
 
-Load `references/pipeline.md` before dispatching diagnosis lanes.
+Use the deterministic diagnosis wave runner when installed leaves are available:
 
-Once bootstrap and discovery artifacts are available, dispatch independent diagnosis lanes in parallel. Each lane reads shared files but does not modify them. Use `dispatching-parallel-agents` when available, or instruct subagents with non-overlapping output directories.
+```bash
+python3 scripts/run_diagnosis_wave.py \
+  --repo <repo> --out-dir <diag-dir> --skills-root <skills-root> \
+  --lanes code-health,security,hygiene,docs,dependency,hotspot
+```
 
-Activate only the lanes that match the repository profile and the bootstrap result.
+Pass test coverage with `--coverage-json` where supported. Wave output includes `wave_findings.json`, `wave_summary.json`, and one lane directory per module.
 
-Use the deterministic wave when installed diagnosis leaves are available:
+## Stage 3: Synthesis
 
-- `python3 scripts/run_diagnosis_wave.py --repo <repo> --out-dir <diag-dir> --skills-root <skills-root> --lanes code-health,security,hygiene,docs,dependency,hotspot`
-- Pass `--coverage-json` from the test lane to enable coverage-gated findings in the code-health lane.
-- Script output includes `wave_findings.json`, `wave_summary.json`, and one per-lane directory.
+Merge findings into one backlog:
 
-### Test Lane
+- deduplicate overlaps
+- separate safe cleanup, structural work, and performance work
+- rank by impact, confidence, effort, and risk
+- group into executable batches
 
-Use:
+## Stage 4: Execution
 
-- `test-audit-pipeline` as the preferred Python audit lane (also produces the `coverage.json` artifact)
-- `test-quality-assurance` plus `test-redundancy-triage` as the degraded fallback
-- `verification-before-completion` only as the final gate, not as a replacement for diagnosis
+Use `references/remediation-playbook.md`. Execute in verified batches:
 
-For non-Python test ecosystems, perform deterministic test-loop assessment and structural review, and keep the tooling gap explicit.
+- apply low-risk cleanup automatically
+- pause on risky API changes or broad rewrites
+- isolate performance work unless evidence supports joint change
+- rebaseline after meaningful batches
 
-### Code Health Lane
+Use `subagent-driven-development` for sequential multi-batch execution; use dispatch parallelism only for independent, non-overlapping subsystems.
 
-Use:
+## Stage 5: Verification
 
-- `code-health-audit-pipeline` as the preferred deterministic diagnosis (complexity, duplication, dead-code, structure, quality leaves; merged, ranked findings; exit 0/1/2)
-- the five leaf skills directly (`complexity-audit`, `duplication-audit`, `dead-code-audit`, `structure-audit`, `quality-audit`) as the degraded fallback
-- pass the test lane's `coverage.json` via `--coverage-json` so the artifact-gated coverage leaf runs
+Load `references/verification.md`. Before completion:
 
-Findings are advisory and deterministic; execution discipline lives in `references/remediation-playbook.md`. Do not start with restructuring. Start with findings, gate on coverage, then remediate in single-signal batches.
+- rerun smallest sufficient checks first
+- rerun full relevant suite before closing batch
+- compare benchmark deltas with same inputs/methodology
+- separate verified vs unverified claims
 
-For C, Rust, and assembly code health no first-party lane exists: review manually, record the tooling gap, and keep changes perf-first and evidence-driven.
+Use `verification-before-completion` as final gate.
 
-### Coverage Lane
+## Stage 6: Run Report
 
-Use:
-
-- `coverage-gap-audit` on the test lane's `coverage.json` to emit TEST findings (untested / under-tested production files)
-
-TEST findings gate the backlog (see `references/prioritization.md`): findings in uncovered files are characterize-first, never auto-executed.
-
-### Performance Lane
-
-Use:
-
-- `perf-benchmark` to establish baselines, hotspot rankings, and benchmark discipline; optimize only after a bottleneck is proven
-- `perf-optimization` as the preferred fallback companion for remediation after `perf-benchmark` proves a bottleneck
-
-Treat assembly as a perf-first, evidence-driven lane: profiling evidence and conservative change control over broad structural edits.
-
-## Synthesis
-
-Merge the lane outputs into a single remediation backlog.
-
-- Deduplicate overlapping findings.
-- Separate safe cleanup from structural refactors and performance-sensitive work.
-- Rank by impact, confidence, implementation cost, and regression risk.
-- Prefer small, verified batches over sweeping rewrites.
-
-Load `references/prioritization.md` to score and group findings.
-
-## Execution
-
-Execute changes in batches following references/remediation-playbook.md.
-
-- Apply safe cleanup automatically when behavior is preserved and the blast radius is low.
-- Pause before risky API changes, speculative optimizations, or broad architectural rewrites.
-- Keep performance changes separate from broad refactors unless the same evidence supports both.
-- Rebaseline after each meaningful batch.
-
-For diagnosis parallelism (read-only lanes), prefer concurrent dispatch as the default.
-
-For execution parallelism (write lanes), keep sequential execution as the default:
-
-- Use `subagent-driven-development` for sequential multi-batch execution with review loops.
-- Use `dispatching-parallel-agents` only for clearly independent subsystems with no shared-state or overlapping-file risk.
-
-## Verification
-
-Load `references/verification.md` before claiming progress or completion.
-
-Apply these rules:
-
-- Re-run the smallest sufficient verification surface first.
-- Re-run the full relevant suite before closing the batch.
-- Compare benchmark results using the same environment, inputs, and methodology as the baseline.
-- Distinguish verified improvements from verified-neutral cleanup and from unverified hypotheses.
-- Use `verification-before-completion` as the final evidence gate.
-- Write the run report (see references/pipeline.md, Run Report). Verification fails closed if `docs/audits/<run-id>/run_report.json` + `.md` are absent or missing schema keys — omission is a gate failure, not a warning.
-
-Never claim that the repository is improved merely because the code looks cleaner. Claims require test or benchmark evidence.
-
-## Required References
-
-Consult these files during execution:
-
-- `references/bootstrap.md`
-- `references/pipeline.md`
-- `references/activation-matrix.md`
-- `references/prioritization.md`
-- `references/verification.md`
-- `references/remediation-playbook.md`
+Write run report artifacts under `docs/audits/<run-id>/` (JSON and Markdown). Verification fails closed if `run_report.json` / `run_report.md` are missing or missing schema keys; do not claim completion without them.
