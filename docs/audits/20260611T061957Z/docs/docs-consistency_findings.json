@@ -1,0 +1,393 @@
+[
+  {
+    "confidence": "medium",
+    "evidence": {
+      "raw": "bootstrap/bootstrap_report.json",
+      "tool": "markdown"
+    },
+    "id": "73be3bada0eea6a0",
+    "leaf": "docs-consistency",
+    "location": {
+      "line_end": 50,
+      "line_start": 50,
+      "symbol": "bootstrap/bootstrap_report.json"
+    },
+    "metric": {
+      "name": "doc_path_missing",
+      "threshold": 0.0,
+      "value": 1.0
+    },
+    "path": "SKILL.md",
+    "severity": "low",
+    "signal": "LINT",
+    "suggested_action": "Create bootstrap/bootstrap_report.json or update SKILL.md reference"
+  },
+  {
+    "confidence": "medium",
+    "evidence": {
+      "raw": "bootstrap/bootstrap_report.md",
+      "tool": "markdown"
+    },
+    "id": "4860a999050fb3cf",
+    "leaf": "docs-consistency",
+    "location": {
+      "line_end": 51,
+      "line_start": 51,
+      "symbol": "bootstrap/bootstrap_report.md"
+    },
+    "metric": {
+      "name": "doc_path_missing",
+      "threshold": 0.0,
+      "value": 1.0
+    },
+    "path": "SKILL.md",
+    "severity": "low",
+    "signal": "LINT",
+    "suggested_action": "Create bootstrap/bootstrap_report.md or update SKILL.md reference"
+  },
+  {
+    "confidence": "medium",
+    "evidence": {
+      "raw": "bootstrap/install_plan.md",
+      "tool": "markdown"
+    },
+    "id": "8c48748896d1137c",
+    "leaf": "docs-consistency",
+    "location": {
+      "line_end": 52,
+      "line_start": 52,
+      "symbol": "bootstrap/install_plan.md"
+    },
+    "metric": {
+      "name": "doc_path_missing",
+      "threshold": 0.0,
+      "value": 1.0
+    },
+    "path": "SKILL.md",
+    "severity": "low",
+    "signal": "LINT",
+    "suggested_action": "Create bootstrap/install_plan.md or update SKILL.md reference"
+  },
+  {
+    "confidence": "medium",
+    "evidence": {
+      "raw": "scripts/check_self_audit.py",
+      "tool": "markdown"
+    },
+    "id": "066b4a103259179c",
+    "leaf": "docs-consistency",
+    "location": {
+      "line_end": 69,
+      "line_start": 69,
+      "symbol": "scripts/check_self_audit.py"
+    },
+    "metric": {
+      "name": "doc_path_missing",
+      "threshold": 0.0,
+      "value": 1.0
+    },
+    "path": "docs/dogfood/2026-06-10-sp5-dogfood-report.md",
+    "severity": "low",
+    "signal": "LINT",
+    "suggested_action": "Create scripts/check_self_audit.py or update docs/dogfood/2026-06-10-sp5-dogfood-report.md reference"
+  },
+  {
+    "confidence": "medium",
+    "evidence": {
+      "raw": "scripts/self_audit.py",
+      "tool": "markdown"
+    },
+    "id": "bd5701638ab8bc98",
+    "leaf": "docs-consistency",
+    "location": {
+      "line_end": 70,
+      "line_start": 70,
+      "symbol": "scripts/self_audit.py"
+    },
+    "metric": {
+      "name": "doc_path_missing",
+      "threshold": 0.0,
+      "value": 1.0
+    },
+    "path": "docs/dogfood/2026-06-10-sp5-dogfood-report.md",
+    "severity": "low",
+    "signal": "LINT",
+    "suggested_action": "Create scripts/self_audit.py or update docs/dogfood/2026-06-10-sp5-dogfood-report.md reference"
+  },
+  {
+    "confidence": "medium",
+    "evidence": {
+      "raw": "scripts/check_self_audit.py",
+      "tool": "markdown"
+    },
+    "id": "066b4a103259179c",
+    "leaf": "docs-consistency",
+    "location": {
+      "line_end": 105,
+      "line_start": 105,
+      "symbol": "scripts/check_self_audit.py"
+    },
+    "metric": {
+      "name": "doc_path_missing",
+      "threshold": 0.0,
+      "value": 1.0
+    },
+    "path": "docs/dogfood/2026-06-10-sp5-dogfood-report.md",
+    "severity": "low",
+    "signal": "LINT",
+    "suggested_action": "Create scripts/check_self_audit.py or update docs/dogfood/2026-06-10-sp5-dogfood-report.md reference"
+  },
+  {
+    "confidence": "medium",
+    "evidence": {
+      "raw": "scripts/self_audit.py",
+      "tool": "markdown"
+    },
+    "id": "bd5701638ab8bc98",
+    "leaf": "docs-consistency",
+    "location": {
+      "line_end": 105,
+      "line_start": 105,
+      "symbol": "scripts/self_audit.py"
+    },
+    "metric": {
+      "name": "doc_path_missing",
+      "threshold": 0.0,
+      "value": 1.0
+    },
+    "path": "docs/dogfood/2026-06-10-sp5-dogfood-report.md",
+    "severity": "low",
+    "signal": "LINT",
+    "suggested_action": "Create scripts/self_audit.py or update docs/dogfood/2026-06-10-sp5-dogfood-report.md reference"
+  },
+  {
+    "confidence": "medium",
+    "evidence": {
+      "raw": "scripts/check_coverage_gap.py",
+      "tool": "markdown"
+    },
+    "id": "ab3ff977970fe425",
+    "leaf": "docs-consistency",
+    "location": {
+      "line_end": 109,
+      "line_start": 109,
+      "symbol": "scripts/check_coverage_gap.py"
+    },
+    "metric": {
+      "name": "doc_path_missing",
+      "threshold": 0.0,
+      "value": 1.0
+    },
+    "path": "docs/dogfood/2026-06-10-sp5-dogfood-report.md",
+    "severity": "low",
+    "signal": "LINT",
+    "suggested_action": "Create scripts/check_coverage_gap.py or update docs/dogfood/2026-06-10-sp5-dogfood-report.md reference"
+  },
+  {
+    "confidence": "medium",
+    "evidence": {
+      "raw": "scripts/check_vendored_common.py",
+      "tool": "markdown"
+    },
+    "id": "5249bad41fc8e0db",
+    "leaf": "docs-consistency",
+    "location": {
+      "line_end": 111,
+      "line_start": 111,
+      "symbol": "scripts/check_vendored_common.py"
+    },
+    "metric": {
+      "name": "doc_path_missing",
+      "threshold": 0.0,
+      "value": 1.0
+    },
+    "path": "docs/dogfood/2026-06-10-sp5-dogfood-report.md",
+    "severity": "low",
+    "signal": "LINT",
+    "suggested_action": "Create scripts/check_vendored_common.py or update docs/dogfood/2026-06-10-sp5-dogfood-report.md reference"
+  },
+  {
+    "confidence": "medium",
+    "evidence": {
+      "raw": "scripts/self_audit.py",
+      "tool": "markdown"
+    },
+    "id": "bd5701638ab8bc98",
+    "leaf": "docs-consistency",
+    "location": {
+      "line_end": 112,
+      "line_start": 112,
+      "symbol": "scripts/self_audit.py"
+    },
+    "metric": {
+      "name": "doc_path_missing",
+      "threshold": 0.0,
+      "value": 1.0
+    },
+    "path": "docs/dogfood/2026-06-10-sp5-dogfood-report.md",
+    "severity": "low",
+    "signal": "LINT",
+    "suggested_action": "Create scripts/self_audit.py or update docs/dogfood/2026-06-10-sp5-dogfood-report.md reference"
+  },
+  {
+    "confidence": "medium",
+    "evidence": {
+      "raw": "scripts/check_self_audit.py",
+      "tool": "markdown"
+    },
+    "id": "066b4a103259179c",
+    "leaf": "docs-consistency",
+    "location": {
+      "line_end": 113,
+      "line_start": 113,
+      "symbol": "scripts/check_self_audit.py"
+    },
+    "metric": {
+      "name": "doc_path_missing",
+      "threshold": 0.0,
+      "value": 1.0
+    },
+    "path": "docs/dogfood/2026-06-10-sp5-dogfood-report.md",
+    "severity": "low",
+    "signal": "LINT",
+    "suggested_action": "Create scripts/check_self_audit.py or update docs/dogfood/2026-06-10-sp5-dogfood-report.md reference"
+  },
+  {
+    "confidence": "medium",
+    "evidence": {
+      "raw": "scripts/self_audit.py",
+      "tool": "markdown"
+    },
+    "id": "bd5701638ab8bc98",
+    "leaf": "docs-consistency",
+    "location": {
+      "line_end": 114,
+      "line_start": 114,
+      "symbol": "scripts/self_audit.py"
+    },
+    "metric": {
+      "name": "doc_path_missing",
+      "threshold": 0.0,
+      "value": 1.0
+    },
+    "path": "docs/dogfood/2026-06-10-sp5-dogfood-report.md",
+    "severity": "low",
+    "signal": "LINT",
+    "suggested_action": "Create scripts/self_audit.py or update docs/dogfood/2026-06-10-sp5-dogfood-report.md reference"
+  },
+  {
+    "confidence": "medium",
+    "evidence": {
+      "raw": "skills/test-redundancy-triage/scripts/triage_redundancy.py",
+      "tool": "markdown"
+    },
+    "id": "928697b383eb6721",
+    "leaf": "docs-consistency",
+    "location": {
+      "line_end": 115,
+      "line_start": 115,
+      "symbol": "skills/test-redundancy-triage/scripts/triage_redundancy.py"
+    },
+    "metric": {
+      "name": "doc_path_missing",
+      "threshold": 0.0,
+      "value": 1.0
+    },
+    "path": "docs/dogfood/2026-06-10-sp5-dogfood-report.md",
+    "severity": "low",
+    "signal": "LINT",
+    "suggested_action": "Create skills/test-redundancy-triage/scripts/triage_redundancy.py or update docs/dogfood/2026-06-10-sp5-dogfood-report.md reference"
+  },
+  {
+    "confidence": "medium",
+    "evidence": {
+      "raw": "skills/test-audit-pipeline/scripts/audit_pipeline.py",
+      "tool": "markdown"
+    },
+    "id": "59529d9919bc99cc",
+    "leaf": "docs-consistency",
+    "location": {
+      "line_end": 116,
+      "line_start": 116,
+      "symbol": "skills/test-audit-pipeline/scripts/audit_pipeline.py"
+    },
+    "metric": {
+      "name": "doc_path_missing",
+      "threshold": 0.0,
+      "value": 1.0
+    },
+    "path": "docs/dogfood/2026-06-10-sp5-dogfood-report.md",
+    "severity": "low",
+    "signal": "LINT",
+    "suggested_action": "Create skills/test-audit-pipeline/scripts/audit_pipeline.py or update docs/dogfood/2026-06-10-sp5-dogfood-report.md reference"
+  },
+  {
+    "confidence": "medium",
+    "evidence": {
+      "raw": "skills/test-quality-assurance/scripts/audit_test_quality.py",
+      "tool": "markdown"
+    },
+    "id": "39f3a50124312e93",
+    "leaf": "docs-consistency",
+    "location": {
+      "line_end": 117,
+      "line_start": 117,
+      "symbol": "skills/test-quality-assurance/scripts/audit_test_quality.py"
+    },
+    "metric": {
+      "name": "doc_path_missing",
+      "threshold": 0.0,
+      "value": 1.0
+    },
+    "path": "docs/dogfood/2026-06-10-sp5-dogfood-report.md",
+    "severity": "low",
+    "signal": "LINT",
+    "suggested_action": "Create skills/test-quality-assurance/scripts/audit_test_quality.py or update docs/dogfood/2026-06-10-sp5-dogfood-report.md reference"
+  },
+  {
+    "confidence": "medium",
+    "evidence": {
+      "raw": "skills/code-health-audit-pipeline/scripts/code_health_pipeline.py",
+      "tool": "markdown"
+    },
+    "id": "049d3ad1b9b5d501",
+    "leaf": "docs-consistency",
+    "location": {
+      "line_end": 118,
+      "line_start": 118,
+      "symbol": "skills/code-health-audit-pipeline/scripts/code_health_pipeline.py"
+    },
+    "metric": {
+      "name": "doc_path_missing",
+      "threshold": 0.0,
+      "value": 1.0
+    },
+    "path": "docs/dogfood/2026-06-10-sp5-dogfood-report.md",
+    "severity": "low",
+    "signal": "LINT",
+    "suggested_action": "Create skills/code-health-audit-pipeline/scripts/code_health_pipeline.py or update docs/dogfood/2026-06-10-sp5-dogfood-report.md reference"
+  },
+  {
+    "confidence": "medium",
+    "evidence": {
+      "raw": "bootstrap/bootstrap_report.json",
+      "tool": "markdown"
+    },
+    "id": "ff894b4871ce2f32",
+    "leaf": "docs-consistency",
+    "location": {
+      "line_end": 782,
+      "line_start": 782,
+      "symbol": "bootstrap/bootstrap_report.json"
+    },
+    "metric": {
+      "name": "doc_path_missing",
+      "threshold": 0.0,
+      "value": 1.0
+    },
+    "path": "docs/plans/2026-06-10-sp5-deterministic-skillset-rewire.md",
+    "severity": "low",
+    "signal": "LINT",
+    "suggested_action": "Create bootstrap/bootstrap_report.json or update docs/plans/2026-06-10-sp5-deterministic-skillset-rewire.md reference"
+  }
+]

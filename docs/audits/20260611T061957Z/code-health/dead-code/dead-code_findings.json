@@ -1,0 +1,25 @@
+[
+  {
+    "confidence": "low",
+    "evidence": {
+      "raw": "scripts/check_skill_requirements.py:418: unused function '_extract_skill_name' (60% confidence)",
+      "tool": "vulture"
+    },
+    "id": "8b0a05e47da40626",
+    "leaf": "dead-code",
+    "location": {
+      "line_end": 418,
+      "line_start": 418,
+      "symbol": "_extract_skill_name"
+    },
+    "metric": {
+      "name": "dead_code_confidence",
+      "threshold": 60.0,
+      "value": 60.0
+    },
+    "path": "scripts/check_skill_requirements.py",
+    "severity": "low",
+    "signal": "DELETE",
+    "suggested_action": "Remove unused function '_extract_skill_name' if truly dead"
+  }
+]

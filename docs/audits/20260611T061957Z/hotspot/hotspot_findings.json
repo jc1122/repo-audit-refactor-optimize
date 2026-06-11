@@ -1,0 +1,209 @@
+[
+  {
+    "confidence": "medium",
+    "evidence": {
+      "raw": "10 commits x 115 nloc in last 43 commits (max 500) from a9b3ea7b6b95",
+      "tool": "git"
+    },
+    "id": "18ed0527dd9e2af7",
+    "leaf": "hotspot",
+    "location": {
+      "line_end": 1,
+      "line_start": 1,
+      "symbol": "SKILL.md"
+    },
+    "metric": {
+      "name": "churn_complexity_product",
+      "threshold": 1000.0,
+      "value": 1150.0
+    },
+    "path": "SKILL.md",
+    "severity": "low",
+    "signal": "DECOMPOSE",
+    "suggested_action": "Hotspot: SKILL.md changes often and is large; split along change axes"
+  },
+  {
+    "confidence": "low",
+    "evidence": {
+      "raw": "top author jc1122/10 commits (max 500) from a9b3ea7b6b95",
+      "tool": "git"
+    },
+    "id": "2000dc68cc7c4c54",
+    "leaf": "hotspot",
+    "location": {
+      "line_end": 1,
+      "line_start": 1,
+      "symbol": "SKILL.md"
+    },
+    "metric": {
+      "name": "author_concentration",
+      "threshold": 0.9,
+      "value": 1.0
+    },
+    "path": "SKILL.md",
+    "severity": "low",
+    "signal": "RESTRUCTURE",
+    "suggested_action": "Knowledge concentrated in one author; schedule reviews/pairing on this file"
+  },
+  {
+    "confidence": "medium",
+    "evidence": {
+      "raw": "21 commits x 897 nloc in last 43 commits (max 500) from a9b3ea7b6b95",
+      "tool": "git"
+    },
+    "id": "763256196b74746d",
+    "leaf": "hotspot",
+    "location": {
+      "line_end": 1,
+      "line_start": 1,
+      "symbol": "scripts/check_skill_requirements.py"
+    },
+    "metric": {
+      "name": "churn_complexity_product",
+      "threshold": 1000.0,
+      "value": 18837.0
+    },
+    "path": "scripts/check_skill_requirements.py",
+    "severity": "high",
+    "signal": "DECOMPOSE",
+    "suggested_action": "Hotspot: scripts/check_skill_requirements.py changes often and is large; split along change axes"
+  },
+  {
+    "confidence": "low",
+    "evidence": {
+      "raw": "top author jc1122/21 commits (max 500) from a9b3ea7b6b95",
+      "tool": "git"
+    },
+    "id": "0343b693adbe5743",
+    "leaf": "hotspot",
+    "location": {
+      "line_end": 1,
+      "line_start": 1,
+      "symbol": "scripts/check_skill_requirements.py"
+    },
+    "metric": {
+      "name": "author_concentration",
+      "threshold": 0.9,
+      "value": 1.0
+    },
+    "path": "scripts/check_skill_requirements.py",
+    "severity": "low",
+    "signal": "RESTRUCTURE",
+    "suggested_action": "Knowledge concentrated in one author; schedule reviews/pairing on this file"
+  },
+  {
+    "confidence": "medium",
+    "evidence": {
+      "raw": "15 co-changes of scripts/check_skill_requirements.py and tests/test_check_skill_requirements.py in last 43 commits (max 500) from a9b3ea7b6b95",
+      "tool": "git"
+    },
+    "id": "6bb947d748268064",
+    "leaf": "hotspot",
+    "location": {
+      "line_end": 1,
+      "line_start": 1,
+      "symbol": "scripts/check_skill_requirements.py<->tests/test_check_skill_requirements.py"
+    },
+    "metric": {
+      "name": "temporal_coupling_ratio",
+      "threshold": 0.7,
+      "value": 0.88
+    },
+    "path": "scripts/check_skill_requirements.py",
+    "severity": "medium",
+    "signal": "RESTRUCTURE",
+    "suggested_action": "Files co-change; move the shared concern into one module or merge them"
+  },
+  {
+    "confidence": "medium",
+    "evidence": {
+      "raw": "5 commits x 250 nloc in last 43 commits (max 500) from a9b3ea7b6b95",
+      "tool": "git"
+    },
+    "id": "aae4ff5bc26fbeda",
+    "leaf": "hotspot",
+    "location": {
+      "line_end": 1,
+      "line_start": 1,
+      "symbol": "scripts/skill_bootstrap_manifest.json"
+    },
+    "metric": {
+      "name": "churn_complexity_product",
+      "threshold": 1000.0,
+      "value": 1250.0
+    },
+    "path": "scripts/skill_bootstrap_manifest.json",
+    "severity": "low",
+    "signal": "DECOMPOSE",
+    "suggested_action": "Hotspot: scripts/skill_bootstrap_manifest.json changes often and is large; split along change axes"
+  },
+  {
+    "confidence": "medium",
+    "evidence": {
+      "raw": "5 co-changes of scripts/skill_bootstrap_manifest.json and tests/test_check_skill_requirements.py in last 43 commits (max 500) from a9b3ea7b6b95",
+      "tool": "git"
+    },
+    "id": "174e737fa0725daa",
+    "leaf": "hotspot",
+    "location": {
+      "line_end": 1,
+      "line_start": 1,
+      "symbol": "scripts/skill_bootstrap_manifest.json<->tests/test_check_skill_requirements.py"
+    },
+    "metric": {
+      "name": "temporal_coupling_ratio",
+      "threshold": 0.7,
+      "value": 1.0
+    },
+    "path": "scripts/skill_bootstrap_manifest.json",
+    "severity": "medium",
+    "signal": "RESTRUCTURE",
+    "suggested_action": "Files co-change; move the shared concern into one module or merge them"
+  },
+  {
+    "confidence": "medium",
+    "evidence": {
+      "raw": "17 commits x 1410 nloc in last 43 commits (max 500) from a9b3ea7b6b95",
+      "tool": "git"
+    },
+    "id": "df4aba6db1ba47b1",
+    "leaf": "hotspot",
+    "location": {
+      "line_end": 1,
+      "line_start": 1,
+      "symbol": "tests/test_check_skill_requirements.py"
+    },
+    "metric": {
+      "name": "churn_complexity_product",
+      "threshold": 1000.0,
+      "value": 23970.0
+    },
+    "path": "tests/test_check_skill_requirements.py",
+    "severity": "high",
+    "signal": "DECOMPOSE",
+    "suggested_action": "Hotspot: tests/test_check_skill_requirements.py changes often and is large; split along change axes"
+  },
+  {
+    "confidence": "low",
+    "evidence": {
+      "raw": "top author jc1122/17 commits (max 500) from a9b3ea7b6b95",
+      "tool": "git"
+    },
+    "id": "d896693e5996804a",
+    "leaf": "hotspot",
+    "location": {
+      "line_end": 1,
+      "line_start": 1,
+      "symbol": "tests/test_check_skill_requirements.py"
+    },
+    "metric": {
+      "name": "author_concentration",
+      "threshold": 0.9,
+      "value": 1.0
+    },
+    "path": "tests/test_check_skill_requirements.py",
+    "severity": "low",
+    "signal": "RESTRUCTURE",
+    "suggested_action": "Knowledge concentrated in one author; schedule reviews/pairing on this file"
+  }
+]

@@ -1,0 +1,163 @@
+[
+  {
+    "confidence": "high",
+    "evidence": {
+      "raw": "MI=50.3 rank=A",
+      "tool": "radon"
+    },
+    "id": "d8017022c998582e",
+    "leaf": "complexity",
+    "location": {
+      "line_end": 1,
+      "line_start": 1,
+      "symbol": "<module>"
+    },
+    "metric": {
+      "name": "maintainability_index",
+      "threshold": 65.0,
+      "value": 50.334921875234194
+    },
+    "path": "scripts/check_release.py",
+    "severity": "low",
+    "signal": "SIMPLIFY",
+    "suggested_action": "Improve maintainability of scripts/check_release.py \u2014 MI 50.3 below 65"
+  },
+  {
+    "confidence": "high",
+    "evidence": {
+      "raw": "MI=2.3 rank=C",
+      "tool": "radon"
+    },
+    "id": "88ae6beb0f54f492",
+    "leaf": "complexity",
+    "location": {
+      "line_end": 1,
+      "line_start": 1,
+      "symbol": "<module>"
+    },
+    "metric": {
+      "name": "maintainability_index",
+      "threshold": 65.0,
+      "value": 2.299024823870465
+    },
+    "path": "scripts/check_skill_requirements.py",
+    "severity": "medium",
+    "signal": "SIMPLIFY",
+    "suggested_action": "Improve maintainability of scripts/check_skill_requirements.py \u2014 MI 2.3 below 65"
+  },
+  {
+    "confidence": "high",
+    "evidence": {
+      "raw": "load_source_overrides( * , repo_root : Path , env : dict [ str , str ] | None , active_skill_names : set [ str ] , strict_skill_names : set [ str ] , user_override_path : Path | None = None , repo_override_path : Path | None = None , ) params=6",
+      "tool": "lizard"
+    },
+    "id": "f43179357530136d",
+    "leaf": "complexity",
+    "location": {
+      "line_end": 378,
+      "line_start": 345,
+      "symbol": "load_source_overrides"
+    },
+    "metric": {
+      "name": "parameter_count",
+      "threshold": 5.0,
+      "value": 6.0
+    },
+    "path": "scripts/check_skill_requirements.py",
+    "severity": "low",
+    "signal": "SIMPLIFY",
+    "suggested_action": "Reduce parameters of load_source_overrides() \u2014 6 exceeds 5"
+  },
+  {
+    "confidence": "high",
+    "evidence": {
+      "raw": "_skill_entry( skill_name : str , skill_config : dict [ str , Any ] , usable_skills : dict [ str , dict [ str , Any ] ] , advisory_skills : dict [ str , dict [ str , Any ] ] , ) CCN=12",
+      "tool": "lizard"
+    },
+    "id": "66c7def1aa311611",
+    "leaf": "complexity",
+    "location": {
+      "line_end": 595,
+      "line_start": 528,
+      "symbol": "_skill_entry"
+    },
+    "metric": {
+      "name": "cyclomatic_complexity",
+      "threshold": 10.0,
+      "value": 12.0
+    },
+    "path": "scripts/check_skill_requirements.py",
+    "severity": "medium",
+    "signal": "DECOMPOSE",
+    "suggested_action": "Split _skill_entry() \u2014 complexity 12 exceeds 10"
+  },
+  {
+    "confidence": "high",
+    "evidence": {
+      "raw": "_skill_entry( skill_name : str , skill_config : dict [ str , Any ] , usable_skills : dict [ str , dict [ str , Any ] ] , advisory_skills : dict [ str , dict [ str , Any ] ] , ) NLOC=65",
+      "tool": "lizard"
+    },
+    "id": "d6a5ddac73479fd7",
+    "leaf": "complexity",
+    "location": {
+      "line_end": 595,
+      "line_start": 528,
+      "symbol": "_skill_entry"
+    },
+    "metric": {
+      "name": "function_nloc",
+      "threshold": 50.0,
+      "value": 65.0
+    },
+    "path": "scripts/check_skill_requirements.py",
+    "severity": "medium",
+    "signal": "DECOMPOSE",
+    "suggested_action": "Shorten _skill_entry() \u2014 65 lines exceeds 50"
+  },
+  {
+    "confidence": "high",
+    "evidence": {
+      "raw": "build_bootstrap_report( * , repo_root : Path , manifest_path : Path , out_dir : Path , env : dict [ str , str ] | None = None , extra_roots : list [ Path ] | None = None , foreign_roots : list [ Path ] | None = None , user_override_path : Path | None = None , repo_override_path : Path | None = None , required_skill_names : list [ str ] | None = None , ) NLOC=79",
+      "tool": "lizard"
+    },
+    "id": "7b8f3b5299e2a5ad",
+    "leaf": "complexity",
+    "location": {
+      "line_end": 910,
+      "line_start": 823,
+      "symbol": "build_bootstrap_report"
+    },
+    "metric": {
+      "name": "function_nloc",
+      "threshold": 50.0,
+      "value": 79.0
+    },
+    "path": "scripts/check_skill_requirements.py",
+    "severity": "medium",
+    "signal": "DECOMPOSE",
+    "suggested_action": "Shorten build_bootstrap_report() \u2014 79 lines exceeds 50"
+  },
+  {
+    "confidence": "high",
+    "evidence": {
+      "raw": "build_bootstrap_report( * , repo_root : Path , manifest_path : Path , out_dir : Path , env : dict [ str , str ] | None = None , extra_roots : list [ Path ] | None = None , foreign_roots : list [ Path ] | None = None , user_override_path : Path | None = None , repo_override_path : Path | None = None , required_skill_names : list [ str ] | None = None , ) params=9",
+      "tool": "lizard"
+    },
+    "id": "50bb5dcf514b202d",
+    "leaf": "complexity",
+    "location": {
+      "line_end": 910,
+      "line_start": 823,
+      "symbol": "build_bootstrap_report"
+    },
+    "metric": {
+      "name": "parameter_count",
+      "threshold": 5.0,
+      "value": 9.0
+    },
+    "path": "scripts/check_skill_requirements.py",
+    "severity": "low",
+    "signal": "SIMPLIFY",
+    "suggested_action": "Reduce parameters of build_bootstrap_report() \u2014 9 exceeds 5"
+  }
+]
