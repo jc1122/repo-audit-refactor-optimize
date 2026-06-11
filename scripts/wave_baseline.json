@@ -48,36 +48,6 @@
     "metric": "maintainability_index"
   },
   {
-    "leaf": "dead-code",
-    "path": "scripts/_skill_probe.py",
-    "symbol": "_extract_skill_name",
-    "metric": "dead_code_confidence"
-  },
-  {
-    "leaf": "docs-consistency",
-    "path": "SKILL.md",
-    "symbol": "bootstrap/bootstrap_report.json",
-    "metric": "doc_path_missing"
-  },
-  {
-    "leaf": "docs-consistency",
-    "path": "SKILL.md",
-    "symbol": "bootstrap/bootstrap_report.md",
-    "metric": "doc_path_missing"
-  },
-  {
-    "leaf": "docs-consistency",
-    "path": "SKILL.md",
-    "symbol": "bootstrap/install_plan.md",
-    "metric": "doc_path_missing"
-  },
-  {
-    "leaf": "hotspot",
-    "path": "SKILL.md",
-    "symbol": "SKILL.md",
-    "metric": "author_concentration"
-  },
-  {
     "leaf": "hotspot",
     "path": "SKILL.md",
     "symbol": "SKILL.md<->references/pipeline.md",
@@ -87,19 +57,7 @@
     "leaf": "hotspot",
     "path": "scripts/check_skill_requirements.py",
     "symbol": "scripts/check_skill_requirements.py",
-    "metric": "author_concentration"
-  },
-  {
-    "leaf": "hotspot",
-    "path": "scripts/check_skill_requirements.py",
-    "symbol": "scripts/check_skill_requirements.py",
     "metric": "churn_complexity_product"
-  },
-  {
-    "leaf": "hotspot",
-    "path": "scripts/check_skill_requirements.py",
-    "symbol": "scripts/check_skill_requirements.py<->tests/test_check_skill_requirements.py",
-    "metric": "temporal_coupling_ratio"
   },
   {
     "leaf": "hotspot",
@@ -117,24 +75,6 @@
     "leaf": "hotspot",
     "path": "tests/test_check_skill_requirements.py",
     "symbol": "tests/test_check_skill_requirements.py",
-    "metric": "author_concentration"
-  },
-  {
-    "leaf": "hotspot",
-    "path": "tests/test_check_skill_requirements.py",
-    "symbol": "tests/test_check_skill_requirements.py",
     "metric": "churn_complexity_product"
-  },
-  {
-    "leaf": "quality",
-    "path": "scripts/_bootstrap_report.py",
-    "symbol": "scripts/_bootstrap_report.py",
-    "metric": "format_drift"
-  },
-  {
-    "leaf": "quality",
-    "path": "scripts/_skill_probe.py",
-    "symbol": "scripts/_skill_probe.py",
-    "metric": "format_drift"
   }
 ]
