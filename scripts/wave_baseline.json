@@ -7,12 +7,6 @@
   },
   {
     "leaf": "complexity",
-    "path": "scripts/_bootstrap_report.py",
-    "symbol": "build_bootstrap_report",
-    "metric": "parameter_count"
-  },
-  {
-    "leaf": "complexity",
     "path": "scripts/_lane_resolve.py",
     "symbol": "<module>",
     "metric": "maintainability_index"
@@ -25,27 +19,9 @@
   },
   {
     "leaf": "complexity",
-    "path": "scripts/check_release.py",
-    "symbol": "<module>",
-    "metric": "maintainability_index"
-  },
-  {
-    "leaf": "complexity",
-    "path": "scripts/check_skill_requirements.py",
-    "symbol": "<module>",
-    "metric": "maintainability_index"
-  },
-  {
-    "leaf": "complexity",
-    "path": "scripts/run_diagnosis_wave.py",
-    "symbol": "<module>",
-    "metric": "maintainability_index"
-  },
-  {
-    "leaf": "complexity",
-    "path": "scripts/validate_run_report.py",
-    "symbol": "<module>",
-    "metric": "maintainability_index"
+    "path": "scripts/_bootstrap_report.py",
+    "symbol": "build_bootstrap_report",
+    "metric": "parameter_count"
   },
   {
     "leaf": "hotspot",
