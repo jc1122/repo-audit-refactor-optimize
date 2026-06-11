@@ -1,0 +1,215 @@
+{
+  "schema_version": 2,
+  "repo_root": "/home/jakub/projects/repo-audit-refactor-optimize",
+  "started_utc": "2026-06-11T10:02:12Z",
+  "finished_utc": "2026-06-11T11:15:50Z",
+  "orchestrator_skill_version": "0.4.0",
+  "lanes": {
+    "code-health": "error (advisory gate; 11 frozen findings)",
+    "security": "ok",
+    "hygiene": "ok",
+    "docs": "findings",
+    "dependency": "ok",
+    "hotspot": "findings",
+    "test-python": "verified by pytest; 100 passed",
+    "coverage-python": "not rerun in final wave; TEST 0 in final backlog",
+    "performance": "manual (no benchmark surface in K3 wave)",
+    "orchestration": "manual/self-audit"
+  },
+  "findings_totals": {
+    "SIMPLIFY": 8,
+    "DECOMPOSE": 3,
+    "RESTRUCTURE": 6,
+    "FORMAT": 2,
+    "DELETE": 1,
+    "LINT": 3,
+    "SECURITY": 0,
+    "TEST": 0
+  },
+  "backlog": {
+    "accepted": 0,
+    "deferred": 17,
+    "coverage_gated": 0,
+    "wont_fix": 6
+  },
+  "batches": [
+    {
+      "id": "K3-T1",
+      "signal": "DECOMPOSE",
+      "files": [
+        "scripts/check_skill_requirements.py",
+        "scripts/_skill_probe.py",
+        "scripts/_lane_resolve.py",
+        "scripts/_bootstrap_report.py",
+        "tests/test_check_skill_requirements.py"
+      ],
+      "result": "accepted",
+      "evidence": "Commits 4f8331b, 769b02a, 7695c70, da1cc59. Decomposed check_skill_requirements.py into _skill_probe, _lane_resolve, and _bootstrap_report with public re-exports. T1 suite reached 88 passed. D1-D7 cleared where test-compatible; public signature and module residuals are frozen."
+    },
+    {
+      "id": "K3-T2",
+      "signal": "VERIFY",
+      "files": [
+        "scripts/validate_run_report.py",
+        "tests/test_validate_run_report.py"
+      ],
+      "result": "accepted",
+      "evidence": "Commit 3172db6. Added schema v1/v2 run-report validator and tests. Historical schema v1 command returned {\"status\":\"pass\"}. Suite reached 93 passed."
+    },
+    {
+      "id": "K3-T3",
+      "signal": "ORCHESTRATION",
+      "files": [
+        "scripts/run_diagnosis_wave.py",
+        "tests/test_run_diagnosis_wave.py"
+      ],
+      "result": "accepted",
+      "evidence": "Commit 4b08fea. Added one-command diagnosis wave runner and tests. Stub-leaf tests passed; suite reached 96 passed. Final line count after hardening is 248."
+    },
+    {
+      "id": "K3-T4",
+      "signal": "DOCS",
+      "files": [
+        "SKILL.md",
+        "CHANGELOG.md",
+        "docs/"
+      ],
+      "result": "accepted",
+      "evidence": "Commit 5f46f39. Updated taxonomy v2, run-report v2, docs-repair docs, SKILL.md version 0.4.0, and CHANGELOG. SKILL.md line count is 114, under 160. Suite reached 96 passed; check_release returned {\"status\":\"pass\"}."
+    },
+    {
+      "id": "K3-T5",
+      "signal": "GATE",
+      "files": [
+        "scripts/check_wave_baseline.py",
+        "tests/test_check_wave_baseline.py",
+        "scripts/wave_baseline.json",
+        "scripts/wave_frozen.md",
+        ".gitignore"
+      ],
+      "result": "accepted",
+      "evidence": "Commits 53f0881, 9ca316c, 55fa638. Added wave baseline equality checker and tests, cleared mechanical/security findings, seeded scripts/wave_baseline.json and scripts/wave_frozen.md, and ignored .wave_out/. Final line counts: run_diagnosis_wave.py 248, check_wave_baseline.py 83, validate_run_report.py 114."
+    }
+  ],
+  "verification": [
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "exit_code": 0,
+      "output": "100 passed"
+    },
+    {
+      "command": "python3 -m pytest --collect-only -q",
+      "exit_code": 0,
+      "output": "100 tests collected"
+    },
+    {
+      "command": "python3 scripts/check_release.py",
+      "exit_code": 0,
+      "output": "{\"status\":\"pass\"}"
+    },
+    {
+      "command": "WAVE_RUNNER=$PWD/scripts/run_diagnosis_wave.py SKILLS_ROOT=$HOME/.claude/skills python3 scripts/check_wave_baseline.py",
+      "exit_code": 0,
+      "output": "wave summary: code-health exit 2 status error findings 11; security exit 0 status ok findings 0; hygiene exit 0 status ok findings 0; docs exit 1 status findings findings 3; dependency exit 0 status ok findings 0; hotspot exit 1 status findings findings 9\n{\"status\":\"pass\",\"count\":23,\"baseline\":23}"
+    },
+    {
+      "command": "python3 ~/.claude/skills/security-audit/scripts/security_audit.py --root . --out-dir /tmp/sp9-k3-accepted-security --source-prefix scripts",
+      "exit_code": 0,
+      "output": "{\"status\":\"ok\",\"findings\":0,\"leaf\":\"security\"}"
+    },
+    {
+      "command": "python3 ~/.claude/skills/code-health-audit-pipeline/scripts/code_health_pipeline.py --root . --out-dir /tmp/sp9-k3-accepted-health --source-prefix scripts",
+      "exit_code": 2,
+      "output": "{\"status\":\"ok\",\"supervisor\":\"GATE\",\"findings\":11,...}; advisory gate residuals are frozen"
+    },
+    {
+      "command": "python3 scripts/validate_run_report.py --run-dir docs/audits/20260611T061957Z --schema 1",
+      "exit_code": 0,
+      "output": "{\"status\":\"pass\"}"
+    },
+    {
+      "command": "python3 scripts/validate_run_report.py --run-dir docs/audits/20260611T100212Z",
+      "exit_code": 0,
+      "output": "{\"status\": \"pass\"}"
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0,
+      "output": ""
+    }
+  ],
+  "warnings": [
+    "code-health exit 2 is the expected advisory GATE residual state after the final backlog freeze, not a crash.",
+    "Remaining final backlog is frozen in scripts/wave_frozen.md: 17 deferred-structural, 6 won't-fix-FP, 0 coverage-gated, 0 accepted-mechanical.",
+    "performance lane remains manual because no benchmark surface was part of the K3 wave.",
+    "coverage-gated count is 0 because the final backlog carries SECURITY 0 and TEST 0.",
+    "No push was performed."
+  ],
+  "wave_summary": {
+    "code-health": {
+      "exit": 2,
+      "status": "error",
+      "findings": 11
+    },
+    "security": {
+      "exit": 0,
+      "status": "ok",
+      "findings": 0
+    },
+    "hygiene": {
+      "exit": 0,
+      "status": "ok",
+      "findings": 0
+    },
+    "docs": {
+      "exit": 1,
+      "status": "findings",
+      "findings": 3
+    },
+    "dependency": {
+      "exit": 0,
+      "status": "ok",
+      "findings": 0
+    },
+    "hotspot": {
+      "exit": 1,
+      "status": "findings",
+      "findings": 9
+    }
+  },
+  "findings_by_leaf": {
+    "complexity": 8,
+    "dead-code": 1,
+    "docs-consistency": 3,
+    "hotspot": 9,
+    "quality": 2
+  },
+  "normalized_baseline": {
+    "path": "scripts/wave_baseline.json",
+    "findings": 23
+  },
+  "frozen_log": {
+    "path": "scripts/wave_frozen.md",
+    "total": 23,
+    "classes": {
+      "deferred-structural": 17,
+      "wont-fix-FP": 6,
+      "coverage-gated": 0,
+      "accepted-mechanical": 0
+    },
+    "expires": {
+      "v0.5.0 reinstall": 6,
+      "v0.5.0 convergence review": 8,
+      "post-v0.5.x decomposition": 9
+    }
+  },
+  "line_counts": {
+    "SKILL.md": 114,
+    "scripts/run_diagnosis_wave.py": 248,
+    "scripts/check_wave_baseline.py": 83,
+    "scripts/validate_run_report.py": 114
+  },
+  "push": {
+    "performed": false
+  }
+}
