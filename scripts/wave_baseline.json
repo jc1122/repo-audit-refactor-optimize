@@ -25,6 +25,12 @@
   },
   {
     "leaf": "hotspot",
+    "path": "scripts/run_diagnosis_wave.py",
+    "symbol": "scripts/run_diagnosis_wave.py",
+    "metric": "churn_complexity_product"
+  },
+  {
+    "leaf": "hotspot",
     "path": "scripts/skill_bootstrap_manifest.json",
     "symbol": "scripts/skill_bootstrap_manifest.json",
     "metric": "churn_complexity_product"
