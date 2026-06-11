@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import importlib
 import json
 import subprocess  # nosec B404: intentional execution of configured leaves
 import sys
@@ -11,6 +12,10 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+
+_wave_findings = importlib.import_module(
+    "scripts._wave_findings" if __package__ else "_wave_findings"
+)
 
 
 LANES = {
@@ -85,53 +90,6 @@ def _doc_prefixes(repo: Path) -> list[str]:
     return includes
 
 
-def _string_value(value: Any, fallback: Any = "") -> str:
-    if isinstance(value, str):
-        return value
-    return fallback if isinstance(fallback, str) else ""
-
-
-def _normalize_finding(finding: dict[str, Any], lane: str) -> dict[str, str]:
-    location = finding.get("location")
-    if not isinstance(location, dict):
-        location = {}
-    metric = finding.get("metric")
-    if isinstance(metric, dict):
-        metric = metric.get("name")
-    if metric is None:
-        metric = finding.get("signal", "")
-    return {
-        "leaf": _string_value(finding.get("leaf"), lane),
-        "path": _string_value(finding.get("path"), location.get("path", "")),
-        "symbol": _string_value(finding.get("symbol"), location.get("symbol", "")),
-        "metric": "" if metric is None else str(metric),
-    }
-
-
-def _read_findings_file(path: Path, lane: str) -> list[dict[str, str]]:
-    try:
-        payload = json.loads(path.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, OSError):
-        return []
-    if isinstance(payload, dict):
-        payload = payload.get("findings", [])
-    if not isinstance(payload, list):
-        return []
-    return [
-        _normalize_finding(item, lane) for item in payload if isinstance(item, dict)
-    ]
-
-
-def _collect_lane_findings(lane_dir: Path, lane: str) -> list[dict[str, str]]:
-    findings: list[dict[str, str]] = []
-    for finding_path in sorted(lane_dir.glob("*_findings.json")):
-        findings.extend(_read_findings_file(finding_path, lane))
-    code_health_summary = lane_dir / "code_health_summary.json"
-    if code_health_summary.exists():
-        findings.extend(_read_findings_file(code_health_summary, lane))
-    return findings
-
-
 def _append_flagged(cmd: list[str], flag: str, values: Iterable[str]) -> None:
     for value in values:
         cmd.extend([flag, value])
@@ -186,7 +144,7 @@ def _run_lane(
         ).returncode
     except OSError:
         exit_code = 2
-    return exit_code, _collect_lane_findings(lane_out, lane)
+    return exit_code, _wave_findings.collect_lane_findings(lane_out, lane)
 
 
 def _status_for_exit(exit_code: int) -> str:
