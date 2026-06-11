@@ -1,0 +1,150 @@
+{
+  "exit_code": 1,
+  "findings": [
+    {
+      "confidence": "high",
+      "evidence": {
+        "raw": "MI=24.5 rank=A",
+        "tool": "radon"
+      },
+      "id": "57e32e158e7f3dd1",
+      "leaf": "complexity",
+      "location": {
+        "line_end": 1,
+        "line_start": 1,
+        "symbol": "<module>"
+      },
+      "metric": {
+        "name": "maintainability_index",
+        "threshold": 65.0,
+        "value": 24.4914076996796
+      },
+      "path": "scripts/_bootstrap_report.py",
+      "severity": "medium",
+      "signal": "SIMPLIFY",
+      "suggested_action": "Improve maintainability of scripts/_bootstrap_report.py \u2014 MI 24.5 below 65"
+    },
+    {
+      "confidence": "high",
+      "evidence": {
+        "raw": "MI=24.5 rank=A",
+        "tool": "radon"
+      },
+      "id": "1c1869085d4f4084",
+      "leaf": "complexity",
+      "location": {
+        "line_end": 1,
+        "line_start": 1,
+        "symbol": "<module>"
+      },
+      "metric": {
+        "name": "maintainability_index",
+        "threshold": 65.0,
+        "value": 24.493449603656327
+      },
+      "path": "scripts/_lane_resolve.py",
+      "severity": "medium",
+      "signal": "SIMPLIFY",
+      "suggested_action": "Improve maintainability of scripts/_lane_resolve.py \u2014 MI 24.5 below 65"
+    },
+    {
+      "confidence": "high",
+      "evidence": {
+        "raw": "MI=39.0 rank=A",
+        "tool": "radon"
+      },
+      "id": "99028257ae951758",
+      "leaf": "complexity",
+      "location": {
+        "line_end": 1,
+        "line_start": 1,
+        "symbol": "<module>"
+      },
+      "metric": {
+        "name": "maintainability_index",
+        "threshold": 65.0,
+        "value": 38.96653559713613
+      },
+      "path": "scripts/_skill_probe.py",
+      "severity": "medium",
+      "signal": "SIMPLIFY",
+      "suggested_action": "Improve maintainability of scripts/_skill_probe.py \u2014 MI 39.0 below 65"
+    },
+    {
+      "confidence": "high",
+      "evidence": {
+        "raw": "build_bootstrap_report( * , repo_root : Path , manifest_path : Path , out_dir : Path , env : dict [ str , str ] | None = None , extra_roots : list [ Path ] | None = None , foreign_roots : list [ Path ] | None = None , user_override_path : Path | None = None , repo_override_path : Path | None = None , required_skill_names : list [ str ] | None = None , ) params=9",
+        "tool": "lizard"
+      },
+      "id": "c8d75b7bbbd265b4",
+      "leaf": "complexity",
+      "location": {
+        "line_end": 485,
+        "line_start": 457,
+        "symbol": "build_bootstrap_report"
+      },
+      "metric": {
+        "name": "parameter_count",
+        "threshold": 5.0,
+        "value": 9.0
+      },
+      "path": "scripts/_bootstrap_report.py",
+      "severity": "low",
+      "signal": "SIMPLIFY",
+      "suggested_action": "Reduce parameters of build_bootstrap_report() \u2014 9 exceeds 5"
+    }
+  ],
+  "leaves": {
+    "complexity": {
+      "count": 4,
+      "exit": 1,
+      "status": "findings"
+    },
+    "dead-code": {
+      "count": 0,
+      "exit": 0,
+      "status": "clean"
+    },
+    "dependency": {
+      "count": 0,
+      "exit": 0,
+      "status": "clean"
+    },
+    "docs-consistency": {
+      "count": 0,
+      "exit": 0,
+      "status": "clean"
+    },
+    "duplication": {
+      "count": 0,
+      "exit": 0,
+      "status": "clean"
+    },
+    "quality": {
+      "count": 0,
+      "exit": 0,
+      "status": "clean"
+    },
+    "repo-hygiene": {
+      "count": 0,
+      "exit": 0,
+      "status": "clean"
+    },
+    "structure": {
+      "count": 0,
+      "exit": 0,
+      "status": "clean"
+    }
+  },
+  "supervisor": "ADVISE",
+  "totals": {
+    "by_severity": {
+      "low": 1,
+      "medium": 3
+    },
+    "by_signal": {
+      "SIMPLIFY": 4
+    },
+    "count": 4
+  }
+}

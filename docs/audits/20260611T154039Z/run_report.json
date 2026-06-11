@@ -1,0 +1,215 @@
+{
+  "schema_version": 2,
+  "repo_root": "/home/jakub/projects/repo-audit-refactor-optimize",
+  "started_utc": "2026-06-11T15:40:39Z",
+  "finished_utc": "2026-06-11T15:43:47Z",
+  "orchestrator_skill_version": "0.4.1",
+  "lanes": {
+    "bootstrap": {
+      "status": "pass",
+      "summary": {
+        "active_lanes": [
+          "bootstrap",
+          "test-python",
+          "code-health-python",
+          "coverage-python",
+          "security",
+          "performance",
+          "hygiene",
+          "orchestration"
+        ],
+        "restart_required": false,
+        "stop_before_discovery": false
+      },
+      "source_skills_root": "/home/jakub/projects/repo-audit-skills/skills",
+      "source_package_version": "0.5.1",
+      "installed_readback_version": "0.5.0",
+      "installed_readback_note": "Expected before T6; reinstall is explicitly human-gated."
+    },
+    "wave": {
+      "skills_root": "/home/jakub/projects/repo-audit-skills/skills",
+      "scope": [
+        "scripts"
+      ],
+      "pre_ratchet_baseline": 13,
+      "post_ratchet_baseline": 9,
+      "run1": {
+        "status": "pass",
+        "count": 9,
+        "baseline": 9,
+        "summary": {
+          "code-health": {
+            "exit": 1,
+            "status": "findings",
+            "findings": 4
+          },
+          "security": {
+            "exit": 0,
+            "status": "ok",
+            "findings": 0
+          },
+          "hygiene": {
+            "exit": 0,
+            "status": "ok",
+            "findings": 0
+          },
+          "docs": {
+            "exit": 0,
+            "status": "ok",
+            "findings": 0
+          },
+          "dependency": {
+            "exit": 0,
+            "status": "ok",
+            "findings": 0
+          },
+          "hotspot": {
+            "exit": 1,
+            "status": "findings",
+            "findings": 5
+          }
+        }
+      },
+      "run2": {
+        "status": "pass",
+        "count": 9,
+        "baseline": 9,
+        "summary": {
+          "code-health": {
+            "exit": 1,
+            "status": "findings",
+            "findings": 4
+          },
+          "security": {
+            "exit": 0,
+            "status": "ok",
+            "findings": 0
+          },
+          "hygiene": {
+            "exit": 0,
+            "status": "ok",
+            "findings": 0
+          },
+          "docs": {
+            "exit": 0,
+            "status": "ok",
+            "findings": 0
+          },
+          "dependency": {
+            "exit": 0,
+            "status": "ok",
+            "findings": 0
+          },
+          "hotspot": {
+            "exit": 1,
+            "status": "findings",
+            "findings": 5
+          }
+        }
+      },
+      "raw_findings": 9,
+      "normalized_identities": 9,
+      "convergence": {
+        "status": "pass",
+        "new_in_run2": 0,
+        "stale_in_run2": 0
+      }
+    },
+    "tests": {
+      "pytest": "101 passed"
+    },
+    "release": {
+      "check_release": "pass",
+      "version": "0.4.1"
+    }
+  },
+  "findings_totals": {
+    "wave_baseline_before": 13,
+    "wave_baseline_after": 9,
+    "stale_removed": 4,
+    "new_findings": 0,
+    "code_health_findings": 4,
+    "hotspot_findings": 5,
+    "docs_findings": 0,
+    "security_findings": 0,
+    "dependency_findings": 0,
+    "hygiene_findings": 0
+  },
+  "backlog": {
+    "accepted": [
+      {
+        "class": "docs-scope",
+        "rule": "Exclude immutable historical plan/spec docs from living-doc diagnosis scope.",
+        "evidence": "docs/superpowers added to DOC_EXCLUDES; repo-A docs wave fell from 191 to 0 and repo-B docs lane remains 0."
+      },
+      {
+        "class": "baseline-ratchet",
+        "rule": "Remove stale precision rows in the same commit when v0.5.1 leaves stop producing them.",
+        "evidence": "CLI module-MI rows for check_release, check_skill_requirements, run_diagnosis_wave, validate_run_report removed; baseline 13 -> 9."
+      },
+      {
+        "class": "release-hotspot-control",
+        "rule": "Fix release-induced hotspot growth with source brevity, not baseline growth.",
+        "evidence": "0.4.1 version bump temporarily introduced SKILL.md churn hotspot; compacting SKILL.md restored wave gate to 9/9."
+      }
+    ],
+    "deferred": [
+      {
+        "class": "structural-code-health",
+        "rule": "Defer helper module-MI and build_bootstrap_report parameter-count debt to a dedicated decomposition batch.",
+        "evidence": "Remaining code-health rows: _bootstrap_report, _lane_resolve, _skill_probe, build_bootstrap_report."
+      },
+      {
+        "class": "hotspot-ordering",
+        "rule": "Use hotspot rows as ordering signals unless they are release-induced growth that can be mechanically reduced.",
+        "evidence": "Remaining hotspot rows are existing checker/manifest/test churn and temporal coupling."
+      }
+    ],
+    "coverage_gated": [],
+    "wont_fix": []
+  },
+  "batches": [
+    {
+      "name": "SP10 T5 docs/superpowers wave scope fix",
+      "commit": "a4676e8",
+      "evidence": "tests/test_run_diagnosis_wave.py covers exclude-capable and fallback docs scope."
+    },
+    {
+      "name": "SP10 T5 wave baseline ratchet",
+      "commit": "b29cfcb",
+      "evidence": "baseline 13 -> 9; two wave runs pass 9/9."
+    },
+    {
+      "name": "SP10 T5 v0.4.1 metadata",
+      "commit": "e62f613",
+      "evidence": "SKILL.md and CHANGELOG moved to 0.4.1."
+    },
+    {
+      "name": "SP10 T5 release hotspot control",
+      "commit": "e11720e",
+      "evidence": "SKILL.md compacted; no baseline growth after version bump."
+    }
+  ],
+  "verification": [
+    {
+      "command": "python3 scripts/check_release.py",
+      "status": "pass",
+      "evidence": "status pass at version 0.4.1."
+    },
+    {
+      "command": "python3 -m pytest tests/ -q",
+      "status": "pass",
+      "evidence": "101 passed."
+    },
+    {
+      "command": "WAVE_RUNNER=/home/jakub/projects/repo-audit-refactor-optimize/scripts/run_diagnosis_wave.py SKILLS_ROOT=/home/jakub/projects/repo-audit-skills/skills python3 scripts/check_wave_baseline.py",
+      "status": "pass",
+      "evidence": "run 1 and run 2 both status pass, count 9, baseline 9."
+    }
+  ],
+  "warnings": [
+    "Installed repo-audit leaves still read as 0.5.0 until the T6 human-gated reinstall.",
+    "Bootstrap helper skills are unavailable; raw CLI fallback remains active.",
+    "No benchmark surface detected for repo-B."
+  ]
+}

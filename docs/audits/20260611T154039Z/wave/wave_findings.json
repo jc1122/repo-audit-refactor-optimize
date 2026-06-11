@@ -1,0 +1,56 @@
+[
+  {
+    "leaf": "complexity",
+    "path": "scripts/_bootstrap_report.py",
+    "symbol": "<module>",
+    "metric": "maintainability_index"
+  },
+  {
+    "leaf": "complexity",
+    "path": "scripts/_lane_resolve.py",
+    "symbol": "<module>",
+    "metric": "maintainability_index"
+  },
+  {
+    "leaf": "complexity",
+    "path": "scripts/_skill_probe.py",
+    "symbol": "<module>",
+    "metric": "maintainability_index"
+  },
+  {
+    "leaf": "complexity",
+    "path": "scripts/_bootstrap_report.py",
+    "symbol": "build_bootstrap_report",
+    "metric": "parameter_count"
+  },
+  {
+    "leaf": "hotspot",
+    "path": "SKILL.md",
+    "symbol": "SKILL.md<->references/pipeline.md",
+    "metric": "temporal_coupling_ratio"
+  },
+  {
+    "leaf": "hotspot",
+    "path": "scripts/check_skill_requirements.py",
+    "symbol": "scripts/check_skill_requirements.py",
+    "metric": "churn_complexity_product"
+  },
+  {
+    "leaf": "hotspot",
+    "path": "scripts/skill_bootstrap_manifest.json",
+    "symbol": "scripts/skill_bootstrap_manifest.json",
+    "metric": "churn_complexity_product"
+  },
+  {
+    "leaf": "hotspot",
+    "path": "scripts/skill_bootstrap_manifest.json",
+    "symbol": "scripts/skill_bootstrap_manifest.json<->tests/test_check_skill_requirements.py",
+    "metric": "temporal_coupling_ratio"
+  },
+  {
+    "leaf": "hotspot",
+    "path": "tests/test_check_skill_requirements.py",
+    "symbol": "tests/test_check_skill_requirements.py",
+    "metric": "churn_complexity_product"
+  }
+]

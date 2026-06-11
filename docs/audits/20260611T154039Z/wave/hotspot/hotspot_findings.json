@@ -1,0 +1,117 @@
+[
+  {
+    "confidence": "medium",
+    "evidence": {
+      "raw": "5 co-changes of SKILL.md and references/pipeline.md in last 64 commits (max 500) from e11720e6e364",
+      "tool": "git"
+    },
+    "id": "81604a759ac5095f",
+    "leaf": "hotspot",
+    "location": {
+      "line_end": 1,
+      "line_start": 1,
+      "symbol": "SKILL.md<->references/pipeline.md"
+    },
+    "metric": {
+      "name": "temporal_coupling_ratio",
+      "threshold": 0.7,
+      "value": 0.71
+    },
+    "path": "SKILL.md",
+    "severity": "medium",
+    "signal": "RESTRUCTURE",
+    "suggested_action": "Files co-change; move the shared concern into one module or merge them"
+  },
+  {
+    "confidence": "medium",
+    "evidence": {
+      "raw": "26 commits x 76 nloc in last 64 commits (max 500) from e11720e6e364",
+      "tool": "git"
+    },
+    "id": "763256196b74746d",
+    "leaf": "hotspot",
+    "location": {
+      "line_end": 1,
+      "line_start": 1,
+      "symbol": "scripts/check_skill_requirements.py"
+    },
+    "metric": {
+      "name": "churn_complexity_product",
+      "threshold": 1000.0,
+      "value": 1976.0
+    },
+    "path": "scripts/check_skill_requirements.py",
+    "severity": "low",
+    "signal": "DECOMPOSE",
+    "suggested_action": "Hotspot: scripts/check_skill_requirements.py changes often and is large; split along change axes"
+  },
+  {
+    "confidence": "medium",
+    "evidence": {
+      "raw": "5 commits x 250 nloc in last 64 commits (max 500) from e11720e6e364",
+      "tool": "git"
+    },
+    "id": "aae4ff5bc26fbeda",
+    "leaf": "hotspot",
+    "location": {
+      "line_end": 1,
+      "line_start": 1,
+      "symbol": "scripts/skill_bootstrap_manifest.json"
+    },
+    "metric": {
+      "name": "churn_complexity_product",
+      "threshold": 1000.0,
+      "value": 1250.0
+    },
+    "path": "scripts/skill_bootstrap_manifest.json",
+    "severity": "low",
+    "signal": "DECOMPOSE",
+    "suggested_action": "Hotspot: scripts/skill_bootstrap_manifest.json changes often and is large; split along change axes"
+  },
+  {
+    "confidence": "medium",
+    "evidence": {
+      "raw": "5 co-changes of scripts/skill_bootstrap_manifest.json and tests/test_check_skill_requirements.py in last 64 commits (max 500) from e11720e6e364",
+      "tool": "git"
+    },
+    "id": "174e737fa0725daa",
+    "leaf": "hotspot",
+    "location": {
+      "line_end": 1,
+      "line_start": 1,
+      "symbol": "scripts/skill_bootstrap_manifest.json<->tests/test_check_skill_requirements.py"
+    },
+    "metric": {
+      "name": "temporal_coupling_ratio",
+      "threshold": 0.7,
+      "value": 1.0
+    },
+    "path": "scripts/skill_bootstrap_manifest.json",
+    "severity": "medium",
+    "signal": "RESTRUCTURE",
+    "suggested_action": "Files co-change; move the shared concern into one module or merge them"
+  },
+  {
+    "confidence": "medium",
+    "evidence": {
+      "raw": "17 commits x 1410 nloc in last 64 commits (max 500) from e11720e6e364",
+      "tool": "git"
+    },
+    "id": "df4aba6db1ba47b1",
+    "leaf": "hotspot",
+    "location": {
+      "line_end": 1,
+      "line_start": 1,
+      "symbol": "tests/test_check_skill_requirements.py"
+    },
+    "metric": {
+      "name": "churn_complexity_product",
+      "threshold": 1000.0,
+      "value": 23970.0
+    },
+    "path": "tests/test_check_skill_requirements.py",
+    "severity": "high",
+    "signal": "DECOMPOSE",
+    "suggested_action": "Hotspot: tests/test_check_skill_requirements.py changes often and is large; split along change axes"
+  }
+]
