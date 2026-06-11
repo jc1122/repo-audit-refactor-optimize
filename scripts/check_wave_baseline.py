@@ -13,6 +13,8 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
 BASELINE = Path(__file__).with_name("wave_baseline.json")
+WAVE_ANCHOR = Path(__file__).with_name("wave_anchor.txt")
+HOTSPOT_CONFIG = Path(__file__).with_name("hotspot_audit_config.json")
 RUNNER_REL = ".claude/skills/repo-audit-refactor-optimize/scripts/run_diagnosis_wave.py"
 DEFAULT_RUNNER = str(Path.home() / RUNNER_REL)
 DEFAULT_SKILLS_ROOT = str(Path.home() / ".claude/skills")
@@ -39,6 +41,16 @@ def _run_wave():
     cmd = [sys.executable, runner, "--repo", str(REPO), "--out-dir", str(out)]
     cmd += ["--skills-root", os.environ.get("SKILLS_ROOT", DEFAULT_SKILLS_ROOT)]
     cmd += ["--source-prefix", "scripts"]
+    rev = os.environ.get("WAVE_REV")
+    if not rev and WAVE_ANCHOR.exists():
+        rev = WAVE_ANCHOR.read_text(encoding="utf-8").strip()
+    if rev:
+        cmd += ["--rev", rev]
+    hotspot_config = os.environ.get("HOTSPOT_CONFIG")
+    if not hotspot_config and HOTSPOT_CONFIG.exists():
+        hotspot_config = str(HOTSPOT_CONFIG)
+    if hotspot_config:
+        cmd += ["--hotspot-config", hotspot_config]
     # Runner path may come from WAVE_RUNNER; shell stays disabled.
     subprocess.run(cmd, check=False)  # nosec B603: shell=False
     return _load_json(out / "wave_findings.json")

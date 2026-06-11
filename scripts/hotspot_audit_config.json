@@ -1,0 +1,12 @@
+{
+  "coupling_allow_pairs": [
+    [
+      "SKILL.md",
+      "references/pipeline.md"
+    ],
+    [
+      "scripts/skill_bootstrap_manifest.json",
+      "tests/test_check_skill_requirements.py"
+    ]
+  ]
+}

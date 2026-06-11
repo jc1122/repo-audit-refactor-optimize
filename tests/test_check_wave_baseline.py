@@ -87,3 +87,36 @@ def test_finding_identity_is_order_insensitive(tmp_path, capsys):
     captured = json.loads(capsys.readouterr().out)
     assert rc == 0
     assert captured["status"] == "pass"
+
+
+def test_run_wave_forwards_anchor_and_hotspot_config(tmp_path, monkeypatch):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    runner = tmp_path / "runner.py"
+    runner.write_text(
+        "import json\n"
+        "import sys\n"
+        "from pathlib import Path\n"
+        "out = Path(sys.argv[sys.argv.index('--out-dir') + 1])\n"
+        "out.mkdir(parents=True, exist_ok=True)\n"
+        "(out / 'wave_findings.json').write_text('[]', encoding='utf-8')\n"
+        "(out / 'argv.json').write_text(json.dumps(sys.argv[1:]), encoding='utf-8')\n",
+        encoding="utf-8",
+    )
+    anchor = tmp_path / "wave_anchor.txt"
+    anchor.write_text("anchor-sha\n", encoding="utf-8")
+    config = tmp_path / "hotspot_audit_config.json"
+    config.write_text("{}\n", encoding="utf-8")
+
+    monkeypatch.setattr(mod, "REPO", repo)
+    monkeypatch.setattr(mod, "WAVE_ANCHOR", anchor)
+    monkeypatch.setattr(mod, "HOTSPOT_CONFIG", config)
+    monkeypatch.setenv("WAVE_RUNNER", str(runner))
+    monkeypatch.setenv("SKILLS_ROOT", str(tmp_path / "skills"))
+    monkeypatch.delenv("WAVE_REV", raising=False)
+    monkeypatch.delenv("HOTSPOT_CONFIG", raising=False)
+
+    assert mod._run_wave() == []
+    argv = json.loads((repo / ".wave_out" / "argv.json").read_text(encoding="utf-8"))
+    assert argv[argv.index("--rev") + 1] == "anchor-sha"
+    assert argv[argv.index("--hotspot-config") + 1] == str(config)

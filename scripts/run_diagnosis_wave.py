@@ -31,6 +31,7 @@ class _LaneContext:
     source_prefixes: list[str]
     rev: str | None
     coverage_json: Path | None
+    hotspot_config: Path | None
 
 
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -41,6 +42,7 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--source-prefix", action="append", default=[])
     parser.add_argument("--coverage-json", type=Path)
     parser.add_argument("--rev")
+    parser.add_argument("--hotspot-config", type=Path)
     parser.add_argument("--lanes")
     return parser.parse_args(argv)
 
@@ -148,8 +150,11 @@ def _append_scope_args(
             _append_flagged(cmd, "--exclude-prefix", excludes)
         else:
             _append_flagged(cmd, "--source-prefix", _doc_prefixes(context.repo))
-    elif lane == "hotspot" and context.rev is not None:
-        cmd.extend(["--rev", context.rev])
+    elif lane == "hotspot":
+        if context.rev is not None:
+            cmd.extend(["--rev", context.rev])
+        if context.hotspot_config is not None:
+            cmd.extend(["--config", str(context.hotspot_config)])
 
 
 def _run_lane(
@@ -238,7 +243,12 @@ def main(argv: list[str] | None = None) -> int:
 
     args.out_dir.mkdir(parents=True, exist_ok=True)
     context = _LaneContext(
-        args.repo, args.out_dir, args.source_prefix, args.rev, args.coverage_json
+        args.repo,
+        args.out_dir,
+        args.source_prefix,
+        args.rev,
+        args.coverage_json,
+        args.hotspot_config,
     )
     run = _run_wave(selected, args.skills_root, context)
     return _write_wave_outputs(args.out_dir, *run)

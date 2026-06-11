@@ -288,3 +288,47 @@ def test_docs_living_docs_supporting_excludes_add_superpowers(tmp_path: Path) ->
     assert "docs/dogfood" in exclude_prefixes
     assert "docs/plans" in exclude_prefixes
     assert "docs/superpowers" in exclude_prefixes
+
+
+def test_hotspot_config_is_forwarded_to_hotspot_lane(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    _prepare_repo_root(repo)
+    config = repo / "scripts" / "hotspot_config.json"
+    config.write_text('{"coupling_allow_pairs": []}\n', encoding="utf-8")
+
+    skills_root = tmp_path / "skills"
+    hotspot = skills_root / "hotspot-audit" / "scripts" / "hotspot_audit.py"
+    _make_fake_leaf_with_findings(
+        hotspot,
+        "hotspot_findings.json",
+        [],
+        0,
+        write_argv=True,
+    )
+
+    out_dir = tmp_path / "wave"
+    assert (
+        mod.main(
+            [
+                "--repo",
+                str(repo),
+                "--out-dir",
+                str(out_dir),
+                "--skills-root",
+                str(skills_root),
+                "--lanes",
+                "hotspot",
+                "--rev",
+                "abc123",
+                "--hotspot-config",
+                str(config),
+            ]
+        )
+        == 0
+    )
+
+    argv = json.loads((out_dir / "hotspot" / "argv.json").read_text(encoding="utf-8"))
+    assert "--rev" in argv
+    assert argv[argv.index("--rev") + 1] == "abc123"
+    assert "--config" in argv
+    assert argv[argv.index("--config") + 1] == str(config)
