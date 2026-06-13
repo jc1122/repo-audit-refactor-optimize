@@ -44,7 +44,7 @@ This lane is the refactor-safety signal: its TEST findings gate remediation (see
 - Manual fallback: manual performance reasoning over stable verification
 - Blocking: yes (blocked only when the repo has neither a benchmark nor a deterministic test surface)
 
-`full` when `perf-benchmark` is usable and a deterministic benchmark surface exists; `manual` with a warning when only a test surface exists.
+`full` when `perf-benchmark` is usable and a deterministic benchmark surface exists; `synthesizable` when there is no benchmark surface but a runnable test surface exists and `perf-benchmark` is usable (the agent may synthesize a focused microbenchmark — see pipeline.md); `manual` with a warning when only a test surface exists and `perf-benchmark` is not usable; `blocked` when neither a benchmark nor a deterministic test surface exists.
 
 ## Orchestration Lane (`orchestration`)
 

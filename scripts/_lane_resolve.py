@@ -286,6 +286,13 @@ def _evaluate_performance_lane(
     warnings: list[str] = []
     if not profile["has_deterministic_perf_surface"]:
         if profile["has_deterministic_test_surface"]:
+            if _all_usable(lane.get("preferred", []), skills):
+                warnings.append(
+                    "No benchmark surface; agent may synthesize one (perf-benchmark usable)."
+                )
+                selected = list(lane.get("preferred", []))
+                selected.extend(_usable_optionals(lane, skills))
+                return "synthesizable", selected, warnings
             warnings.append(
                 "No benchmark surface detected; performance work remains manual."
             )

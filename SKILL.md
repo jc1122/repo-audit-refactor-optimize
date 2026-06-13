@@ -1,6 +1,6 @@
 ---
 name: repo-audit-refactor-optimize
-version: 0.5.1
+version: 0.6.0
 description: End-to-end repository diagnosis, remediation, and optimization orchestration built on the deterministic repo-audit-skills family. Use when the agent needs to audit a repository with deterministic code-health, coverage-gap, and test-audit lanes, synthesize a coverage-gated remediation backlog, execute safe refactor batches, benchmark and optimize performance, or run a full repo optimization pipeline from diagnosis through verified completion.
 ---
 
@@ -56,7 +56,7 @@ Load `references/pipeline.md`, then run lanes relevant to repository profile and
 - Test lane: prefer `test-audit-pipeline` (coverage json), fallback `test-quality-assurance` and `test-redundancy-triage`.
 - Code health lane: prefer `code-health-audit-pipeline`, fallback five leaf skills.
 - Coverage lane: `coverage-gap-audit` from test coverage.
-- Performance lane: `perf-benchmark` then `perf-optimization`.
+- Performance lane: `perf-benchmark` then `perf-optimization`. When no benchmark surface exists but a runnable Python surface does and `perf-benchmark` is usable, the lane is `synthesizable`: the agent runs `profile_discover.py`, picks a hotspot, authors `make_input(size)` via `synth_microbench.py`, measures with the `perf-benchmark` pipeline (callgrind tier preferred), gates with `synthesize_perf.py`, and may `graduate_benchmark.py` on demand. Synthesis is agent-triggered, never automatic.
 
 Use the deterministic diagnosis wave runner when installed leaves are available:
 
