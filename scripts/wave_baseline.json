@@ -8,7 +8,7 @@
   {
     "leaf": "quality",
     "path": "scripts/run_diagnosis_wave.py",
-    "symbol": "E501@219:89",
+    "symbol": "E501@223:89",
     "metric": "E501"
   },
   {

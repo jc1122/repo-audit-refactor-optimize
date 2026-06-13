@@ -144,10 +144,14 @@ def _append_scope_args(
     if lane == "exec":
         return
 
-    # growth lane: --baseline-rev when rev is supplied
+    # growth lane: --baseline-rev when rev is supplied;
+    # auto-detect --config from repo-local growth_allowances.json
     if lane == "growth":
         if context.rev is not None:
             cmd.extend(["--baseline-rev", context.rev])
+        growth_allowances = context.repo / "scripts" / "growth_allowances.json"
+        if growth_allowances.exists():
+            cmd.extend(["--config", str(growth_allowances)])
         return
 
     if lane in {"code-health", "security", "dependency"}:

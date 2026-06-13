@@ -714,6 +714,53 @@ def test_growth_lane_with_rev_passes_baseline_rev(tmp_path: Path) -> None:
     assert "--baseline-rev" in argv
     assert argv[argv.index("--baseline-rev") + 1] == "abc123"
     assert "--rev" not in argv  # growth must not receive bare --rev
+    assert "--config" not in argv  # no growth config supplied
+
+
+def test_growth_autodetect_config_from_repo(tmp_path: Path) -> None:
+    """When repo/scripts/growth_allowances.json exists, --config is auto-forwarded."""
+    repo = tmp_path / "repo"
+    _prepare_repo_root(repo)
+    config = repo / "scripts" / "growth_allowances.json"
+    config.write_text('{"allowances": []}\n', encoding="utf-8")
+
+    skills_root = tmp_path / "skills"
+    growth_leaf = skills_root / "growth-audit" / "scripts" / "growth_audit.py"
+    _make_fake_leaf_with_findings(
+        growth_leaf,
+        "growth_findings.json",
+        [],
+        0,
+        write_argv=True,
+    )
+
+    registry = _make_registry(
+        tmp_path,
+        [
+            {"name": "growth", "script": "growth-audit/scripts/growth_audit.py", "languages": ["*"]},
+        ],
+    )
+
+    out_dir = tmp_path / "wave"
+    assert (
+        mod.main(
+            [
+                "--repo", str(repo),
+                "--out-dir", str(out_dir),
+                "--skills-root", str(skills_root),
+                "--lanes", "growth",
+                "--registry", str(registry),
+                "--rev", "abc123",
+            ]
+        )
+        == 0
+    )
+
+    argv = json.loads((out_dir / "growth" / "argv.json").read_text(encoding="utf-8"))
+    assert "--baseline-rev" in argv
+    assert argv[argv.index("--baseline-rev") + 1] == "abc123"
+    assert "--config" in argv
+    assert argv[argv.index("--config") + 1] == str(config)
 
 
 def test_unknown_lane_in_registry_detected(tmp_path: Path) -> None:
@@ -910,6 +957,7 @@ def test_growth_lane_recognized_from_default_registry(tmp_path: Path) -> None:
     assert "--baseline-rev" in argv
     assert argv[argv.index("--baseline-rev") + 1] == "abc123"
     assert "--rev" not in argv  # growth must not receive bare --rev
+    assert "--config" not in argv  # no growth config supplied
 
 
 def test_growth_lane_skipped_without_rev_default_registry(tmp_path: Path) -> None:
