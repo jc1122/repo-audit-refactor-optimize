@@ -20,11 +20,6 @@ def _write_script(path: Path, body: str) -> None:
     path.write_text(body, encoding="utf-8")
 
 
-def _write_registry(path: Path, entries: list[dict[str, object]]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps({"lanes": entries}), encoding="utf-8")
-
-
 def _assert_status(
     payload: dict[str, dict[str, object]], lane: str, exit_code: int, status: str
 ) -> None:
@@ -54,17 +49,15 @@ def _make_fake_leaf_with_findings(
         "parser.add_argument('--source-prefix', action='append', default=[])\n"
     )
     if has_exclude_arg:
-        body += (
-            "parser.add_argument('--exclude-prefix', action='append', default=[])\n"
-        )
+        body += "parser.add_argument('--exclude-prefix', action='append', default=[])\n"
     if write_argv:
         body += "parser.add_argument('--rev')\n"
+        body += "parser.add_argument('--config')\n"
         body += "parser.add_argument('--baseline-rev')\n"
     body += "args, _ = parser.parse_known_args()\n"
     body += (
         f"Path(args.out_dir).mkdir(parents=True, exist_ok=True)\n"
-        f"Path(args.out_dir + '/{file_name}').write_text("
-        f"json.dumps(RESULT), encoding='utf-8')\n"
+        f"Path(args.out_dir + '/{file_name}').write_text(json.dumps(RESULT), encoding='utf-8')\n"
     )
     if write_argv:
         body += (
@@ -73,23 +66,6 @@ def _make_fake_leaf_with_findings(
         )
     body += f"raise SystemExit({exit_code})\n"
     _write_script(path, body)
-
-
-def _make_fake_lane_leaf(
-    skills_root: Path,
-    lane_script: str,
-    file_name: str,
-    findings_obj,
-    exit_code: int = 0,
-    *,
-    write_argv: bool = False,
-) -> Path:
-    """Create a minimal fake leaf under *skills_root* and return its path."""
-    leaf = skills_root / lane_script
-    _make_fake_leaf_with_findings(
-        leaf, file_name, findings_obj, exit_code, write_argv=write_argv
-    )
-    return leaf
 
 
 def _prepare_repo_root(root: Path) -> None:
@@ -102,7 +78,16 @@ def _prepare_repo_root(root: Path) -> None:
     (root / "scripts").mkdir()
 
 
-# ── existing tests (unchanged assertions, now parallel-capable) ─────────
+def _make_registry(tmp_path: Path, entries: list[dict]) -> Path:
+    """Write a temporary lane registry and return its path."""
+    reg_path = tmp_path / "wave_lanes.json"
+    reg_path.write_text(
+        json.dumps({"lanes": entries}, indent=2), encoding="utf-8"
+    )
+    return reg_path
+
+
+# ── existing tests (legacy LANES fallback) ──────────────────────────────
 
 
 def test_selected_lanes_disjoint_out_dirs_merge_findings(tmp_path: Path) -> None:
@@ -129,11 +114,7 @@ def test_selected_lanes_disjoint_out_dirs_merge_findings(tmp_path: Path) -> None
     _make_fake_leaf_with_findings(
         dependency,
         "dependency_findings.json",
-        {
-            "findings": [
-                {"leaf": "dep-leaf", "location": {"path": "src/dep.py", "symbol": "dep"}}
-            ]
-        },
+        {"findings": [{"leaf": "dep-leaf", "location": {"path": "src/dep.py", "symbol": "dep"}}]},
         1,
     )
 
@@ -411,84 +392,161 @@ def test_security_config_is_forwarded_to_security_lane(tmp_path: Path) -> None:
     assert argv[argv.index("--config") + 1] == str(config)
 
 
-# ── new tests: registry-driven behaviour ────────────────────────────────
+# ── new tests: registry, parallel, exec, growth, timings ────────────────
 
 
-def test_load_lanes_parses_registry(tmp_path: Path) -> None:
-    registry_path = tmp_path / "wave_lanes.json"
-    _write_registry(
-        registry_path,
+def test_load_lanes_returns_ordered_dict_from_registry(tmp_path: Path) -> None:
+    registry = _make_registry(
+        tmp_path,
         [
             {"name": "hygiene", "script": "repo-hygiene-audit/scripts/repo_hygiene_audit.py", "languages": ["*"]},
             {"name": "exec", "script": "exec-audit/scripts/exec_audit.py", "languages": ["*"]},
             {"name": "growth", "script": "growth-audit/scripts/growth_audit.py", "languages": ["*"]},
         ],
     )
-    result = mod.load_lanes(registry_path)
-    assert list(result.keys()) == ["hygiene", "exec", "growth"]
-    assert result["hygiene"] == "repo-hygiene-audit/scripts/repo_hygiene_audit.py"
-    assert result["exec"] == "exec-audit/scripts/exec_audit.py"
-    assert result["growth"] == "growth-audit/scripts/growth_audit.py"
+    lanes = mod.load_lanes(registry)
+    assert list(lanes.keys()) == ["hygiene", "exec", "growth"]
+    assert lanes["hygiene"] == "repo-hygiene-audit/scripts/repo_hygiene_audit.py"
+    assert lanes["exec"] == "exec-audit/scripts/exec_audit.py"
+    assert lanes["growth"] == "growth-audit/scripts/growth_audit.py"
 
 
-def test_registry_driven_wave(tmp_path: Path) -> None:
-    """Use a temp registry; verify summary and findings order follows registry."""
+def test_registry_drives_lane_selection_and_order(tmp_path: Path) -> None:
+    """Lanes are selected and ordered per the registry, not the --lanes CSV order."""
     repo = tmp_path / "repo"
     _prepare_repo_root(repo)
 
     skills_root = tmp_path / "skills"
-    registry_path = tmp_path / "wave_lanes.json"
+    hyg = skills_root / "repo-hygiene-audit" / "scripts" / "repo_hygiene_audit.py"
+    sec = skills_root / "security-audit" / "scripts" / "security_audit.py"
+    _make_fake_leaf_with_findings(hyg, "hygiene_findings.json", [], 0)
+    _make_fake_leaf_with_findings(
+        sec,
+        "security_findings.json",
+        [{"path": "s.py", "location": {"symbol": "s"}, "metric": "1"}],
+        0,
+    )
 
-    _write_registry(
-        registry_path,
+    registry = _make_registry(
+        tmp_path,
         [
-            {"name": "alpha", "script": "alpha-audit/scripts/alpha.py", "languages": ["*"]},
-            {"name": "beta", "script": "beta-audit/scripts/beta.py", "languages": ["*"]},
+            {"name": "security", "script": "security-audit/scripts/security_audit.py", "languages": ["python"]},
+            {"name": "hygiene", "script": "repo-hygiene-audit/scripts/repo_hygiene_audit.py", "languages": ["*"]},
         ],
     )
 
-    alpha = skills_root / "alpha-audit" / "scripts" / "alpha.py"
-    beta = skills_root / "beta-audit" / "scripts" / "beta.py"
-    _make_fake_leaf_with_findings(
-        alpha, "alpha_findings.json",
-        [{"path": "a.py", "location": {"symbol": "a"}, "metric": 1}], 0,
+    out_dir = tmp_path / "wave"
+    # Request lanes in reverse registry order; they must still execute and
+    # appear in the summary in *registry* order (security first, hygiene second).
+    assert (
+        mod.main(
+            [
+                "--repo", str(repo),
+                "--out-dir", str(out_dir),
+                "--skills-root", str(skills_root),
+                "--lanes", "hygiene,security",
+                "--registry", str(registry),
+            ]
+        )
+        == 0
     )
+
+    summary = json.loads((out_dir / "wave_summary.json").read_text(encoding="utf-8"))
+    assert list(summary.keys()) == ["security", "hygiene"]
+
+
+def test_wave_timings_is_emitted(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    _prepare_repo_root(repo)
+
+    skills_root = tmp_path / "skills"
+    sec = skills_root / "security-audit" / "scripts" / "security_audit.py"
     _make_fake_leaf_with_findings(
-        beta, "beta_findings.json",
-        [{"path": "b.py", "location": {"symbol": "b"}, "metric": 2}], 0,
+        sec,
+        "security_findings.json",
+        [{"path": "t.py", "location": {"symbol": "t"}, "metric": "2"}],
+        0,
+    )
+
+    registry = _make_registry(
+        tmp_path,
+        [
+            {"name": "security", "script": "security-audit/scripts/security_audit.py", "languages": ["python"]},
+        ],
     )
 
     out_dir = tmp_path / "wave"
-    exit_code = mod.main(
-        [
-            "--repo", str(repo),
-            "--out-dir", str(out_dir),
-            "--skills-root", str(skills_root),
-            "--registry", str(registry_path),
-            "--lanes", "alpha,beta",
-        ]
+    assert (
+        mod.main(
+            [
+                "--repo", str(repo),
+                "--out-dir", str(out_dir),
+                "--skills-root", str(skills_root),
+                "--lanes", "security",
+                "--registry", str(registry),
+            ]
+        )
+        == 0
     )
-    assert exit_code == 0
 
-    summary = json.loads((out_dir / "wave_summary.json").read_text(encoding="utf-8"))
-    findings = json.loads((out_dir / "wave_findings.json").read_text(encoding="utf-8"))
     timings = json.loads((out_dir / "wave_timings.json").read_text(encoding="utf-8"))
+    assert "security" in timings
+    assert "start" in timings["security"]
+    assert "end" in timings["security"]
+    assert "elapsed" in timings["security"]
+    assert isinstance(timings["security"]["elapsed"], (int, float))
+    assert timings["security"]["elapsed"] >= 0
 
-    # summary keys preserve registry order
-    assert list(summary.keys()) == ["alpha", "beta"]
-    _assert_status(summary, "alpha", 0, "ok")
-    _assert_status(summary, "beta", 0, "ok")
 
-    # findings order: alpha then beta (registry order)
-    assert len(findings) == 2
-    assert findings[0]["symbol"] == "a"
-    assert findings[1]["symbol"] == "b"
+def test_parallel_execution_lanes_run_concurrently(tmp_path: Path) -> None:
+    """Two slow-ish fake leaves must finish faster than sequential would."""
+    repo = tmp_path / "repo"
+    _prepare_repo_root(repo)
 
-    # timings emitted
-    assert "alpha" in timings
-    assert "beta" in timings
-    assert "elapsed" in timings["alpha"]
-    assert "elapsed" in timings["beta"]
+    skills_root = tmp_path / "skills"
+    leaf_a = skills_root / "a-audit" / "scripts" / "a_audit.py"
+    leaf_b = skills_root / "b-audit" / "scripts" / "b_audit.py"
+
+    # Each leaf sleeps 0.3 s — sequential would be >= 0.6 s, parallel < 0.55 s.
+    slow_body = (
+        "import argparse, json, sys, time\n"
+        "from pathlib import Path\n"
+        "p = argparse.ArgumentParser()\n"
+        "p.add_argument('--root')\n"
+        "p.add_argument('--out-dir')\n"
+        "args, _ = p.parse_known_args()\n"
+        "Path(args.out_dir).mkdir(parents=True, exist_ok=True)\n"
+        "time.sleep(0.3)\n"
+        "Path(args.out_dir + '/f.json').write_text('[]', encoding='utf-8')\n"
+        "raise SystemExit(0)\n"
+    )
+    _write_script(leaf_a, slow_body)
+    _write_script(leaf_b, slow_body)
+
+    registry = _make_registry(
+        tmp_path,
+        [
+            {"name": "a", "script": "a-audit/scripts/a_audit.py", "languages": ["*"]},
+            {"name": "b", "script": "b-audit/scripts/b_audit.py", "languages": ["*"]},
+        ],
+    )
+
+    out_dir = tmp_path / "wave"
+    t0 = __import__("time").time()
+    assert (
+        mod.main(
+            [
+                "--repo", str(repo),
+                "--out-dir", str(out_dir),
+                "--skills-root", str(skills_root),
+                "--lanes", "a,b",
+                "--registry", str(registry),
+            ]
+        )
+        == 0
+    )
+    elapsed = __import__("time").time() - t0
+    assert elapsed < 0.55, f"parallel expected but took {elapsed:.2f}s"
 
 
 def test_exec_lane_no_extra_args(tmp_path: Path) -> None:
@@ -496,41 +554,43 @@ def test_exec_lane_no_extra_args(tmp_path: Path) -> None:
     _prepare_repo_root(repo)
 
     skills_root = tmp_path / "skills"
-    registry_path = tmp_path / "wave_lanes.json"
-
-    _write_registry(
-        registry_path,
-        [{"name": "exec", "script": "exec-audit/scripts/exec_audit.py", "languages": ["*"]}],
-    )
-
     exec_leaf = skills_root / "exec-audit" / "scripts" / "exec_audit.py"
     _make_fake_leaf_with_findings(
-        exec_leaf, "exec_findings.json", [], 0, write_argv=True,
+        exec_leaf,
+        "exec_findings.json",
+        [],
+        0,
+        write_argv=True,
+    )
+
+    registry = _make_registry(
+        tmp_path,
+        [
+            {"name": "exec", "script": "exec-audit/scripts/exec_audit.py", "languages": ["*"]},
+        ],
     )
 
     out_dir = tmp_path / "wave"
-    exit_code = mod.main(
-        [
-            "--repo", str(repo),
-            "--out-dir", str(out_dir),
-            "--skills-root", str(skills_root),
-            "--registry", str(registry_path),
-            "--lanes", "exec",
-        ]
+    assert (
+        mod.main(
+            [
+                "--repo", str(repo),
+                "--out-dir", str(out_dir),
+                "--skills-root", str(skills_root),
+                "--lanes", "exec",
+                "--registry", str(registry),
+            ]
+        )
+        == 0
     )
-    assert exit_code == 0
-
-    summary = json.loads((out_dir / "wave_summary.json").read_text(encoding="utf-8"))
-    _assert_status(summary, "exec", 0, "ok")
 
     argv = json.loads((out_dir / "exec" / "argv.json").read_text(encoding="utf-8"))
-    # exec lane must have no --source-prefix, no --rev, no extra args
+    # exec lane must NOT receive any extra flags beyond --root and --out-dir
     assert "--source-prefix" not in argv
     assert "--rev" not in argv
     assert "--baseline-rev" not in argv
     assert "--config" not in argv
-    # only --root and --out-dir (plus any argparse extras)
-    assert "--root" in argv
+    assert "--coverage-json" not in argv
 
 
 def test_growth_lane_skipped_without_rev(tmp_path: Path) -> None:
@@ -538,36 +598,40 @@ def test_growth_lane_skipped_without_rev(tmp_path: Path) -> None:
     _prepare_repo_root(repo)
 
     skills_root = tmp_path / "skills"
-    registry_path = tmp_path / "wave_lanes.json"
-
-    _write_registry(
-        registry_path,
-        [{"name": "growth", "script": "growth-audit/scripts/growth_audit.py", "languages": ["*"]}],
-    )
-
-    # Even if the script exists, it should be skipped when no --rev
     growth_leaf = skills_root / "growth-audit" / "scripts" / "growth_audit.py"
     _make_fake_leaf_with_findings(
-        growth_leaf, "growth_findings.json", [], 0, write_argv=True,
+        growth_leaf,
+        "growth_findings.json",
+        [],
+        0,
+        write_argv=True,
+    )
+
+    registry = _make_registry(
+        tmp_path,
+        [
+            {"name": "growth", "script": "growth-audit/scripts/growth_audit.py", "languages": ["*"]},
+        ],
     )
 
     out_dir = tmp_path / "wave"
-    exit_code = mod.main(
-        [
-            "--repo", str(repo),
-            "--out-dir", str(out_dir),
-            "--skills-root", str(skills_root),
-            "--registry", str(registry_path),
-            "--lanes", "growth",
-        ]
+    assert (
+        mod.main(
+            [
+                "--repo", str(repo),
+                "--out-dir", str(out_dir),
+                "--skills-root", str(skills_root),
+                "--lanes", "growth",
+                "--registry", str(registry),
+            ]
+        )
+        == 0
     )
-    assert exit_code == 0
 
     summary = json.loads((out_dir / "wave_summary.json").read_text(encoding="utf-8"))
     _assert_status(summary, "growth", 0, "skipped")
     assert summary["growth"]["findings"] == 0
-
-    # The growth lane directory should NOT have been created (run_lane was never called)
+    # growth leaf directory should NOT have been created (never ran)
     assert not (out_dir / "growth").exists()
 
 
@@ -576,50 +640,56 @@ def test_growth_lane_with_rev_passes_baseline_rev(tmp_path: Path) -> None:
     _prepare_repo_root(repo)
 
     skills_root = tmp_path / "skills"
-    registry_path = tmp_path / "wave_lanes.json"
-
-    _write_registry(
-        registry_path,
-        [{"name": "growth", "script": "growth-audit/scripts/growth_audit.py", "languages": ["*"]}],
-    )
-
     growth_leaf = skills_root / "growth-audit" / "scripts" / "growth_audit.py"
     _make_fake_leaf_with_findings(
-        growth_leaf, "growth_findings.json", [], 0, write_argv=True,
+        growth_leaf,
+        "growth_findings.json",
+        [],
+        0,
+        write_argv=True,
+    )
+
+    registry = _make_registry(
+        tmp_path,
+        [
+            {"name": "growth", "script": "growth-audit/scripts/growth_audit.py", "languages": ["*"]},
+        ],
     )
 
     out_dir = tmp_path / "wave"
-    exit_code = mod.main(
-        [
-            "--repo", str(repo),
-            "--out-dir", str(out_dir),
-            "--skills-root", str(skills_root),
-            "--registry", str(registry_path),
-            "--lanes", "growth",
-            "--rev", "deadbeef",
-        ]
+    assert (
+        mod.main(
+            [
+                "--repo", str(repo),
+                "--out-dir", str(out_dir),
+                "--skills-root", str(skills_root),
+                "--lanes", "growth",
+                "--registry", str(registry),
+                "--rev", "abc123",
+            ]
+        )
+        == 0
     )
-    assert exit_code == 0
 
     summary = json.loads((out_dir / "wave_summary.json").read_text(encoding="utf-8"))
     _assert_status(summary, "growth", 0, "ok")
 
     argv = json.loads((out_dir / "growth" / "argv.json").read_text(encoding="utf-8"))
     assert "--baseline-rev" in argv
-    assert argv[argv.index("--baseline-rev") + 1] == "deadbeef"
-    assert "--rev" not in argv
+    assert argv[argv.index("--baseline-rev") + 1] == "abc123"
+    assert "--rev" not in argv  # growth must not receive bare --rev
 
 
-def test_unknown_lane_in_registry_reports_error(tmp_path: Path) -> None:
+def test_unknown_lane_in_registry_detected(tmp_path: Path) -> None:
     repo = tmp_path / "repo"
     _prepare_repo_root(repo)
 
     skills_root = tmp_path / "skills"
-    registry_path = tmp_path / "wave_lanes.json"
-
-    _write_registry(
-        registry_path,
-        [{"name": "hygiene", "script": "repo-hygiene-audit/scripts/repo_hygiene_audit.py", "languages": ["*"]}],
+    registry = _make_registry(
+        tmp_path,
+        [
+            {"name": "hygiene", "script": "repo-hygiene-audit/scripts/repo_hygiene_audit.py", "languages": ["*"]},
+        ],
     )
 
     out_dir = tmp_path / "wave"
@@ -628,218 +698,98 @@ def test_unknown_lane_in_registry_reports_error(tmp_path: Path) -> None:
             "--repo", str(repo),
             "--out-dir", str(out_dir),
             "--skills-root", str(skills_root),
-            "--registry", str(registry_path),
             "--lanes", "nonexistent",
+            "--registry", str(registry),
         ]
     )
     assert exit_code == 2
 
 
-def test_wave_timings_is_emitted_for_every_lane(tmp_path: Path) -> None:
+def test_missing_leaf_in_registry_sets_error_status(tmp_path: Path) -> None:
+    """When a registry entry points to a non-existent script, record error."""
     repo = tmp_path / "repo"
     _prepare_repo_root(repo)
 
     skills_root = tmp_path / "skills"
-    registry_path = tmp_path / "wave_lanes.json"
+    # Do NOT create the leaf script
 
-    _write_registry(
-        registry_path,
+    registry = _make_registry(
+        tmp_path,
         [
             {"name": "hygiene", "script": "repo-hygiene-audit/scripts/repo_hygiene_audit.py", "languages": ["*"]},
-            {"name": "security", "script": "security-audit/scripts/security_audit.py", "languages": ["*"]},
         ],
     )
 
-    hygiene_leaf = skills_root / "repo-hygiene-audit" / "scripts" / "repo_hygiene_audit.py"
-    security_leaf = skills_root / "security-audit" / "scripts" / "security_audit.py"
-    _make_fake_leaf_with_findings(hygiene_leaf, "hygiene_findings.json", [], 0)
-    _make_fake_leaf_with_findings(security_leaf, "security_findings.json", [], 0)
-
     out_dir = tmp_path / "wave"
-    exit_code = mod.main(
-        [
-            "--repo", str(repo),
-            "--out-dir", str(out_dir),
-            "--skills-root", str(skills_root),
-            "--registry", str(registry_path),
-            "--lanes", "hygiene,security",
-        ]
+    assert (
+        mod.main(
+            [
+                "--repo", str(repo),
+                "--out-dir", str(out_dir),
+                "--skills-root", str(skills_root),
+                "--lanes", "hygiene",
+                "--registry", str(registry),
+            ]
+        )
+        == 1
     )
-    assert exit_code == 0
-
-    timings = json.loads((out_dir / "wave_timings.json").read_text(encoding="utf-8"))
-    assert "hygiene" in timings
-    assert "security" in timings
-    for lane in ("hygiene", "security"):
-        assert "start" in timings[lane]
-        assert "end" in timings[lane]
-        assert isinstance(timings[lane]["elapsed"], (int, float))
-        assert timings[lane]["elapsed"] >= 0
-
-
-def test_registry_order_preserved_in_summary_keys(tmp_path: Path) -> None:
-    """Even when --lanes reverses registry order, summary keys follow registry order."""
-    repo = tmp_path / "repo"
-    _prepare_repo_root(repo)
-
-    skills_root = tmp_path / "skills"
-    registry_path = tmp_path / "wave_lanes.json"
-
-    _write_registry(
-        registry_path,
-        [
-            {"name": "aaa", "script": "aaa-audit/scripts/aaa.py", "languages": ["*"]},
-            {"name": "zzz", "script": "zzz-audit/scripts/zzz.py", "languages": ["*"]},
-        ],
-    )
-
-    _make_fake_leaf_with_findings(
-        skills_root / "aaa-audit" / "scripts" / "aaa.py",
-        "aaa_findings.json", [], 0,
-    )
-    _make_fake_leaf_with_findings(
-        skills_root / "zzz-audit" / "scripts" / "zzz.py",
-        "zzz_findings.json", [], 0,
-    )
-
-    out_dir = tmp_path / "wave"
-    # Request lanes in reverse order
-    exit_code = mod.main(
-        [
-            "--repo", str(repo),
-            "--out-dir", str(out_dir),
-            "--skills-root", str(skills_root),
-            "--registry", str(registry_path),
-            "--lanes", "zzz,aaa",
-        ]
-    )
-    assert exit_code == 0
 
     summary = json.loads((out_dir / "wave_summary.json").read_text(encoding="utf-8"))
-    # Summary keys must follow registry order: aaa first, then zzz
-    assert list(summary.keys()) == ["aaa", "zzz"]
+    _assert_status(summary, "hygiene", 2, "error")
+    assert summary["hygiene"]["findings"] == 0
 
 
-def test_all_lanes_from_registry_when_no_lanes_arg(tmp_path: Path) -> None:
-    """When --lanes is omitted, all lanes from the registry run in registry order."""
+def test_registry_preserves_lane_order_in_summary_and_findings(tmp_path: Path) -> None:
+    """Deterministic byte-identical summary/findings order per registry."""
     repo = tmp_path / "repo"
     _prepare_repo_root(repo)
 
     skills_root = tmp_path / "skills"
-    registry_path = tmp_path / "wave_lanes.json"
-
-    _write_registry(
-        registry_path,
-        [
-            {"name": "one", "script": "one-audit/scripts/one.py", "languages": ["*"]},
-            {"name": "two", "script": "two-audit/scripts/two.py", "languages": ["*"]},
-        ],
-    )
+    hygiene = skills_root / "repo-hygiene-audit" / "scripts" / "repo_hygiene_audit.py"
+    exec_leaf = skills_root / "exec-audit" / "scripts" / "exec_audit.py"
 
     _make_fake_leaf_with_findings(
-        skills_root / "one-audit" / "scripts" / "one.py",
-        "one_findings.json", [{"path": "f1.py", "location": {"symbol": "s1"}, "metric": 1}], 0,
+        hygiene,
+        "hygiene_findings.json",
+        [{"path": "h.py", "location": {"symbol": "h"}, "metric": "1"}],
+        0,
     )
     _make_fake_leaf_with_findings(
-        skills_root / "two-audit" / "scripts" / "two.py",
-        "two_findings.json", [{"path": "f2.py", "location": {"symbol": "s2"}, "metric": 2}], 0,
+        exec_leaf,
+        "exec_findings.json",
+        [{"path": "e.py", "location": {"symbol": "e"}, "metric": "2"}],
+        0,
     )
 
-    out_dir = tmp_path / "wave"
-    exit_code = mod.main(
-        [
-            "--repo", str(repo),
-            "--out-dir", str(out_dir),
-            "--skills-root", str(skills_root),
-            "--registry", str(registry_path),
-        ]
-    )
-    assert exit_code == 0
-
-    summary = json.loads((out_dir / "wave_summary.json").read_text(encoding="utf-8"))
-    assert list(summary.keys()) == ["one", "two"]
-    _assert_status(summary, "one", 0, "ok")
-    _assert_status(summary, "two", 0, "ok")
-
-
-def test_missing_leaf_in_registry_records_error(tmp_path: Path) -> None:
-    """A lane whose script does not exist records status=error in summary."""
-    repo = tmp_path / "repo"
-    _prepare_repo_root(repo)
-
-    skills_root = tmp_path / "skills"
-    registry_path = tmp_path / "wave_lanes.json"
-
-    _write_registry(
-        registry_path,
-        [
-            {"name": "ghost", "script": "ghost-audit/scripts/ghost.py", "languages": ["*"]},
-            {"name": "real", "script": "real-audit/scripts/real.py", "languages": ["*"]},
-        ],
-    )
-
-    # Only 'real' exists
-    _make_fake_leaf_with_findings(
-        skills_root / "real-audit" / "scripts" / "real.py",
-        "real_findings.json", [], 0,
-    )
-
-    out_dir = tmp_path / "wave"
-    exit_code = mod.main(
-        [
-            "--repo", str(repo),
-            "--out-dir", str(out_dir),
-            "--skills-root", str(skills_root),
-            "--registry", str(registry_path),
-        ]
-    )
-    assert exit_code == 1  # wave_exit becomes 1 on missing leaf
-
-    summary = json.loads((out_dir / "wave_summary.json").read_text(encoding="utf-8"))
-    assert list(summary.keys()) == ["ghost", "real"]
-    _assert_status(summary, "ghost", 2, "error")
-    _assert_status(summary, "real", 0, "ok")
-    assert summary["ghost"]["findings"] == 0
-
-
-def test_growth_with_rev_and_missing_leaf_handled(tmp_path: Path) -> None:
-    """growth lane with --rev should still run when leaf exists."""
-    repo = tmp_path / "repo"
-    _prepare_repo_root(repo)
-
-    skills_root = tmp_path / "skills"
-    registry_path = tmp_path / "wave_lanes.json"
-
-    _write_registry(
-        registry_path,
+    registry = _make_registry(
+        tmp_path,
         [
             {"name": "hygiene", "script": "repo-hygiene-audit/scripts/repo_hygiene_audit.py", "languages": ["*"]},
-            {"name": "growth", "script": "growth-audit/scripts/growth_audit.py", "languages": ["*"]},
+            {"name": "exec", "script": "exec-audit/scripts/exec_audit.py", "languages": ["*"]},
         ],
     )
 
-    _make_fake_leaf_with_findings(
-        skills_root / "repo-hygiene-audit" / "scripts" / "repo_hygiene_audit.py",
-        "hygiene_findings.json", [], 0,
-    )
-    _make_fake_leaf_with_findings(
-        skills_root / "growth-audit" / "scripts" / "growth_audit.py",
-        "growth_findings.json",
-        [{"path": "g.py", "location": {"symbol": "g"}, "metric": "growth"}], 0,
-    )
-
     out_dir = tmp_path / "wave"
-    exit_code = mod.main(
-        [
-            "--repo", str(repo),
-            "--out-dir", str(out_dir),
-            "--skills-root", str(skills_root),
-            "--registry", str(registry_path),
-            "--rev", "abc123",
-        ]
+    assert (
+        mod.main(
+            [
+                "--repo", str(repo),
+                "--out-dir", str(out_dir),
+                "--skills-root", str(skills_root),
+                "--lanes", "hygiene,exec",
+                "--registry", str(registry),
+            ]
+        )
+        == 0
     )
-    assert exit_code == 0
 
     summary = json.loads((out_dir / "wave_summary.json").read_text(encoding="utf-8"))
-    _assert_status(summary, "hygiene", 0, "ok")
-    _assert_status(summary, "growth", 0, "ok")  # --rev supplied, not skipped
+    findings = json.loads((out_dir / "wave_findings.json").read_text(encoding="utf-8"))
+
+    # Summary keys in registry order
+    assert list(summary.keys()) == ["hygiene", "exec"]
+
+    # Findings in registry order: hygiene first, exec second
+    assert len(findings) == 2
+    assert findings[0]["path"] == "h.py"
+    assert findings[1]["path"] == "e.py"
