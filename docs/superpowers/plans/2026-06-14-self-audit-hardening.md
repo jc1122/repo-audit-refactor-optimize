@@ -22,7 +22,7 @@
 - Modify `scripts/check_wave_baseline.py` — reuse the shared `identity` (remove its duplicate identity notion) (G3).
 - Modify `scripts/mprr_integrate.py` — `self_guard` + `_git_toplevel`; modify `scripts/mprr_run.py` `_cmd_integrate` to enforce it (Fix 5).
 - Create `tests/test_self_dogfood.py` — end-to-end self-run regression (Fix 6).
-- Add unit tests in `tests/test_check_skill_requirements.py`, `tests/test_skill_probe.py` (create if absent), `tests/test_run_diagnosis_wave.py`, `tests/test_wave_findings.py` (create if absent), `tests/test_mprr_integrate.py` (create if absent).
+- Add unit tests by **extending existing** files: `tests/test_check_skill_requirements.py`, `tests/test_skill_probe.py` (exists, 7 tests), `tests/test_run_diagnosis_wave.py`, `tests/test_mprr_integrate.py` (exists, 4 tests). **Create new** files: `tests/test_wave_findings.py`, `tests/test_self_dogfood.py`.
 - Modify `SKILL.md`, `references/pipeline.md`, `CHANGELOG.md` — docs + version bump 0.6.0 → 0.7.0 (Task 7).
 
 **Baseline before starting:** `git rev-parse HEAD`; `python3 -m pytest tests/ -q` (record the pass count); `python3 scripts/check_release.py` → `{"status": "pass"}`. Tasks are ordered G1 → G4 → G2 → G3 → Fix5 → Fix6 → docs. Each task ends green.
@@ -149,16 +149,17 @@ git commit -m "fix(bootstrap): benchmark-surface detection requires a real harne
 **Files:**
 - Modify: `scripts/_skill_probe.py` (`_skill_entry` ~204-221)
 - Modify: `scripts/skill_bootstrap_manifest.json`
-- Test: `tests/test_skill_probe.py` (create)
+- Test: `tests/test_skill_probe.py` (**extend — it already exists with 7 `_skill_entry` tests**)
 
-- [ ] **Step 1: Write the failing test** — create `tests/test_skill_probe.py`:
+> **Audit note:** `tests/test_skill_probe.py` already exists (it imports `from scripts import
+> _skill_probe as probe` and has 7 tests incl. `test_skill_entry_marks_advisory_only_*` and
+> `test_skill_entry_marks_manual_*`). APPEND the new tests — do not recreate the file or re-import
+> `probe`. The two new names below do not collide with the existing 7 (verified).
+
+- [ ] **Step 1: Write the failing test** — APPEND to the existing `tests/test_skill_probe.py`:
 
 ```python
-import importlib
-
-probe = importlib.import_module("scripts._skill_probe")
-
-_CFG = {
+_ALWAYS_CFG = {
     "priority": "preferred",
     "source_type": "user-local",
     "manual_fallback": "manual",
@@ -167,15 +168,15 @@ _CFG = {
 }
 
 
-def test_always_available_resolves_usable_without_filesystem():
-    entry = probe._skill_entry("verification-before-completion", _CFG,
+def test_always_available_resolves_usable_without_filesystem() -> None:
+    entry = probe._skill_entry("verification-before-completion", _ALWAYS_CFG,
                                usable_skills={}, advisory_skills={})
     assert entry["state"] == "usable_now"
     assert entry["root_kind"] == "harness"
 
 
-def test_non_always_available_absent_skill_is_manual():
-    cfg = {k: v for k, v in _CFG.items() if k != "always_available"}
+def test_always_available_skipped_when_flag_absent_is_manual() -> None:
+    cfg = {k: v for k, v in _ALWAYS_CFG.items() if k != "always_available"}
     entry = probe._skill_entry("some-leaf", cfg, usable_skills={}, advisory_skills={})
     assert entry["state"] == "manual_only"
 ```
@@ -183,7 +184,8 @@ def test_non_always_available_absent_skill_is_manual():
 - [ ] **Step 2: Run to verify it fails**
 
 Run: `python3 -m pytest tests/test_skill_probe.py -q`
-Expected: `test_always_available_resolves_usable_without_filesystem` FAILS (state is `manual_only` today).
+Expected: `test_always_available_resolves_usable_without_filesystem` FAILS (state is `manual_only` today);
+the 7 existing tests stay green (their configs are unflagged, so the new early branch never fires).
 
 - [ ] **Step 3: Implement** — in `scripts/_skill_probe.py`, add the early branch in `_skill_entry` (after `entry = _build_skill_entry_base(...)`, before the `usable_skills` check):
 
@@ -608,40 +610,40 @@ git commit -m "feat(wave): --baseline suppression reusing the shared wave identi
 **Files:**
 - Modify: `scripts/mprr_integrate.py`
 - Modify: `scripts/mprr_run.py` (`_cmd_integrate` ~71-95)
-- Test: `tests/test_mprr_integrate.py` (create)
+- Test: `tests/test_mprr_integrate.py` (**extend — it already exists with 4 tests**)
 
-- [ ] **Step 1: Write the failing test** — create `tests/test_mprr_integrate.py`:
+> **Audit note:** `tests/test_mprr_integrate.py` already exists (it imports
+> `integ = importlib.import_module("scripts.mprr_integrate")` plus `pytest`, and tests
+> `assert_scope`/`merge_clean`). APPEND the new tests using the existing `integ` alias — do not
+> recreate the file or re-import. The three new names do not collide with the existing 4 (verified).
+
+- [ ] **Step 1: Write the failing test** — APPEND to the existing `tests/test_mprr_integrate.py` (reuse its `integ` alias):
 
 ```python
-import importlib
-
-mi = importlib.import_module("scripts.mprr_integrate")
-
-
 def test_self_guard_blocks_engine_self_merge(monkeypatch):
-    monkeypatch.setattr(mi, "_git_toplevel", lambda p: "/repo")  # engine == target
-    ok, reasons = mi.self_guard("/repo", ["scripts/mprr_run.py", "docs/x.md"])
+    monkeypatch.setattr(integ, "_git_toplevel", lambda p: "/repo")  # engine == target
+    ok, reasons = integ.self_guard("/repo", ["scripts/mprr_run.py", "docs/x.md"])
     assert ok is False
     assert any("self-engine" in r and "mprr_run.py" in r for r in reasons)
 
 
 def test_self_guard_allows_non_engine_files_in_self_repo(monkeypatch):
-    monkeypatch.setattr(mi, "_git_toplevel", lambda p: "/repo")
-    ok, reasons = mi.self_guard("/repo", ["docs/x.md", "README.md"])
+    monkeypatch.setattr(integ, "_git_toplevel", lambda p: "/repo")
+    ok, reasons = integ.self_guard("/repo", ["docs/x.md", "README.md"])
     assert ok is True and reasons == []
 
 
 def test_self_guard_allows_different_repo(monkeypatch):
-    monkeypatch.setattr(mi, "_git_toplevel",
-                        lambda p: "/engine" if p == mi._ENGINE_DIR else "/target")
-    ok, reasons = mi.self_guard("/target", ["scripts/mprr_run.py"])
+    monkeypatch.setattr(integ, "_git_toplevel",
+                        lambda p: "/engine" if p == integ._ENGINE_DIR else "/target")
+    ok, reasons = integ.self_guard("/target", ["scripts/mprr_run.py"])
     assert ok is True and reasons == []
 ```
 
 - [ ] **Step 2: Run to verify it fails**
 
 Run: `python3 -m pytest tests/test_mprr_integrate.py -q`
-Expected: FAIL — `self_guard` / `_git_toplevel` / `_ENGINE_DIR` undefined.
+Expected: FAIL — `self_guard` / `_git_toplevel` / `_ENGINE_DIR` undefined (the existing 4 tests still pass).
 
 - [ ] **Step 3: Implement** — in `scripts/mprr_integrate.py`, add `from pathlib import Path` to the imports, then append:
 
@@ -861,5 +863,10 @@ git commit -m "docs(self-audit): document scoping/suppression/self-guard; bump r
     one shared `identity` consumed by both, plus `partition` for suppress-and-continue.
   - **G4 (Task 2) — was a breakage trap:** added the explicit caveat to flag only the real manifest,
     never `sample_manifest` (else `:556`/`:591` break), and documented the foreign-root behavior change.
+  - **Test-file collisions (Task 2 + Task 5) — 2nd audit pass:** `tests/test_skill_probe.py` (7 tests)
+    and `tests/test_mprr_integrate.py` (4 tests) already exist; the draft said "create", which would
+    overwrite them. Both tasks now say **extend/append**, reuse the existing `probe`/`integ` imports,
+    and the new test names are verified non-colliding. Only `tests/test_wave_findings.py` and
+    `tests/test_self_dogfood.py` are genuinely new.
 - **Out of scope (intentional):** bootstrap-lane `degraded` (optional helpers), and coupling the
   orchestrator to repo-B's wave baseline (G3 stays a generic, optional input).
