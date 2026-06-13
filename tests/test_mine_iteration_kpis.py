@@ -1,4 +1,5 @@
 import json
+import subprocess
 import scripts.mine_iteration_kpis as m
 
 
@@ -25,3 +26,21 @@ def test_regression_flag_only_on_loop_controlled_metrics():
     assert m.is_regression(cur, prev) is False
     worse = {"rows_per_hour": 1.0, "repair_rate": 0.5, "ci_wait_seconds": 100.0}
     assert m.is_regression(worse, prev) is True
+
+
+def test_load_baseline_rows_counts_top_level_list(tmp_path):
+    # A flat-list baseline (like instruction_lint_baseline.json) must count len(),
+    # not return {} (which silently zeroes rows_closed).
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(["git", "-C", str(repo), "init", "-q"], check=True)
+    subprocess.run(["git", "-C", str(repo), "config", "user.email", "t@t"], check=True)
+    subprocess.run(["git", "-C", str(repo), "config", "user.name", "t"], check=True)
+    bl = repo / "b.json"
+    bl.write_text(json.dumps([{"id": 1}, {"id": 2}, {"id": 3}]), encoding="utf-8")
+    subprocess.run(["git", "-C", str(repo), "add", "b.json"], check=True)
+    subprocess.run(["git", "-C", str(repo), "commit", "-q", "-m", "x"], check=True)
+    sha = subprocess.run(["git", "-C", str(repo), "rev-parse", "HEAD"],
+                         capture_output=True, text=True, check=True).stdout.strip()
+    rows = m._load_baseline_rows(repo, sha, "b.json")
+    assert sum(rows.values()) == 3      # was 0 before the fix

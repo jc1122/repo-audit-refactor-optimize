@@ -123,6 +123,8 @@ def _load_baseline_rows(repo: Path, sha: str | None, baseline_rel: str) -> dict[
                 rows[str(key)] = len(val)
             elif isinstance(val, int):
                 rows[str(key)] = val
+    elif isinstance(data, list):
+        rows[Path(baseline_rel).stem] = len(data)
     return rows
 
 
