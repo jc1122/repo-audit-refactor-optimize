@@ -41,7 +41,3 @@ class SaturatingScheduler:
 
     def done(self) -> bool:
         return not self._pending and not self._running
-
-    @property
-    def running_ids(self) -> tuple[str, ...]:
-        return tuple(sorted(self._running))
