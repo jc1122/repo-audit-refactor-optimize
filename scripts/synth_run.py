@@ -62,3 +62,92 @@ def transition(run_dir: str | Path, to: str, **data: Any) -> dict[str, Any]:
 def status(run_dir: str | Path) -> dict[str, Any]:
     st = load_state(run_dir)
     return {"state": st["state"], "blocked": st["state"] in _BLOCKED, "data": st["data"]}
+
+
+from scripts import synthesize_perf as _gate
+
+
+# synth_microbench lives in perf-benchmark-skill; import by path so the driver stays repo-local.
+def _load_synth_microbench():
+    import importlib.util, os
+    root = os.environ.get("PERF_BENCHMARK_ROOT", str(Path.home() / "projects" / "perf-benchmark-skill"))
+    spec = importlib.util.spec_from_file_location("synth_microbench", Path(root) / "scripts" / "synth_microbench.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)  # type: ignore[union-attr]
+    return mod
+
+
+def _cmd_select(a: argparse.Namespace) -> int:
+    sm = _load_synth_microbench()
+    perf_dir = Path(a.run_dir) / "perf" / a.name
+    res = sm.generate(out_dir=perf_dir, name=a.name, import_root=Path(a.import_root),
+                      module=a.module, func=a.func)
+    transition(a.run_dir, "awaiting_make_input", hotspot=a.hotspot, target=a.name,
+               harness_dir=str(perf_dir), make_input=str(res["make_input"]),
+               target_command=res["target_command"],
+               note=f"Author make_input(size) at {res['make_input']}, then run `measure`.")
+    return 0
+
+
+def _cmd_measure(a: argparse.Namespace) -> int:
+    sm = _load_synth_microbench()
+    st = load_state(a.run_dir)
+    harness = Path(st["data"]["harness_dir"])
+    guard = sm.validate_make_input(harness)
+    if not guard["ok"]:
+        # stay blocked at awaiting_make_input with the reason — never advance on a bad harness
+        transition(a.run_dir, "awaiting_make_input", make_input_check=guard,
+                   note=f"make_input not ready: {guard['reason']}")
+        print(json.dumps(guard, indent=2))
+        return 1
+    summary = json.loads(Path(a.summary).read_text())
+    gate = _gate.decide_gate(**_gate.extract_gate_inputs(summary, max_cv=a.max_cv))
+    _gate.write_report(out_dir=harness, gate=gate, target=st["data"]["target"])
+    if gate["gate"] == "pass":
+        transition(a.run_dir, "gated_pass", gate=gate)
+        return 0
+    if gate["gate"] == "refuse":
+        transition(a.run_dir, "gated_refuse", gate=gate)  # terminal advisory
+        return 1
+    # gate == "error": bump attempts, retry or stop
+    attempts = int(st["data"].get("attempts", 0)) + 1
+    transition(a.run_dir, "gated_error", gate=gate, attempts=attempts)
+    if attempts > a.max_attempts:  # allow up to --max-attempts retries, then give up
+        transition(a.run_dir, "done_no_win", reason=f"gave up after {attempts} failed measurements")
+    else:
+        transition(a.run_dir, "awaiting_make_input", note="measurement error; fix the harness and retry")
+    return 2
+
+
+def _cmd_status(a: argparse.Namespace) -> int:
+    print(json.dumps(status(a.run_dir), indent=2))
+    return 0
+
+
+def main(argv: list[str] | None = None) -> int:
+    p = argparse.ArgumentParser(description="Autonomous synthesis driver.")
+    sub = p.add_subparsers(dest="cmd", required=True)
+
+    s = sub.add_parser("select"); s.set_defaults(fn=_cmd_select)
+    s.add_argument("--run-dir", required=True)
+    s.add_argument("--hotspot", required=True)
+    s.add_argument("--import-root", required=True)
+    s.add_argument("--module", required=True)
+    s.add_argument("--func", required=True)
+    s.add_argument("--name", required=True)
+
+    m = sub.add_parser("measure"); m.set_defaults(fn=_cmd_measure)
+    m.add_argument("--run-dir", required=True)
+    m.add_argument("--summary", required=True, help="benchmark_summary.json from the pipeline")
+    m.add_argument("--max-cv", type=float, default=5.0)
+    m.add_argument("--max-attempts", type=int, default=3)
+
+    st = sub.add_parser("status"); st.set_defaults(fn=_cmd_status)
+    st.add_argument("--run-dir", required=True)
+
+    args = p.parse_args(argv)
+    return args.fn(args)
+
+
+if __name__ == "__main__":
+    sys.exit(main())
