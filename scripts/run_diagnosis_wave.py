@@ -85,7 +85,9 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--security-config", type=Path)
     parser.add_argument("--hotspot-config", type=Path)
     parser.add_argument("--lanes")
-    parser.add_argument("--registry", type=Path, help="Path to wave_lanes.json registry")
+    parser.add_argument(
+        "--registry", type=Path, help="Path to wave_lanes.json registry"
+    )
     return parser.parse_args(argv)
 
 
@@ -214,13 +216,20 @@ def _status_for_exit(exit_code: int, findings_count: int = 0) -> str:
 
 # ── wave orchestration ──────────────────────────────────────────────────
 
+_WaveResult = tuple[
+    int,
+    dict[str, dict[str, Any]],
+    list[dict[str, str]],
+    dict[str, dict[str, Any]],
+]
+
 
 def _run_wave(
     selected: list[str],
     lanes: dict[str, str],
     skills_root: Path,
     context: _LaneContext,
-) -> tuple[int, dict[str, dict[str, Any]], list[dict[str, str]], dict[str, dict[str, Any]]]:
+) -> _WaveResult:
     """Run selected lanes in parallel, preserving registry order in outputs."""
     summary: dict[str, dict[str, Any]] = {}
     wave_findings: list[dict[str, str]] = []
