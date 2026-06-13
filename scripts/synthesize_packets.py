@@ -127,7 +127,9 @@ def _run_ruff(
             timeout=30,
         )
         if result.returncode != 0:
-            return result.stdout, result.stderr or f"ruff exited with code {result.returncode}"
+            return result.stdout, (
+                result.stderr or f"ruff exited with code {result.returncode}"
+            )
         return result.stdout, None
     except (subprocess.TimeoutExpired, FileNotFoundError, OSError) as exc:
         return "", str(exc)
@@ -215,7 +217,9 @@ def mechanical_patches(
             "patch_path": str(patch_path),
         }
         verify_path = proposals_dir / f"{finding_id}.verify.json"
-        verify_path.write_text(json.dumps(verify_payload, indent=2) + "\n", encoding="utf-8")
+        verify_path.write_text(
+            json.dumps(verify_payload, indent=2) + "\n", encoding="utf-8"
+        )
 
         results.append({
             "id": finding_id,

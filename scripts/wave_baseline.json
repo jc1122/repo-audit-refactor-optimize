@@ -12,18 +12,6 @@
     "metric": "E501"
   },
   {
-    "leaf": "quality",
-    "path": "scripts/synthesize_packets.py",
-    "symbol": "E501@130:89",
-    "metric": "E501"
-  },
-  {
-    "leaf": "quality",
-    "path": "scripts/synthesize_packets.py",
-    "symbol": "E501@218:89",
-    "metric": "E501"
-  },
-  {
     "leaf": "complexity",
     "path": "scripts/_bootstrap_report.py",
     "symbol": "<module>",
