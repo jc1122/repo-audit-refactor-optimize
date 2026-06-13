@@ -494,7 +494,7 @@ def test_performance_lane_degraded_when_only_perf_benchmark_installed(
     ]
 
 
-def test_performance_lane_manual_with_test_surface_no_benchmarks(
+def test_performance_lane_synthesizable_with_test_surface_no_benchmarks(
     tmp_path: Path,
     sample_manifest: dict,
     python_pytest_repo: Path,
@@ -515,8 +515,9 @@ def test_performance_lane_manual_with_test_surface_no_benchmarks(
         env={"HOME": str(tmp_path)},
     )
 
-    assert report["lanes"]["performance"]["state"] == "manual"
-    assert any("No benchmark surface" in w for w in report["warnings"])
+    assert report["lanes"]["performance"]["state"] == "synthesizable"
+    assert "perf-benchmark" in report["lanes"]["performance"]["selected_skills"]
+    assert any("synthesi" in w.lower() for w in report["lanes"]["performance"]["warnings"])
 
 
 def test_scan_repo_profile_empty_repo(tmp_path: Path):
