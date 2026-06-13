@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.6.0
+
+feat: synthesized performance benchmark — when a repo has no benchmark surface, the
+performance lane resolves to the new `synthesizable` state and the agent may synthesize
+a focused microbenchmark that the existing `perf-benchmark` engine measures. New
+stdlib-only modules under `scripts/`: `synthesize_perf` (gate decision over a
+`perf-benchmark` summary — pass / honest-refusal / measurement-error, plus the
+`verify_and_decide` revert seam), `_complexity_label` (local Big-O label),
+`graduate_benchmark` (copies a proven harness into `benchmarks/`; the perf trend ledger
+stays owned by `perf-benchmark --baseline-ledger`), and `synth_run` (a resumable
+file-backed driver: `discover → select → measure → candidate → verify`). Companion
+primitives live in `perf-benchmark-skill` (`profile_discover`, `synth_microbench`, a
+stable top-level summary contract) and a new `perf-smell-audit` leaf (perflint-backed
+PERF findings) lands in `repo-audit-skills`. The deterministic gate is reused from
+`perf-benchmark`'s `scoring.py`, not rebuilt.
+
 ## 0.5.1
 
 SP14 — remove the unused `running_ids` accessor from the MPRR `SaturatingScheduler`

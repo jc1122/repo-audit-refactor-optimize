@@ -143,6 +143,31 @@ The test lane produces a single `coverage.json` (coverage.py JSON format) under 
 
 Sequencing rule: the coverage and code-health lanes may start before the test lane completes, but their coverage-dependent outputs must be produced (or re-produced) after `coverage.json` exists. If no coverage artifact can be produced, run the code-health lane without `--coverage-json` and mark the coverage lane `manual` in the run summary — never fabricate testedness.
 
+## Benchmark Synthesis (`synthesizable` performance lane)
+
+When the performance lane resolves to `synthesizable` (no benchmark surface, but a runnable
+Python surface exists and `perf-benchmark` is usable), the agent may synthesize a focused
+microbenchmark instead of leaving performance work manual. The flow is agent-triggered, never
+automatic: `profile_discover.py` (or the pipeline's own `perf` hotspots) **+** `perf-smell-audit`
+PERF findings → pick a hotspot → `synth_microbench.generate` → author `make_input(size)` →
+`perf-benchmark` pipeline (callgrind tier preferred) → `synthesize_perf.py` gate → on pass,
+`select_candidate` + apply one change + re-measure + `verify_win` → optional `graduate_benchmark.py`.
+
+All synthesis work writes into the run's `perf/` directory: the harness (`bench_<name>.py`,
+`make_input.py`, `synth_spec.json`), the pipeline's `benchmark_summary.json`, and the gate's
+`gate.json` + `synthesis_report.md`. Only `graduate_benchmark.py` writes into the audited repo
+(copying the proven harness into `benchmarks/<name>/`); the perf trend ledger stays owned by
+`perf-benchmark --baseline-ledger`.
+
+Honest-refusal contract — `synthesize_perf.decide_gate` returns one of three verdicts and never
+fabricates a win: **pass** (gate-quality: deterministic instruction count, or wall-time CV within
+bound, on non-degenerate work — may back a win-claim), **refuse** (measured but not gate-quality:
+degenerate O(1) work, or wall-time noise with no deterministic tier — advisory only, lane stays
+`manual`), and **error** (no usable scaling evidence — fix the harness/sizes, not a verdict on the
+code). After optimization, `verify_and_decide` consumes `verify_win`'s `accept`/`reject` verdict
+and emits an explicit revert directive on anything other than `accept`. See
+`docs/superpowers/specs/2026-06-13-synthesized-perf-benchmark-design.md`.
+
 ## Synthesis Stage
 
 Convert all findings into normalized backlog items containing:
