@@ -135,5 +135,22 @@ def main(argv: list[str] | None = None) -> int:
     return {"pass": 0, "refuse": 1, "error": 2}[gate["gate"]]
 
 
+def verify_and_decide(*, verdict: dict[str, Any]) -> dict[str, Any]:
+    """Turn perf-optimization's verify_win verdict into a synthesis outcome + revert directive.
+
+    Never trusts a self-reported win: ``accept`` keeps the change; anything else reverts and
+    keeps the evidence (perf-optimization SKILL.md ratchet)."""
+    v = verdict.get("verdict")
+    if v == "accept":
+        return {"outcome": "done_win", "revert": False, "action": "keep change; commit win evidence"}
+    if v == "reject":
+        return {"outcome": "done_no_win", "revert": True,
+                "action": "git revert the change; keep before/after + verdict as evidence",
+                "reasons": verdict.get("reasons", [])}
+    return {"outcome": "error", "revert": True,
+            "action": "verify could not run; revert the unverified change and re-measure",
+            "reason": verdict.get("reason", "unknown")}
+
+
 if __name__ == "__main__":
     sys.exit(main())

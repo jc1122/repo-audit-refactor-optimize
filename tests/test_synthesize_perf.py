@@ -81,3 +81,23 @@ def test_write_report_renders_each_verdict(tmp_path):
             target="t",
         )
         assert marker in res.read_text().lower()
+
+
+def test_verify_and_decide_accepts_win():
+    res = sp.verify_and_decide(verdict={"verdict": "accept"})
+    assert res["outcome"] == "done_win"
+    assert res["revert"] is False
+
+
+def test_verify_and_decide_rejects_and_demands_revert():
+    res = sp.verify_and_decide(verdict={"verdict": "reject", "reasons": ["median"]})
+    assert res["outcome"] == "done_no_win"
+    assert res["revert"] is True
+    assert "revert" in res["action"].lower()
+    assert res["reasons"] == ["median"]
+
+
+def test_verify_and_decide_errors_on_verify_error():
+    res = sp.verify_and_decide(verdict={"verdict": "error", "reason": "missing summary"})
+    assert res["outcome"] == "error"
+    assert res["revert"] is True  # safest default: undo the unverified change
