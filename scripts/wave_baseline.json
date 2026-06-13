@@ -130,5 +130,17 @@
     "path": ".",
     "symbol": "benchmark_entrypoints_missing",
     "metric": "benchmark_entrypoints_missing"
+  },
+  {
+    "leaf": "growth-audit",
+    "path": "<repo>",
+    "symbol": "net_loc_growth",
+    "metric": "net_loc_growth"
+  },
+  {
+    "leaf": "hotspot",
+    "path": "scripts/wave_baseline.json",
+    "symbol": "scripts/wave_baseline.json",
+    "metric": "churn_complexity_product"
   }
 ]
