@@ -25,7 +25,7 @@
 **Track C — `repo-audit-refactor-optimize` (repo-B, this repo)**
 - Modify: `scripts/_lane_resolve.py:281` (`_evaluate_performance_lane`) — add the `synthesizable` state.
 - Create: `scripts/synthesize_perf.py` — pure gate-decision + report writer over `perf-benchmark` summaries.
-- Create: `scripts/graduate_benchmark.py` — copy a proven harness into `benchmarks/` + append the ledger.
+- Create: `scripts/graduate_benchmark.py` — copy a proven harness into `benchmarks/` (ledger owned by `perf-benchmark`).
 - Create: `tests/test_synthesize_perf.py`, `tests/test_graduate_benchmark.py`, and extend `tests/test_lane_resolve.py` (or create it if absent).
 
 Tracks are independent and may run as three execution sessions. Within a track, do tasks in order.
@@ -38,6 +38,11 @@ Tracks are independent and may run as three execution sessions. Within a track, 
 > `git checkout -b feat/benchmark-synthesis`
 
 ### Task A1: `profile_discover.py` — rank hotspots from a representative run
+
+> **Not redundant with the pipeline's `perf` hotspots:** `perf_benchmark_pipeline.py:505-516`
+> already extracts top hotspots from a Linux `perf report`. `profile_discover.py` is the
+> **stdlib-only (cProfile) fallback** for the common case where `perf`/valgrind are absent (e.g.
+> the current dev box). When `perf` is available, prefer the pipeline's existing `hotspots` output.
 
 **Files:**
 - Create: `scripts/profile_discover.py`
@@ -357,72 +362,21 @@ git add scripts/synth_microbench.py tests/test_synth_microbench.py
 git commit -m "feat(synthesis): synth_microbench harness generator"
 ```
 
-### Task A3: report the fitted complexity class as a labelled string
+### Task A3: ~~complexity label in scoring.py~~ — REMOVED (redundant)
 
-`scoring.py::_fit_exponent` already returns the exponent `k`. Expose a human label so synthesis can report "empirically O(n^k)".
+**Dropped after code review.** Adding `complexity_label` to `scripts/perf_benchmark/scoring.py`
+would be **unused in repo-P** (its only consumer is repo-B's `synthesize_perf`, which carries
+its own local `_complexity_label.py` — see Task C2). An unused public function is exactly what
+`dead-code-audit` would flag. `scoring.py::_fit_exponent` already returns the exponent `k`; the
+persisted summary already exposes it at
+`rubric.dimensions["Algorithmic Scaling"].sub_checks.complexity_exponent.k`, which is all the gate
+needs. No change to repo-P scoring.
 
-**Files:**
-- Modify: `scripts/perf_benchmark/scoring.py` (add `complexity_label`, near `_fit_exponent`)
-- Test: extend `tests/test_pipeline_scoring_reporting.py`
-
-- [ ] **Step 1: Write the failing test**
-
-```python
-# tests/test_pipeline_scoring_reporting.py  (append)
-from perf_benchmark import scoring
-
-
-def test_complexity_label_buckets_exponent():
-    assert scoring.complexity_label(0.02) == "O(1)"
-    assert scoring.complexity_label(1.0) == "O(n)"
-    assert scoring.complexity_label(1.4) == "O(n log n)"
-    assert scoring.complexity_label(2.0) == "O(n^2)"
-    assert scoring.complexity_label(3.1) == "O(n^3+)"
-```
-
-(If `perf_benchmark` is not importable in that test file, add at its top:
-`import sys, pathlib; sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1] / "scripts"))`.)
-
-- [ ] **Step 2: Run test to verify it fails**
-
-Run: `python -m pytest tests/test_pipeline_scoring_reporting.py::test_complexity_label_buckets_exponent -q`
-Expected: FAIL — `AttributeError: module 'perf_benchmark.scoring' has no attribute 'complexity_label'`.
-
-- [ ] **Step 3: Write minimal implementation**
-
-```python
-# scripts/perf_benchmark/scoring.py  (add after _fit_exponent, and add "complexity_label" to __all__)
-def complexity_label(k: float) -> str:
-    """Bucket a fitted log-log exponent into a human Big-O label."""
-    if k < 0.15:
-        return "O(1)"
-    if k < 0.85:
-        return "O(log n)"  # sub-linear region
-    if k < 1.2:
-        return "O(n)"
-    if k < 1.6:
-        return "O(n log n)"
-    if k < 2.5:
-        return "O(n^2)"
-    return "O(n^3+)"
-```
-
-- [ ] **Step 4: Run test to verify it passes**
-
-Run: `python -m pytest tests/test_pipeline_scoring_reporting.py -q`
-Expected: PASS.
-
-- [ ] **Step 5: Commit**
-
-```bash
-git add scripts/perf_benchmark/scoring.py tests/test_pipeline_scoring_reporting.py
-git commit -m "feat(scoring): expose complexity_label for fitted exponent"
-```
-
-- [ ] **Step 6: Full Track A suite**
+- [ ] **Step 1: Full Track A suite (after A1 + A2)**
 
 Run: `python -m pytest -q`
-Expected: PASS (all existing + new). If any pre-existing test was already failing on `main`, record it and do not attribute it to this work.
+Expected: PASS (all existing + the 4 new synthesis tests). If any pre-existing test was already
+failing on `main`, record it and do not attribute it to this work.
 
 ---
 
@@ -431,6 +385,11 @@ Expected: PASS (all existing + new). If any pre-existing test was already failin
 > All Track B commands run from `/home/jakub/projects/repo-audit-skills`. Branch first:
 > `git checkout -b feat/perf-smell-leaf`
 > Reference leaf to mirror exactly: `skills/dead-code-audit/`.
+>
+> **Scope vs existing leaves (verified):** no repo-A leaf wraps perflint today, and the new leaf
+> covers *source-level algorithmic* smells only — it does **not** overlap `exec-audit`, whose PERF
+> findings are *execution-level* (serial/duplicate runners, slow tests). Both emit the `PERF`
+> signal from the shared schema; they are complementary, not duplicates.
 
 ### Task B1: scaffold the leaf (vendored common, pyproject, SKILL stub)
 
@@ -910,13 +869,13 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from scripts import _complexity_label as _cl  # repo-local Big-O label (scripts is a package)
+
 _DEGENERATE_EXPONENT = 0.15  # below this, work is effectively constant ⇒ O(1)
 
 
 def decide_gate(*, exponent: float, deterministic: bool, wall_cv_ok: bool) -> dict[str, Any]:
     """Decide whether a synthesized benchmark may back a win-claim."""
-    from scripts import _complexity_label as _cl  # tiny local label, see below
-
     complexity = _cl.label(exponent)
     if exponent < _DEGENERATE_EXPONENT:
         return {
@@ -999,7 +958,7 @@ Also create the tiny label helper so the module has no cross-repo import:
 
 ```python
 # scripts/_complexity_label.py
-"""Local Big-O label (mirrors perf-benchmark scoring.complexity_label)."""
+"""Local Big-O label from a fitted log-log exponent (repo-B has no cross-repo import to repo-P)."""
 
 
 def label(k: float) -> str:
@@ -1016,7 +975,7 @@ def label(k: float) -> str:
     return "O(n^3+)"
 ```
 
-(Change the `decide_gate` import line to `from scripts import _complexity_label as _cl` at module top, not inside the function, if `scripts` is a package here — it is, per `scripts/__init__.py`. Move the import up and call `_cl.label(...)`.)
+(`from scripts import _complexity_label as _cl` works because `scripts/` is a package here — `scripts/__init__.py` exists and tests import via `importlib.import_module("scripts.synthesize_perf")`.)
 
 - [ ] **Step 4: Run test to verify it passes**
 
@@ -1032,6 +991,15 @@ git commit -m "feat(perf): synthesize_perf gate decision + honest-refusal report
 
 ### Task C3: `graduate_benchmark.py` — persist a proven harness on demand
 
+> **Code-review correction:** graduation **copies the harness only**. It does NOT write the
+> ledger. `perf-benchmark` already owns `docs/perf/baseline_ledger.jsonl` via its
+> `--baseline-ledger` flag (`perf_benchmark_pipeline.py:796-800` calls
+> `perf_benchmark/ledger.py::append_run`, writing the canonical
+> `{timestamp_utc, tier, rubric_total, wall_time_mean, dimensions}` entry). Inventing a second
+> entry shape here would corrupt that format. After graduation, the agent runs the pipeline
+> against the committed harness with `--baseline-ledger docs/perf/baseline_ledger.jsonl`, and the
+> existing `append_run` seeds the ledger consistently.
+
 **Files:**
 - Create: `scripts/graduate_benchmark.py`
 - Test: `tests/test_graduate_benchmark.py`
@@ -1041,12 +1009,11 @@ git commit -m "feat(perf): synthesize_perf gate decision + honest-refusal report
 ```python
 # tests/test_graduate_benchmark.py
 import importlib
-import json
 
 gb = importlib.import_module("scripts.graduate_benchmark")
 
 
-def test_graduate_copies_harness_and_appends_ledger(tmp_path):
+def test_graduate_copies_harness_into_benchmarks(tmp_path):
     # a synthesized (ephemeral) harness
     src = tmp_path / "run" / "perf" / "find_max"
     src.mkdir(parents=True)
@@ -1055,30 +1022,36 @@ def test_graduate_copies_harness_and_appends_ledger(tmp_path):
 
     repo = tmp_path / "repo"
     repo.mkdir()
-    res = gb.graduate(harness_dir=src, repo_root=repo, name="find_max",
-                      ledger_entry={"target": "find_max", "complexity": "O(n)", "verified_win": True})
+    res = gb.graduate(harness_dir=src, repo_root=repo, name="find_max")
 
     assert (repo / "benchmarks" / "find_max" / "bench_find_max.py").exists()
     assert (repo / "benchmarks" / "find_max" / "make_input.py").exists()
-    ledger = repo / "docs" / "perf" / "baseline_ledger.jsonl"
-    assert ledger.exists()
-    lines = ledger.read_text().splitlines()
-    assert json.loads(lines[-1])["target"] == "find_max"
     assert res["benchmark_dir"].endswith("benchmarks/find_max")
+    assert sorted(res["copied"]) == ["bench_find_max.py", "make_input.py"]
 
 
-def test_graduate_appends_without_clobbering(tmp_path):
-    repo = tmp_path / "repo"
-    led = repo / "docs" / "perf"
-    led.mkdir(parents=True)
-    (led / "baseline_ledger.jsonl").write_text('{"target": "old"}\n', encoding="utf-8")
+def test_graduate_does_not_write_a_ledger(tmp_path):
+    # the ledger is owned by perf-benchmark --baseline-ledger, never by graduation
     src = tmp_path / "h"
     src.mkdir()
     (src / "bench_x.py").write_text("x\n", encoding="utf-8")
+    repo = tmp_path / "repo"
+    repo.mkdir()
 
-    gb.graduate(harness_dir=src, repo_root=repo, name="x", ledger_entry={"target": "x"})
-    lines = (led / "baseline_ledger.jsonl").read_text().splitlines()
-    assert len(lines) == 2 and "old" in lines[0] and "x" in lines[1]
+    gb.graduate(harness_dir=src, repo_root=repo, name="x")
+    assert not (repo / "docs" / "perf" / "baseline_ledger.jsonl").exists()
+
+
+def test_graduate_is_idempotent(tmp_path):
+    src = tmp_path / "h"
+    src.mkdir()
+    (src / "bench_x.py").write_text("v1\n", encoding="utf-8")
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    gb.graduate(harness_dir=src, repo_root=repo, name="x")
+    (src / "bench_x.py").write_text("v2\n", encoding="utf-8")
+    gb.graduate(harness_dir=src, repo_root=repo, name="x")  # re-graduate refreshes
+    assert (repo / "benchmarks" / "x" / "bench_x.py").read_text() == "v2\n"
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -1090,7 +1063,12 @@ Expected: FAIL — module not found.
 
 ```python
 # scripts/graduate_benchmark.py
-"""Graduate a proven synthesized benchmark into the audited repo (on demand)."""
+"""Graduate a proven synthesized benchmark into the audited repo (on demand).
+
+Copies the harness (*.py) into ``benchmarks/<name>/`` only. The perf trend ledger
+is owned entirely by perf-benchmark's ``--baseline-ledger`` (ledger.append_run) — this
+script never writes it, so the two never disagree on format.
+"""
 from __future__ import annotations
 
 import argparse
@@ -1098,37 +1076,26 @@ import json
 import shutil
 import sys
 from pathlib import Path
-from typing import Any
 
 
-def graduate(*, harness_dir: Path, repo_root: Path, name: str, ledger_entry: dict[str, Any]) -> dict[str, str]:
+def graduate(*, harness_dir: Path, repo_root: Path, name: str) -> dict[str, object]:
     harness_dir, repo_root = Path(harness_dir), Path(repo_root)
     dest = repo_root / "benchmarks" / name
     dest.mkdir(parents=True, exist_ok=True)
+    copied: list[str] = []
     for src in sorted(harness_dir.glob("*.py")):
         shutil.copy2(src, dest / src.name)
-
-    ledger = repo_root / "docs" / "perf" / "baseline_ledger.jsonl"
-    ledger.parent.mkdir(parents=True, exist_ok=True)
-    with ledger.open("a", encoding="utf-8") as fh:
-        fh.write(json.dumps(ledger_entry, sort_keys=True) + "\n")
-
-    return {"benchmark_dir": dest.as_posix(), "ledger": ledger.as_posix()}
+        copied.append(src.name)
+    return {"benchmark_dir": dest.as_posix(), "copied": copied}
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Graduate a synthesized benchmark into the repo.")
+    parser = argparse.ArgumentParser(description="Copy a synthesized harness into benchmarks/.")
     parser.add_argument("--harness-dir", required=True, type=Path)
     parser.add_argument("--repo-root", required=True, type=Path)
     parser.add_argument("--name", required=True)
-    parser.add_argument("--ledger-json", required=True, help="JSON object for the ledger line")
     args = parser.parse_args(argv)
-    res = graduate(
-        harness_dir=args.harness_dir,
-        repo_root=args.repo_root,
-        name=args.name,
-        ledger_entry=json.loads(args.ledger_json),
-    )
+    res = graduate(harness_dir=args.harness_dir, repo_root=args.repo_root, name=args.name)
     print(json.dumps(res, indent=2))
     return 0
 
@@ -1140,13 +1107,13 @@ if __name__ == "__main__":
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `python -m pytest tests/test_graduate_benchmark.py -q`
-Expected: PASS (2 passed).
+Expected: PASS (3 passed).
 
 - [ ] **Step 5: Commit**
 
 ```bash
 git add scripts/graduate_benchmark.py tests/test_graduate_benchmark.py
-git commit -m "feat(perf): graduate_benchmark — persist proven harness + ledger"
+git commit -m "feat(perf): graduate_benchmark — copy proven harness (ledger owned by perf-benchmark)"
 ```
 
 ### Task C4: end-to-end synthesis smoke test (ties the pieces together)
@@ -1227,13 +1194,19 @@ git commit -m "docs(perf): document synthesized-benchmark flow + synthesizable l
 ## Cross-track integration note
 
 The agent-facing loop (documented in SKILL.md, not a script) is:
-`profile_discover` **+** `perf-smell-audit` findings → agent picks a hotspot → `synth_microbench.generate` → agent fills `make_input` → `perf_benchmark_pipeline --target "<target_command>" --sizes … --expected-complexity … --tier <callgrind when present>` → `synthesize_perf --summary benchmark_summary.json` (gate) → on pass, `select_candidate` + apply one change + re-run pipeline + `verify_win` → optional `graduate_benchmark`. Every step writes into the run's `perf/` dir; only graduation writes into the audited repo.
+`profile_discover` (or the pipeline's own `perf` hotspots when `perf` is available) **+** `perf-smell-audit` findings → agent picks a hotspot → `synth_microbench.generate` → agent fills `make_input` → `perf_benchmark_pipeline --target "<target_command>" --sizes … --expected-complexity … --tier <callgrind when present>` → `synthesize_perf --summary benchmark_summary.json` (gate) → on pass, `select_candidate` + apply one change + re-run pipeline + `verify_win` → optional `graduate_benchmark` (copies the harness only). Every step writes into the run's `perf/` dir; only graduation writes into the audited repo. **Ledger:** to seed a perf trend after graduation, the agent runs the pipeline against the committed harness with `--baseline-ledger docs/perf/baseline_ledger.jsonl` — the existing `perf_benchmark/ledger.py::append_run` owns that file; nothing in this plan writes it directly.
 
 ---
 
 ## Self-Review (completed by planner)
 
-- **Spec coverage:** discovery (A1 + Track B smell leaf) ✓; synthesize microbench (A2) ✓; deterministic gate / Big-O fit — reused from existing `scoring.py`, label exposed (A3) ✓; honest refusal (C2) ✓; `synthesizable` lane (C1) ✓; ephemeral artifacts + graduate-on-demand (C3) ✓; agent-on-demand trigger (C1 message + C5 docs) ✓; 3-repo split ✓; invariant/datatype → Future Work, no task ✓ (intentional).
+- **Spec coverage:** discovery (A1 + Track B smell leaf) ✓; synthesize microbench (A2) ✓; deterministic gate / Big-O fit — **reused from existing `scoring.py`** (`_fit_exponent`, `_cv`, `--max-cv`, callgrind/cachegrind/perf_stat tiers), not rebuilt ✓; honest refusal (C2) ✓; `synthesizable` lane (C1) ✓; ephemeral artifacts + graduate-on-demand (C3) ✓; agent-on-demand trigger (C1 message + C5 docs) ✓; 3-repo split ✓; invariant/datatype → Future Work, no task ✓ (intentional).
+- **Redundancy review (vs existing code):**
+  - **A3 dropped** — adding `complexity_label` to repo-P `scoring.py` would be unused there (dead-code risk); only repo-B's `synthesize_perf` needs it, via its own `_complexity_label.py`.
+  - **C3 ledger removed** — `perf_benchmark_pipeline.py:796-800` already owns `baseline_ledger.jsonl` via `ledger.append_run`; graduation copies the harness only and the existing `--baseline-ledger` seeds the ledger.
+  - **gate reuse** — `decide_gate`/`extract_gate_inputs` are a thin policy *over* the existing rubric tiers (Wall-Time Stability `N/A (noise)`, Algorithmic Scaling exponent), not a re-implementation of CV/fit math.
+  - **`profile_discover`** — stdlib (cProfile) discovery is the fallback to the pipeline's existing `perf`-based `hotspots` (line 505-516); used only where `perf` is absent. Not a duplicate path.
+  - **`perf-smell` scope** — source-level algorithmic smells (perflint); no overlap with `exec-audit`'s execution-level PERF findings (slow tests, serial runners). No existing repo-A leaf wraps perflint.
 - **Placeholder scan:** no TBD/TODO; every code step shows full code; perflint exact codes deliberately not hard-coded (tests assert tool+signal) with a live-discovery fallback step (B2 Step 5).
-- **Type consistency:** `decide_gate(exponent, deterministic, wall_cv_ok)` and `extract_gate_inputs(...)` return keys match across C2/C4; `generate(...)` return dict keys (`bench`, `make_input`, `target_command`, `spec`) match A2 tests; `Finding(...)` field order matches `shared/health_common.py`.
+- **Type consistency:** `decide_gate(exponent, deterministic, wall_cv_ok)` and `extract_gate_inputs(...)` return keys match across C2/C4; `generate(...)` return dict keys (`bench`, `make_input`, `target_command`, `spec`) match A2 tests; `graduate(...)` returns `{benchmark_dir, copied}` matching C3 tests; `Finding(...)` field order matches `shared/health_common.py`; persisted summary path `rubric.dimensions[...]` is a name-keyed dict per `reporting.py:416`.
 - **Open spec questions baked as defaults:** trigger = agent-on-demand; 3-repo split; perf-stat middle tier NOT added (reuse existing tiers). Flagged in spec for veto.
