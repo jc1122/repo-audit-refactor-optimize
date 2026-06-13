@@ -1,0 +1,4 @@
+[
+  {"id": "g1", "leaf": "dead-code", "signal": "DELETE", "path": "same.py", "evidence": {"raw": ""}, "confidence": "high"},
+  {"id": "g2", "leaf": "dead-code", "signal": "DELETE", "path": "same.py", "evidence": {"raw": ""}, "confidence": "high"},
+  {"id": "g3", "leaf": "dead-code", "signal": "DELETE", "path": "same.py", "evidence": {"raw": ""}, "confidence": "high"}]

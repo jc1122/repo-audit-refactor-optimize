@@ -1,0 +1,7 @@
+[
+  {"id": "k1", "leaf": "dead-code", "signal": "DELETE", "path": "pkg/a.py",
+   "evidence": {"raw": ""}, "confidence": "high"},
+  {"id": "k2", "leaf": "dead-code", "signal": "DELETE", "path": "pkg/b.py",
+   "evidence": {"raw": ""}, "confidence": "high"},
+  {"id": "k3", "leaf": "duplication", "signal": "EXTRACT", "path": "pkg/a.py",
+   "evidence": {"raw": "clone across pkg/a.py and pkg/b.py"}, "confidence": "medium"}]
