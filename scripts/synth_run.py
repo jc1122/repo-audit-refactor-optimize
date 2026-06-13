@@ -124,6 +124,64 @@ def _cmd_status(a: argparse.Namespace) -> int:
     return 0
 
 
+def _load_by_path(modname: str, relpath: str):
+    import importlib.util, os
+    root = os.environ.get("PERF_BENCHMARK_ROOT", str(Path.home() / "projects" / "perf-benchmark-skill"))
+    spec = importlib.util.spec_from_file_location(modname, Path(root) / relpath)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)  # type: ignore[union-attr]
+    return mod
+
+
+def _cmd_discover(a: argparse.Namespace) -> int:
+    if a.candidates_json:                       # injected (tests / pre-computed)
+        candidates = json.loads(Path(a.candidates_json).read_text())
+    else:                                        # run the stdlib profiler
+        pd = _load_by_path("profile_discover", "scripts/profile_discover.py")
+        ranked = Path(a.run_dir) / "perf" / "discovery" / "profile_ranked.json"
+        ranked.parent.mkdir(parents=True, exist_ok=True)
+        pd.main(["--script", a.script, "--out", str(ranked), "--top", str(a.top)])
+        data = json.loads(ranked.read_text()) if ranked.is_file() else []
+        candidates = data if isinstance(data, list) else []   # {"error":…} → no candidates
+    if a.smells_json and Path(a.smells_json).is_file():        # merge static smells
+        candidates += [{"id": f"smell:{s.get('id', '?')}", **s} for s in json.loads(Path(a.smells_json).read_text())]
+    transition(a.run_dir, "awaiting_hotspot", candidates=candidates,
+               note="Pick a hotspot id from candidates, then run `select`.")
+    return 0
+
+
+def _cmd_candidate(a: argparse.Namespace) -> int:
+    if a.selection_json:                         # injected select_candidate result
+        result = json.loads(Path(a.selection_json).read_text())
+    else:
+        sc = _load_by_path("select_candidate", "perf-optimization/scripts/select_candidate.py")
+        result = sc.select_candidate(json.loads(Path(a.findings_json).read_text()))
+    if result.get("status") == "no_candidates":
+        transition(a.run_dir, "done_no_win", reason="gate-quality benchmark but no actionable PERF candidate")
+        print(json.dumps(result, indent=2))
+        return 1
+    transition(a.run_dir, "awaiting_optimization", candidate=result,
+               note="Apply the candidate change, re-run the pipeline for an after-summary, then `verify`.")
+    return 0
+
+
+def _cmd_verify(a: argparse.Namespace) -> int:
+    if a.verdict_json:                           # injected verify_win verdict
+        verdict = json.loads(Path(a.verdict_json).read_text())
+    else:
+        vw = _load_by_path("verify_win", "perf-optimization/scripts/verify_win.py")
+        out = Path(a.run_dir) / "perf" / "verdict.json"
+        out.parent.mkdir(parents=True, exist_ok=True)
+        vw.main(["--before", a.before, "--after", a.after,
+                 "--suite-exit-code", str(a.suite_exit_code), "--out", str(out)])
+        verdict = json.loads(out.read_text())
+    decision = _gate.verify_and_decide(verdict=verdict)   # never trusts a self-reported win
+    target = "done_win" if decision["outcome"] == "done_win" else "done_no_win"
+    transition(a.run_dir, target, verdict=verdict, decision=decision)
+    print(json.dumps(decision, indent=2))
+    return 0 if target == "done_win" else 1
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description="Autonomous synthesis driver.")
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -144,6 +202,25 @@ def main(argv: list[str] | None = None) -> int:
 
     st = sub.add_parser("status"); st.set_defaults(fn=_cmd_status)
     st.add_argument("--run-dir", required=True)
+
+    d = sub.add_parser("discover"); d.set_defaults(fn=_cmd_discover)
+    d.add_argument("--run-dir", required=True)
+    d.add_argument("--script", default=None, help="Representative script to profile (omit with --candidates-json)")
+    d.add_argument("--candidates-json", default=None, help="Pre-computed candidates (inject)")
+    d.add_argument("--smells-json", default=None, help="perf-smell findings to merge as candidates")
+    d.add_argument("--top", type=int, default=20)
+
+    c = sub.add_parser("candidate"); c.set_defaults(fn=_cmd_candidate)
+    c.add_argument("--run-dir", required=True)
+    c.add_argument("--findings-json", default=None, help="PERF findings for select_candidate")
+    c.add_argument("--selection-json", default=None, help="Pre-computed select_candidate result (inject)")
+
+    v = sub.add_parser("verify"); v.set_defaults(fn=_cmd_verify)
+    v.add_argument("--run-dir", required=True)
+    v.add_argument("--verdict-json", default=None, help="Pre-computed verify_win verdict (inject)")
+    v.add_argument("--before", default=None)
+    v.add_argument("--after", default=None)
+    v.add_argument("--suite-exit-code", type=int, default=0)
 
     args = p.parse_args(argv)
     return args.fn(args)
