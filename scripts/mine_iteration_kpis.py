@@ -259,3 +259,39 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
+
+def mine_mprr_kpis(events_path: str, ceiling: int) -> dict[str, float | int]:
+    """Mine MPRR loop KPIs from the run-dir event log (R5: derived, never typed)."""
+    import json
+    from pathlib import Path
+
+    running = 0
+    peak = 0
+    samples: list[int] = []
+    dispatched = merged = conflicts = 0
+    for line in Path(events_path).read_text().splitlines():
+        if not line.strip():
+            continue
+        ev = json.loads(line)
+        kind = ev.get("event")
+        if kind == "start":
+            running += 1
+            dispatched += 1
+        elif kind in {"merge", "discard"}:
+            running = max(0, running - 1)
+            if kind == "merge":
+                merged += 1
+            if ev.get("conflict"):
+                conflicts += 1
+        peak = max(peak, running)
+        samples.append(running)
+    mean = sum(samples) / len(samples) if samples else 0.0
+    return {
+        "dispatched": dispatched,
+        "merged": merged,
+        "merge_conflict_rate": (conflicts / merged) if merged else 0.0,
+        "peak_concurrency": peak,
+        "mean_concurrency": round(mean, 3),
+        "pool_utilization": round(mean / ceiling, 3) if ceiling else 0.0,
+    }

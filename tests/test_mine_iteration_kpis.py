@@ -44,3 +44,25 @@ def test_load_baseline_rows_counts_top_level_list(tmp_path):
                          capture_output=True, text=True, check=True).stdout.strip()
     rows = m._load_baseline_rows(repo, sha, "b.json")
     assert sum(rows.values()) == 3      # was 0 before the fix
+
+
+def test_mine_mprr_kpis_from_events(tmp_path):
+    import importlib, sys
+    from pathlib import Path
+    REPO_ROOT = Path(__file__).resolve().parents[1]
+    if str(REPO_ROOT) not in sys.path:
+        sys.path.insert(0, str(REPO_ROOT))
+    miner = importlib.import_module("scripts.mine_iteration_kpis")
+    events = tmp_path / "mprr_events.jsonl"
+    events.write_text("\n".join([
+        '{"event": "start", "id": "a", "files": ["x.py"]}',
+        '{"event": "start", "id": "b", "files": ["y.py"]}',
+        '{"event": "merge", "id": "a", "conflict": false, "merged": true}',
+        '{"event": "discard", "id": "b", "conflict": false, "merged": false}',
+    ]) + "\n")
+    kpi = miner.mine_mprr_kpis(str(events), ceiling=4)
+    assert kpi["dispatched"] == 2
+    assert kpi["merged"] == 1
+    assert kpi["merge_conflict_rate"] == 0.0
+    assert kpi["peak_concurrency"] == 2
+    assert 0.0 <= kpi["pool_utilization"] <= 1.0
