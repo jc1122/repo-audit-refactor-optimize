@@ -1,0 +1,14 @@
+{
+  "allow_growth": [
+    {
+      "metric": "cli_flag_growth",
+      "max_delta": 1,
+      "reason": "E501 line-wrapping of existing add_argument causes false-positive; no new flags"
+    },
+    {
+      "metric": "tracked_files_growth",
+      "max_delta": 1,
+      "reason": "growth_allowances.json itself; expected artifact of repair"
+    }
+  ]
+}
