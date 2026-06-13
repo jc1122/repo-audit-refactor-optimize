@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.4.4
+
+SP12 W3/W4 -- registry-driven diagnosis waves and advisory synthesis.
+
+- Made the W3 diagnosis wave registry-driven and parallel, with
+  `wave_timings.json` emitted for lane runtime accounting.
+- Extended the W3 lane registry with exec and growth lanes.
+- Added W4 synthesis output for advisory worker packets and mechanical patch
+  proposals from `synthesize_packets.py`.
+
 ## 0.4.3
 
 SP11 iteration 3 -- wave runner decomposition.
