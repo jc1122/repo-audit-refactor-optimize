@@ -1814,3 +1814,34 @@ def test_hygiene_lane_degrades_to_manual_when_preferred_missing(
     lane = report["lanes"]["hygiene"]
     assert lane["state"] == "manual"
     assert lane["selected_skills"] == []
+
+
+def test_benchmark_named_tooling_is_not_a_surface(tmp_path: Path):
+    """Source/test files that merely mention 'benchmark' are not a benchmark surface."""
+    repo = tmp_path / "repo"
+    (repo / "scripts").mkdir(parents=True)
+    (repo / "tests").mkdir()
+    (repo / "scripts" / "graduate_benchmark.py").write_text("x = 1\n", encoding="utf-8")
+    (repo / "tests" / "test_graduate_benchmark.py").write_text("def test_x(): pass\n", encoding="utf-8")
+    profile = checker.scan_repo_profile(repo)
+    assert profile["benchmark_surfaces"] == []
+    assert profile["has_deterministic_perf_surface"] is False
+
+
+def test_benchmark_utils_at_src_is_not_a_surface(tmp_path: Path):
+    """A 'benchmark'-substring utility outside a benchmark dir is not a surface."""
+    repo = tmp_path / "repo"
+    (repo / "src").mkdir(parents=True)
+    (repo / "src" / "benchmark_utils.py").write_text("def helper(): pass\n", encoding="utf-8")
+    profile = checker.scan_repo_profile(repo)
+    assert profile["has_deterministic_perf_surface"] is False
+
+
+def test_real_harness_under_benchmarks_dir_is_a_surface(tmp_path: Path):
+    """A graduated harness (bench_*.py under benchmarks/) is still a real surface."""
+    repo = tmp_path / "repo"
+    (repo / "benchmarks" / "sort").mkdir(parents=True)
+    (repo / "benchmarks" / "sort" / "bench_sort.py").write_text("def main(): pass\n", encoding="utf-8")
+    profile = checker.scan_repo_profile(repo)
+    assert profile["benchmark_surfaces"] == ["python-benchmarks"]
+    assert profile["has_deterministic_perf_surface"] is True
