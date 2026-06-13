@@ -1,0 +1,45 @@
+{
+  "lanes": [
+    {
+      "name": "code-health",
+      "script": "code-health-audit-pipeline/scripts/code_health_pipeline.py",
+      "languages": ["python"]
+    },
+    {
+      "name": "security",
+      "script": "security-audit/scripts/security_audit.py",
+      "languages": ["python"]
+    },
+    {
+      "name": "hygiene",
+      "script": "repo-hygiene-audit/scripts/repo_hygiene_audit.py",
+      "languages": ["*"]
+    },
+    {
+      "name": "docs",
+      "script": "docs-consistency-audit/scripts/docs_consistency_audit.py",
+      "languages": ["python"]
+    },
+    {
+      "name": "dependency",
+      "script": "dependency-audit/scripts/dependency_audit.py",
+      "languages": ["python"]
+    },
+    {
+      "name": "hotspot",
+      "script": "hotspot-audit/scripts/hotspot_audit.py",
+      "languages": ["*"]
+    },
+    {
+      "name": "exec",
+      "script": "exec-audit/scripts/exec_audit.py",
+      "languages": ["*"]
+    },
+    {
+      "name": "growth",
+      "script": "growth-audit/scripts/growth_audit.py",
+      "languages": ["*"],
+      "requires_baseline_rev": true
+    }
+  ]
+}

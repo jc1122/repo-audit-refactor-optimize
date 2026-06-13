@@ -21,12 +21,29 @@ DEFAULT_RUNNER = str(Path.home() / RUNNER_REL)
 DEFAULT_SKILLS_ROOT = str(Path.home() / ".claude/skills")
 
 
+# wave_timings.json contains non-deterministic timing telemetry.
+# It is intentionally excluded from convergence/baseline byte comparison.
+_TIMINGS_FILE = "wave_timings.json"
+
+
 def identities(fs):
     return {tuple(sorted(d.items())) for d in fs}
 
 
 def _load_json(path):
     return json.loads(Path(path).read_text(encoding="utf-8"))
+
+
+def _load_findings(out_dir: Path):
+    """Load wave findings for comparison, excluding timing telemetry.
+
+    wave_timings.json is produced by the wave runner alongside
+    wave_findings.json but contains non-deterministic timing data
+    that varies across runs. It is intentionally excluded from
+    the convergence ratchet — only wave_findings.json is compared
+    against wave_baseline.json.
+    """
+    return _load_json(out_dir / "wave_findings.json")
 
 
 def _parse_args(argv=None):
@@ -59,7 +76,7 @@ def _run_wave():
         cmd += ["--hotspot-config", hotspot_config]
     # Runner path may come from WAVE_RUNNER; shell stays disabled.
     subprocess.run(cmd, check=False)  # nosec B603: shell=False
-    return _load_json(out / "wave_findings.json")
+    return _load_findings(out)
 
 
 def _emit(payload):
