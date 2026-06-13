@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.5.0
+
+SP14 — massively-parallel redundancy-remediation (MPRR) engine. New stdlib-only
+modules under `scripts/`: `mprr_normalize`, `mprr_partition`, `mprr_schedule`
+(property-proven disjoint-lock invariant), `mprr_gate` (three-tier gate ladder),
+`mprr_integrate` (scope check + conflict-free merge), `mprr_packets`, and the
+orchestrator CLI `mprr_run` (plan/integrate/reaudit over persisted run-state).
+KPI miner extended with pool-utilization, merge-conflict-rate, and concurrency
+metrics. SKILL.md gains an MPRR remediation-track section; `references/mprr.md`
+documents the locked decisions and gate ladder.
+
 ## 0.4.6
 
 SP12 W6 — release gate repair.
