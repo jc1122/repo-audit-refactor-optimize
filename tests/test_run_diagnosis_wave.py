@@ -161,7 +161,8 @@ def test_selected_lanes_disjoint_out_dirs_merge_findings(tmp_path: Path) -> None
     assert len(findings) == 2
 
 
-def test_fake_leaf_exit_two_records_wave_error(tmp_path: Path) -> None:
+def test_fake_leaf_exit_two_with_findings_records_findings_status(tmp_path: Path) -> None:
+    """A lane that exits 2 but produced findings is reported as 'findings', not 'error'."""
     repo = tmp_path / "repo"
     skills_root = tmp_path / "skills"
     security = skills_root / "security-audit" / "scripts" / "security_audit.py"
@@ -186,15 +187,50 @@ def test_fake_leaf_exit_two_records_wave_error(tmp_path: Path) -> None:
                 "security",
             ]
         )
+        == 0
+    )
+
+    summary = json.loads((out_dir / "wave_summary.json").read_text(encoding="utf-8"))
+    findings = json.loads((out_dir / "wave_findings.json").read_text(encoding="utf-8"))
+    _assert_status(summary, "security", 2, "findings")
+    assert findings == [
+        {"leaf": "security", "path": "bad.py", "symbol": "bad", "metric": "x"},
+    ]
+
+
+def test_fake_leaf_exit_two_no_findings_is_error(tmp_path: Path) -> None:
+    """Exit 2 without parsed findings remains an error (true tool failure)."""
+    repo = tmp_path / "repo"
+    skills_root = tmp_path / "skills"
+    security = skills_root / "security-audit" / "scripts" / "security_audit.py"
+    _make_fake_leaf_with_findings(
+        security,
+        "security_findings.json",
+        [],
+        2,
+    )
+
+    out_dir = tmp_path / "wave"
+    assert (
+        mod.main(
+            [
+                "--repo",
+                str(repo),
+                "--out-dir",
+                str(out_dir),
+                "--skills-root",
+                str(skills_root),
+                "--lanes",
+                "security",
+            ]
+        )
         == 1
     )
 
     summary = json.loads((out_dir / "wave_summary.json").read_text(encoding="utf-8"))
     findings = json.loads((out_dir / "wave_findings.json").read_text(encoding="utf-8"))
     _assert_status(summary, "security", 2, "error")
-    assert findings == [
-        {"leaf": "security", "path": "bad.py", "symbol": "bad", "metric": "x"},
-    ]
+    assert findings == []
 
 
 def test_docs_living_docs_fallback_scope_no_excludes_flag(tmp_path: Path) -> None:

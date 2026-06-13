@@ -196,8 +196,16 @@ def _run_lane(
     return exit_code, _wave_findings.collect_lane_findings(lane_out, lane)
 
 
-def _status_for_exit(exit_code: int) -> str:
-    return {0: "ok", 1: "findings"}.get(exit_code, "error")
+def _status_for_exit(exit_code: int, findings_count: int = 0) -> str:
+    if exit_code == 0:
+        return "ok"
+    if exit_code == 1:
+        return "findings"
+    # exit_code >= 2: only "error" when no findings were produced;
+    # a lane that exits 2 with parsed findings is a "findings" status.
+    if findings_count > 0:
+        return "findings"
+    return "error"
 
 
 # ── wave orchestration ──────────────────────────────────────────────────
@@ -265,11 +273,11 @@ def _run_wave(
                 exit_code, findings = results[lane]
                 summary[lane] = {
                     "exit": exit_code,
-                    "status": _status_for_exit(exit_code),
+                    "status": _status_for_exit(exit_code, len(findings)),
                     "findings": len(findings),
                 }
                 wave_findings.extend(findings)
-                if exit_code >= 2:
+                if exit_code >= 2 and not findings:
                     wave_exit = 1
 
     return wave_exit, summary, wave_findings, timings
