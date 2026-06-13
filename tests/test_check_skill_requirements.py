@@ -534,6 +534,15 @@ def test_scan_repo_profile_empty_repo(tmp_path: Path):
 
 
 def test_advisory_only_skill_state(tmp_path: Path, sample_manifest: dict):
+    """An always-available process skill resolves usable_now/harness even when only
+    a foreign-rooted copy is discovered.
+
+    ``verification-before-completion`` carries ``always_available: true`` in the real
+    manifest (G4), so it short-circuits to a harness-guaranteed ``usable_now`` regardless
+    of where it is found — it is never downgraded to ``advisory_only`` by a foreign root.
+    (The plain advisory_only path for non-always-available skills is unit-tested by
+    ``tests/test_skill_probe.py::test_skill_entry_marks_advisory_only_when_only_advisory_discovery``.)
+    """
     repo = tmp_path / "repo"
     repo.mkdir()
     (repo / "asm").mkdir()
@@ -553,8 +562,8 @@ def test_advisory_only_skill_state(tmp_path: Path, sample_manifest: dict):
         foreign_roots=[foreign],
     )
 
-    assert report["skills"]["verification-before-completion"]["state"] == "advisory_only"
-    assert report["skills"]["verification-before-completion"]["root_kind"] == "foreign"
+    assert report["skills"]["verification-before-completion"]["state"] == "usable_now"
+    assert report["skills"]["verification-before-completion"]["root_kind"] == "harness"
 
 
 def test_repo_level_override_applies(tmp_path: Path, sample_manifest: dict):

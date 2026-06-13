@@ -209,6 +209,10 @@ def _skill_entry(
 ) -> dict[str, Any]:
     _validate_skill_entry_fields(skill_name, skill_config)
     entry = _build_skill_entry_base(skill_name, skill_config)
+    if skill_config.get("always_available"):
+        # Harness/process skills are guaranteed by the runtime, not the skills-root;
+        # resolve them as usable without a filesystem probe (fixes orchestration=manual).
+        return {**entry, "state": "usable_now", "root_kind": "harness", "skill_path": None}
     if skill_name in usable_skills:
         return {
             **entry,

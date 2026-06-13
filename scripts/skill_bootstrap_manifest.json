@@ -113,21 +113,24 @@
       "source_type": "user-local",
       "install_source": null,
       "manual_fallback": "Run independent lanes sequentially.",
-      "restart_required_if_installed": true
+      "restart_required_if_installed": true,
+      "always_available": true
     },
     "subagent-driven-development": {
       "priority": "optional",
       "source_type": "user-local",
       "install_source": null,
       "manual_fallback": "Execute batches sequentially in one agent.",
-      "restart_required_if_installed": true
+      "restart_required_if_installed": true,
+      "always_available": true
     },
     "verification-before-completion": {
       "priority": "preferred",
       "source_type": "user-local",
       "install_source": null,
       "manual_fallback": "Rerun verification manually and record evidence.",
-      "restart_required_if_installed": true
+      "restart_required_if_installed": true,
+      "always_available": true
     },
     "hotspot-audit": {
       "priority": "preferred",

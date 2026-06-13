@@ -162,3 +162,25 @@ def test_skill_entry_required_fields_are_enforced() -> None:
             usable_skills={},
             advisory_skills={},
         )
+
+
+_ALWAYS_CFG = {
+    "priority": "preferred",
+    "source_type": "user-local",
+    "manual_fallback": "manual",
+    "restart_required_if_installed": True,
+    "always_available": True,
+}
+
+
+def test_always_available_resolves_usable_without_filesystem() -> None:
+    entry = probe._skill_entry("verification-before-completion", _ALWAYS_CFG,
+                               usable_skills={}, advisory_skills={})
+    assert entry["state"] == "usable_now"
+    assert entry["root_kind"] == "harness"
+
+
+def test_always_available_skipped_when_flag_absent_is_manual() -> None:
+    cfg = {k: v for k, v in _ALWAYS_CFG.items() if k != "always_available"}
+    entry = probe._skill_entry("some-leaf", cfg, usable_skills={}, advisory_skills={})
+    assert entry["state"] == "manual_only"
