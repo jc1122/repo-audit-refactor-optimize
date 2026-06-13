@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.5
+
+SP12 W5 -- code-health wave-runner exit classification fix.
+
+- Classify code-health lane exits with parsed findings as findings; preserve
+  exit-without-findings as an error.
+
 ## 0.4.4
 
 SP12 W3/W4 -- registry-driven diagnosis waves and advisory synthesis.
