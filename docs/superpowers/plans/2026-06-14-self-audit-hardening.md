@@ -18,7 +18,8 @@
 - Modify `scripts/_skill_probe.py` — `_skill_entry` honors an `always_available` flag (G4).
 - Modify `scripts/skill_bootstrap_manifest.json` — add `always_available: true` to three process skills (G4).
 - Modify `scripts/run_diagnosis_wave.py` — `--exclude-prefix` + default tests/fixtures exclusion (G2); `--baseline` suppression wiring (G3).
-- Modify `scripts/_wave_findings.py` — `load_baseline` + `apply_baseline` (G3).
+- Modify `scripts/_wave_findings.py` — shared `identity` + `load_baseline` + `partition` (G3).
+- Modify `scripts/check_wave_baseline.py` — reuse the shared `identity` (remove its duplicate identity notion) (G3).
 - Modify `scripts/mprr_integrate.py` — `self_guard` + `_git_toplevel`; modify `scripts/mprr_run.py` `_cmd_integrate` to enforce it (Fix 5).
 - Create `tests/test_self_dogfood.py` — end-to-end self-run regression (Fix 6).
 - Add unit tests in `tests/test_check_skill_requirements.py`, `tests/test_skill_probe.py` (create if absent), `tests/test_run_diagnosis_wave.py`, `tests/test_wave_findings.py` (create if absent), `tests/test_mprr_integrate.py` (create if absent).
@@ -224,10 +225,22 @@ def _skill_entry(
     },
 ```
 
+> **Audit caveat — flag ONLY the real manifest, never the `sample_manifest` test fixture.**
+> The `always_available` branch short-circuits *before* the advisory/override branches, so a skill
+> carrying the flag resolves `usable_now`/`harness` regardless of where it is found. Existing tests
+> `test_check_skill_requirements.py:556-557` (assert `verification-before-completion` →
+> `advisory_only`/`root_kind == "foreign"`) and `:591` (override `manual_fallback`) stay green **only
+> because** they build their report from `sample_manifest`, which must NOT gain the flag. If you add
+> `always_available` to the `sample_manifest` fixture, those two tests break. Intended production
+> behavior change: a foreign-rooted always-available skill now reports `usable_now`, not `advisory_only`.
+
 - [ ] **Step 5: Run unit + full bootstrap suite**
 
 Run: `python3 -m pytest tests/test_skill_probe.py tests/test_check_skill_requirements.py -q`
-Expected: PASS. `test_orchestration_lane_full_with_optional` still passes (the skills are also written to disk there). If any test now asserts an orchestration `manual` state with these skills absent, update it to `full` as the intended behavior change (note it in the commit body).
+Expected: PASS — including `test_orchestration_lane_full_with_optional` (skills also on disk there) and
+the advisory/override tests at `:556` and `:591` (they use `sample_manifest`, which is unflagged). No
+existing test asserts an orchestration `manual` state, so none should flip; if one does, that is a
+real signal to investigate, not a test to blindly edit.
 
 - [ ] **Step 6: Commit**
 
@@ -384,16 +397,25 @@ git commit -m "feat(wave): exclude tests/fixtures by default; explicit --source-
 
 ---
 
-### Task 4 (G3): generic accepted-residuals suppression
+### Task 4 (G3): generic accepted-residuals suppression (extract + reuse the existing identity)
 
 **Files:**
-- Modify: `scripts/_wave_findings.py`
-- Modify: `scripts/run_diagnosis_wave.py`
+- Modify: `scripts/_wave_findings.py` (add shared `identity` + `load_baseline` + `partition`)
+- Modify: `scripts/run_diagnosis_wave.py` (wire `--baseline`)
+- Modify: `scripts/check_wave_baseline.py` (reuse the shared `identity` — delete its private one)
 - Test: `tests/test_wave_findings.py` (create)
 
-> Note: wave findings are already normalized to the `{leaf, path, symbol, metric}` identity by
-> `_wave_findings._normalize_finding`, so suppression matches the baseline's `metric` key directly
-> (the raw-finding `metric_name` distinction never reaches this layer).
+> **Audit fix — do NOT add a parallel identity.** `scripts/check_wave_baseline.py` already matches
+> findings against `wave_baseline.json` by identity (`identities()`, line 29), set-difference
+> (`new = cur - base`, line 101), and stale detection (`base - cur`). This task makes
+> `_wave_findings.py` the single source of truth for finding `identity`, has both the wave's
+> `--baseline` suppression **and** `check_wave_baseline` consume it, and adds `partition` for the
+> suppress-and-continue case — instead of reimplementing matching with a second identity notion.
+> Wave findings are already normalized to exactly `{leaf, path, symbol, metric}` (`_normalize_finding`)
+> and `wave_baseline.json` entries share that shape, so one `identity` serves both. `check_wave_baseline`'s
+> tests only substring-check `new_findings`/`stale_baseline` and assert order-insensitivity, so
+> rerouting its `identities()` to the shared 4-tuple `identity` is behavior-safe (verified against
+> `tests/test_check_wave_baseline.py`).
 
 - [ ] **Step 1: Write the failing test** — create `tests/test_wave_findings.py`:
 
@@ -403,6 +425,7 @@ import json
 import pytest
 
 wf = importlib.import_module("scripts._wave_findings")
+cwb = importlib.import_module("scripts.check_wave_baseline")
 
 FINDINGS = [
     {"leaf": "complexity", "path": "scripts/a.py", "symbol": "<module>", "metric": "maintainability_index"},
@@ -410,19 +433,31 @@ FINDINGS = [
 ]
 
 
-def test_apply_baseline_suppresses_exact_matches():
+def test_partition_suppresses_exact_matches():
     baseline = [{"leaf": "complexity", "path": "scripts/a.py", "symbol": "<module>", "metric": "maintainability_index"}]
-    active, suppressed, stale = wf.apply_baseline(FINDINGS, baseline)
+    active, suppressed, stale = wf.partition(FINDINGS, baseline)
     assert [f["path"] for f in active] == ["scripts/b.py"]
     assert suppressed[0]["path"] == "scripts/a.py" and suppressed[0]["suppressed"] is True
     assert stale == []
 
 
-def test_apply_baseline_reports_stale_entries():
+def test_partition_reports_stale_entries():
     baseline = [{"leaf": "complexity", "path": "scripts/gone.py", "symbol": "<module>", "metric": "maintainability_index"}]
-    active, suppressed, stale = wf.apply_baseline(FINDINGS, baseline)
+    active, suppressed, stale = wf.partition(FINDINGS, baseline)
     assert len(active) == 2 and suppressed == []
     assert stale == [("complexity", "scripts/gone.py", "<module>", "maintainability_index")]
+
+
+def test_identity_is_order_insensitive():
+    a = {"leaf": "x", "path": "y", "symbol": "z", "metric": "m"}
+    b = {"metric": "m", "symbol": "z", "path": "y", "leaf": "x"}
+    assert wf.identity(a) == wf.identity(b)
+
+
+def test_check_wave_baseline_reuses_the_shared_identity():
+    # the convergence ratchet and the wave's --baseline must agree on identity (single source).
+    f = {"leaf": "x", "path": "y", "symbol": "z", "metric": "m"}
+    assert cwb.identities([f]) == {wf.identity(f)}
 
 
 def test_load_baseline_rejects_non_array(tmp_path):
@@ -442,18 +477,22 @@ def test_load_baseline_raises_on_bad_json(tmp_path):
 - [ ] **Step 2: Run to verify it fails**
 
 Run: `python3 -m pytest tests/test_wave_findings.py -q`
-Expected: FAIL — `apply_baseline` / `load_baseline` undefined.
+Expected: FAIL — `partition` / `identity` / `load_baseline` undefined.
 
 - [ ] **Step 3: Implement** — append to `scripts/_wave_findings.py`:
 
 ```python
-def _identity(item: dict[str, str]) -> tuple[str, str, str, str]:
-    """The four-field wave identity used for baseline comparison."""
+def identity(finding: dict[str, str]) -> tuple[str, str, str, str]:
+    """Canonical four-field wave identity, order-insensitive on dict keys.
+
+    Single source of truth — consumed by both the wave's --baseline suppression and
+    check_wave_baseline's convergence ratchet, so the two can never disagree.
+    """
     return (
-        item.get("leaf", ""),
-        item.get("path", ""),
-        item.get("symbol", ""),
-        item.get("metric", ""),
+        finding.get("leaf", ""),
+        finding.get("path", ""),
+        finding.get("symbol", ""),
+        finding.get("metric", ""),
     )
 
 
@@ -471,36 +510,57 @@ def load_baseline(path: Path) -> list[dict[str, str]]:
     return payload
 
 
-def apply_baseline(
+def partition(
     findings: list[dict[str, str]], baseline: list[dict[str, str]]
 ) -> tuple[list[dict[str, str]], list[dict[str, str]], list[tuple[str, str, str, str]]]:
-    """Partition findings into (active, suppressed, stale_baseline_ids).
+    """Split findings against a baseline by identity → (active, suppressed, stale).
 
-    A finding is suppressed when its 4-field identity exactly matches a baseline
-    entry. ``stale`` lists baseline identities that matched nothing (so a baseline
-    cannot silently rot).
+    * active     — findings whose identity is NOT in the baseline (new work)
+    * suppressed — findings whose identity IS in the baseline (accepted residuals)
+    * stale      — baseline identities that matched nothing (sorted)
+
+    The wave drops ``suppressed``; the convergence ratchet fails on ``active`` and ``stale``.
     """
-    baseline_ids = {_identity(entry) for entry in baseline}
+    baseline_ids = {identity(entry) for entry in baseline}
     matched: set[tuple[str, str, str, str]] = set()
     active: list[dict[str, str]] = []
     suppressed: list[dict[str, str]] = []
     for finding in findings:
-        fid = _identity(finding)
+        fid = identity(finding)
         if fid in baseline_ids:
             matched.add(fid)
             suppressed.append({**finding, "suppressed": True})
         else:
             active.append(finding)
-    stale = sorted(bid for bid in baseline_ids if bid not in matched)
+    stale = sorted(baseline_ids - matched)
     return active, suppressed, stale
 ```
 
 - [ ] **Step 4: Run to verify it passes**
 
 Run: `python3 -m pytest tests/test_wave_findings.py -q`
-Expected: PASS (4 passed).
+Expected: **5 passed, 1 failing** — `test_partition_*`, `test_identity_*`, and `test_load_baseline_*`
+pass; `test_check_wave_baseline_reuses_the_shared_identity` FAILS because `check_wave_baseline.identities`
+still returns `tuple(sorted(d.items()))`, not the shared 4-tuple. That one failure is expected and is
+fixed in Step 5 (it is the RED for the reuse change).
 
-- [ ] **Step 5: Wire `--baseline` into the wave** — in `scripts/run_diagnosis_wave.py`:
+- [ ] **Step 5: Reuse the shared identity in `check_wave_baseline.py`** — so there is one identity definition. At the top of `scripts/check_wave_baseline.py`, import the helper the import-robust way `run_diagnosis_wave.py` does:
+
+```python
+import importlib
+_wf = importlib.import_module("scripts._wave_findings" if __package__ else "_wave_findings")
+```
+
+Then replace the body of `identities` (currently `return {tuple(sorted(d.items())) for d in fs}`, line ~29):
+
+```python
+def identities(fs):
+    return {_wf.identity(d) for d in fs}
+```
+
+Leave `_compare`, `_stale_payload`, and the pass/fail policy untouched — only the identity *source* changes. (Its tests substring-check `new_findings`/`stale_baseline` and assert order-insensitivity, both preserved by the 4-tuple identity.)
+
+- [ ] **Step 6: Wire `--baseline` into the wave** — in `scripts/run_diagnosis_wave.py`:
 
 Add the arg in `_parse_args`:
 
@@ -516,7 +576,7 @@ Replace the tail of `main` (currently `run = _run_wave(...)` / `return _write_wa
     )
     if args.baseline is not None:
         baseline = _wave_findings.load_baseline(args.baseline)  # raises on bad input
-        wave_findings, suppressed, stale = _wave_findings.apply_baseline(
+        wave_findings, suppressed, stale = _wave_findings.partition(
             wave_findings, baseline
         )
         (args.out_dir / "wave_findings.suppressed.json").write_text(
@@ -529,16 +589,16 @@ Replace the tail of `main` (currently `run = _run_wave(...)` / `return _write_wa
     return _write_wave_outputs(args.out_dir, wave_exit, summary, wave_findings, timings)
 ```
 
-- [ ] **Step 6: Run the full wave suite**
+- [ ] **Step 7: Run the wave + baseline + ratchet suites (confirm check_wave_baseline still green)**
 
-Run: `python3 -m pytest tests/test_run_diagnosis_wave.py tests/test_wave_findings.py -q`
-Expected: PASS.
+Run: `python3 -m pytest tests/test_run_diagnosis_wave.py tests/test_wave_findings.py tests/test_check_wave_baseline.py -q`
+Expected: PASS — including the existing `check_wave_baseline` tests; the identity reroute is behavior-safe.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
-git add scripts/_wave_findings.py scripts/run_diagnosis_wave.py tests/test_wave_findings.py
-git commit -m "feat(wave): generic --baseline accepted-residuals suppression (G3)"
+git add scripts/_wave_findings.py scripts/run_diagnosis_wave.py scripts/check_wave_baseline.py tests/test_wave_findings.py
+git commit -m "feat(wave): --baseline suppression reusing the shared wave identity (G3; de-dupes check_wave_baseline)"
 ```
 
 ---
@@ -781,15 +841,25 @@ git commit -m "docs(self-audit): document scoping/suppression/self-guard; bump r
 - **Placeholder scan:** no TBD/TODO; every code step shows full code; commands have expected output.
 - **Type/identity consistency:** `_benchmark_surface(suffix, lower_name, parts_lower)` signature
   unchanged (callers untouched); `_effective_excludes`/`_audit_scope_args` names match across Task 3,
-  Task 6, and the self-dogfood test; `apply_baseline(findings, baseline) -> (active, suppressed, stale)`
-  matches Task 4's wiring and tests; the wave identity `{leaf,path,symbol,metric}` matches
-  `_normalize_finding` (already in `_wave_findings.py`) and `wave_baseline.json`; `self_guard(repo,
-  diff_files) -> (ok, reasons)` matches the `_cmd_integrate` call site; `_LaneContext` gains
-  `exclude_prefixes` and every constructor call is updated (Task 3 Step 4).
+  Task 6, and the self-dogfood test; `identity(finding)` + `partition(findings, baseline) ->
+  (active, suppressed, stale)` match Task 4's wiring, tests, and the `check_wave_baseline` reuse; the
+  wave identity `{leaf,path,symbol,metric}` matches `_normalize_finding` (already in `_wave_findings.py`)
+  and `wave_baseline.json`; `self_guard(repo, diff_files) -> (ok, reasons)` matches the `_cmd_integrate`
+  call site; `_LaneContext` gains `exclude_prefixes` and its **single** constructor call (only
+  `run_diagnosis_wave.py:372`; no test constructs it) is updated (Task 3 Step 3).
 - **Existing-test impact (verified against the code):** G1's stricter rule keeps every current
   benchmark test green (`bench_hot.py`/`bench_fft.c` → `bench_` prefix; `my_bench.rs` → `benches/`
-  dir; parent-dir false-positive test rooted at the repo). G4 keeps `test_orchestration_lane_full_with_optional`
-  green (skills also on disk). The only mechanical updates are `_LaneContext` positional call sites
-  (Task 3 Step 4) and any MPRR test that used the engine repo as its own target (Task 5 Step 5).
+  dir; parent-dir false-positive test rooted at the repo); `_BENCH_NAME_KW`/`_has_any_keyword` are
+  used only by `_benchmark_surface` and are removed. G4 keeps `test_orchestration_lane_full_with_optional`
+  and the advisory/override tests (`:556`, `:591`) green — they use the unflagged `sample_manifest`
+  (Task 2 caveat). G3's `check_wave_baseline` identity reroute is behavior-safe (its tests substring-check
+  output + assert order-insensitivity). Fix 5 breaks no MPRR test: none passes `scripts/`-prefixed
+  diff-files (the one CLI integrate test uses `--diff-files a.py`).
+- **Audit amendments incorporated (2026-06-14 audit pass):**
+  - **G3 (Task 4) — was a DRY conflict:** the first draft added a parallel `apply_baseline` with a
+    second identity notion alongside the one `check_wave_baseline.py` already has. Rewritten to extract
+    one shared `identity` consumed by both, plus `partition` for suppress-and-continue.
+  - **G4 (Task 2) — was a breakage trap:** added the explicit caveat to flag only the real manifest,
+    never `sample_manifest` (else `:556`/`:591` break), and documented the foreign-root behavior change.
 - **Out of scope (intentional):** bootstrap-lane `degraded` (optional helpers), and coupling the
   orchestrator to repo-B's wave baseline (G3 stays a generic, optional input).
