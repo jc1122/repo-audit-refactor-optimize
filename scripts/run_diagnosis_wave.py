@@ -136,6 +136,33 @@ def _append_flagged(cmd: list[str], flag: str, values: Iterable[str]) -> None:
         cmd.extend([flag, value])
 
 
+def _add_growth_args(cmd: list[str], context: _LaneContext) -> None:
+    """Append growth-lane flags: --baseline-rev and auto-detected --config."""
+    if context.rev is not None:
+        cmd.extend(["--baseline-rev", context.rev])
+    growth_allowances = context.repo / "scripts" / "growth_allowances.json"
+    if growth_allowances.exists():
+        cmd.extend(["--config", str(growth_allowances)])
+
+
+def _add_docs_args(cmd: list[str], leaf: Path, context: _LaneContext) -> None:
+    """Append docs-lane flags: source/exclude prefix depending on leaf support."""
+    if _leaf_supports_exclude_prefix(leaf):
+        cmd.extend(["--source-prefix", "docs"])
+        excludes = (f"docs/{p}" for p in DOC_EXCLUDES)
+        _append_flagged(cmd, "--exclude-prefix", excludes)
+    else:
+        _append_flagged(cmd, "--source-prefix", _doc_prefixes(context.repo))
+
+
+def _add_hotspot_args(cmd: list[str], context: _LaneContext) -> None:
+    """Append hotspot-lane flags: --rev and optional --config."""
+    if context.rev is not None:
+        cmd.extend(["--rev", context.rev])
+    if context.hotspot_config is not None:
+        cmd.extend(["--config", str(context.hotspot_config)])
+
+
 def _append_scope_args(
     cmd: list[str],
     lane: str,
@@ -146,30 +173,17 @@ def _append_scope_args(
     if lane == "exec":
         return
 
-    # growth lane: --baseline-rev when rev is supplied;
-    # auto-detect --config from repo-local growth_allowances.json
     if lane == "growth":
-        if context.rev is not None:
-            cmd.extend(["--baseline-rev", context.rev])
-        growth_allowances = context.repo / "scripts" / "growth_allowances.json"
-        if growth_allowances.exists():
-            cmd.extend(["--config", str(growth_allowances)])
+        _add_growth_args(cmd, context)
         return
 
     if lane in {"code-health", "security", "dependency"}:
         _append_flagged(cmd, "--source-prefix", context.source_prefixes)
     elif lane == "docs":
-        if _leaf_supports_exclude_prefix(leaf):
-            cmd.extend(["--source-prefix", "docs"])
-            excludes = (f"docs/{p}" for p in DOC_EXCLUDES)
-            _append_flagged(cmd, "--exclude-prefix", excludes)
-        else:
-            _append_flagged(cmd, "--source-prefix", _doc_prefixes(context.repo))
+        _add_docs_args(cmd, leaf, context)
     elif lane == "hotspot":
-        if context.rev is not None:
-            cmd.extend(["--rev", context.rev])
-        if context.hotspot_config is not None:
-            cmd.extend(["--config", str(context.hotspot_config)])
+        _add_hotspot_args(cmd, context)
+
     if lane == "security" and context.security_config is not None:
         cmd.extend(["--config", str(context.security_config)])
 
@@ -224,20 +238,16 @@ _WaveResult = tuple[
 ]
 
 
-def _run_wave(
+def _partition_runnable(
     selected: list[str],
     lanes: dict[str, str],
     skills_root: Path,
     context: _LaneContext,
-) -> _WaveResult:
-    """Run selected lanes in parallel, preserving registry order in outputs."""
-    summary: dict[str, dict[str, Any]] = {}
-    wave_findings: list[dict[str, str]] = []
-    timings: dict[str, dict[str, Any]] = {}
-    wave_exit = 0
-
-    # --- partition: skip lanes whose leaf is missing or which should be skipped ---
+) -> tuple[dict[str, Path], dict[str, dict[str, Any]], int]:
+    """Split selected lanes into runnable (leaf exists) vs skipped/error."""
     runnable: dict[str, Path] = {}
+    summary: dict[str, dict[str, Any]] = {}
+    wave_exit = 0
     for lane in selected:
         leaf = skills_root / lanes[lane]
         if not leaf.exists():
@@ -249,36 +259,60 @@ def _run_wave(
             summary[lane] = {"exit": 0, "status": "skipped", "findings": 0}
             continue
         runnable[lane] = leaf
+    return runnable, summary, wave_exit
 
-    # --- parallel execution ---
+
+def _collect_lane_results(
+    runnable: dict[str, Path],
+    context: _LaneContext,
+) -> tuple[dict[str, tuple[int, list[dict[str, str]]]], dict[str, dict[str, Any]]]:
+    """Execute runnable lanes in parallel; return results and timings."""
+    results: dict[str, tuple[int, list[dict[str, str]]]] = {}
+    timings: dict[str, dict[str, Any]] = {}
+    with ThreadPoolExecutor(max_workers=len(runnable)) as executor:
+        future_to_lane: dict[Any, str] = {}
+        start_times: dict[str, float] = {}
+        for lane, leaf in runnable.items():
+            start_times[lane] = time.time()
+            future = executor.submit(_run_lane, lane, leaf, context)
+            future_to_lane[future] = lane
+
+        for future in as_completed(future_to_lane):
+            lane = future_to_lane[future]
+            end_ts = time.time()
+            elapsed = round(end_ts - start_times[lane], 3)
+            timings[lane] = {
+                "start": datetime.fromtimestamp(
+                    start_times[lane], tz=timezone.utc
+                ).isoformat(),
+                "end": datetime.fromtimestamp(
+                    end_ts, tz=timezone.utc
+                ).isoformat(),
+                "elapsed": elapsed,
+            }
+            try:
+                exit_code, findings = future.result()
+                results[lane] = (exit_code, findings)
+            except Exception:
+                results[lane] = (2, [])
+    return results, timings
+
+
+def _run_wave(
+    selected: list[str],
+    lanes: dict[str, str],
+    skills_root: Path,
+    context: _LaneContext,
+) -> _WaveResult:
+    """Run selected lanes in parallel, preserving registry order in outputs."""
+    runnable, summary, wave_exit = _partition_runnable(
+        selected, lanes, skills_root, context
+    )
+    timings: dict[str, dict[str, Any]] = {}
+    wave_findings: list[dict[str, str]] = []
+
     if runnable:
-        results: dict[str, tuple[int, list[dict[str, str]]]] = {}
-        with ThreadPoolExecutor(max_workers=len(runnable)) as executor:
-            future_to_lane: dict[Any, str] = {}
-            start_times: dict[str, float] = {}
-            for lane, leaf in runnable.items():
-                start_times[lane] = time.time()
-                future = executor.submit(_run_lane, lane, leaf, context)
-                future_to_lane[future] = lane
-
-            for future in as_completed(future_to_lane):
-                lane = future_to_lane[future]
-                end_ts = time.time()
-                elapsed = round(end_ts - start_times[lane], 3)
-                timings[lane] = {
-                    "start": datetime.fromtimestamp(
-                        start_times[lane], tz=timezone.utc
-                    ).isoformat(),
-                    "end": datetime.fromtimestamp(
-                        end_ts, tz=timezone.utc
-                    ).isoformat(),
-                    "elapsed": elapsed,
-                }
-                try:
-                    exit_code, findings = future.result()
-                    results[lane] = (exit_code, findings)
-                except Exception:
-                    results[lane] = (2, [])
+        results, timings = _collect_lane_results(runnable, context)
 
         # Build summary and findings in *registry order* (deterministic).
         for lane in selected:

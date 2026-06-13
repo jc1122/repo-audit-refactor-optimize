@@ -19,24 +19,6 @@
   },
   {
     "leaf": "complexity",
-    "path": "scripts/run_diagnosis_wave.py",
-    "symbol": "_append_scope_args",
-    "metric": "cyclomatic_complexity"
-  },
-  {
-    "leaf": "complexity",
-    "path": "scripts/run_diagnosis_wave.py",
-    "symbol": "_run_wave",
-    "metric": "cyclomatic_complexity"
-  },
-  {
-    "leaf": "complexity",
-    "path": "scripts/run_diagnosis_wave.py",
-    "symbol": "_run_wave",
-    "metric": "function_nloc"
-  },
-  {
-    "leaf": "complexity",
     "path": "scripts/synthesize_packets.py",
     "symbol": "mechanical_patches",
     "metric": "function_nloc"
