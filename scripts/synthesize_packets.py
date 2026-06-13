@@ -136,6 +136,57 @@ def _run_ruff(
         return "", str(exc)
 
 
+# ---------------------------------------------------------------------------
+# Two-tier lessons ledger: capped scope-matched injection + escalation
+# ---------------------------------------------------------------------------
+
+def inject_lessons(
+    packet: dict[str, Any],
+    lessons: list[dict[str, Any]],
+    cap: int,
+) -> dict[str, Any]:
+    """Inject capped, scope-matched *binding* lessons into a worker packet.
+
+    Selects lessons whose ``tier`` is ``"binding"`` and whose ``scope`` matches
+    ``packet["scope"]``, sorts the selection by ``fires`` descending (a missing
+    ``fires`` counts as 0, stable for ties), truncates to ``cap`` entries, and
+    attaches them under the new ``packet["lessons"]`` key as a list of
+    ``{"id", "text", "command"}`` dicts. The ``cap`` bounds the injected text so
+    the L-7 8k-token packet budget holds. Mutates *packet* in place and returns
+    it.
+    """
+    scope = packet.get("scope")
+    selected = [
+        lesson
+        for lesson in lessons
+        if lesson.get("tier") == "binding" and lesson.get("scope") == scope
+    ]
+    selected.sort(key=lambda lesson: lesson.get("fires", 0), reverse=True)
+    selected = selected[:cap]
+    packet["lessons"] = [
+        {
+            "id": lesson.get("id"),
+            "text": lesson.get("text", ""),
+            "command": lesson.get("command", ""),
+        }
+        for lesson in selected
+    ]
+    return packet
+
+
+def needs_automation(lesson: dict[str, Any]) -> bool:
+    """Return True when a binding lesson has fired enough to warrant automation.
+
+    A lesson needs automation when it is ``binding``, has fired at least three
+    times, and has not already been ``escalated``.
+    """
+    return (
+        lesson.get("tier") == "binding"
+        and lesson.get("fires", 0) >= 3
+        and not lesson.get("escalated", False)
+    )
+
+
 def mechanical_patches(
     findings: list[dict[str, Any]],
     repo: str,
