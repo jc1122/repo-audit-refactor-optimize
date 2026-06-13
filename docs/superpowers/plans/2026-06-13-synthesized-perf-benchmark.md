@@ -324,7 +324,7 @@ def generate(
         encoding="utf-8",
     )
     make_input.write_text(_MAKE_INPUT_STUB.format(func=func), encoding="utf-8")
-    target_command = f'python {bench.name} {{SIZE}}'
+    target_command = f'python3 {bench.name} {{SIZE}}'  # python3 for portability (python may be absent)
     spec = {
         "name": name,
         "module": module,
@@ -446,8 +446,9 @@ needs. No change to repo-P scoring.
 - [ ] **Step 1: Full Track A suite (after A1 + A2)**
 
 Run: `python -m pytest -q`
-Expected: PASS (all existing + the 4 new synthesis tests). If any pre-existing test was already
-failing on `main`, record it and do not attribute it to this work.
+Expected: PASS (all existing + the 7 new synthesis tests — 2 in `test_profile_discover.py`, 5 in
+`test_synth_microbench.py`). If any pre-existing test was already failing on `main`, record it and do
+not attribute it to this work.
 
 ---
 
@@ -600,6 +601,7 @@ wrong-container, loop-invariant, and related performance anti-patterns.
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
 import subprocess
 import sys
@@ -608,8 +610,10 @@ from pathlib import Path
 import health_common as hc
 
 LEAF = "perf-smell"
-# pylint message types that mean "pylint could not analyze this file" — never a perf smell.
-_TOOL_FAILURE_TYPES = {"fatal", "error"}
+# perflint reserves the 8xxx message range; we keep ONLY those ids. (`pylint --enable` takes
+# message ids, not a plugin name, and pylint always emits its own fatals/syntax errors, which
+# start with F/E and are therefore dropped by this prefix filter.)
+_PERFLINT_PREFIXES = ("W81", "W82", "W83", "W84", "R81", "R82")
 
 
 class ToolError(RuntimeError):
@@ -634,26 +638,29 @@ def _python_files(root: Path, source_prefixes: list[str]) -> list[Path]:
 def _run_perflint(files: list[Path], root: Path) -> list[dict]:
     if not files:
         return []
+    # Missing tool is a hard error, never silent-clean (matches dead_code_audit / quality_audit).
+    # find_spec also catches a missing perflint plugin, which `--load-plugins` would otherwise
+    # surface only as a JSON fatal we'd filter out (a false "clean").
+    for tool in ("pylint", "perflint"):
+        if importlib.util.find_spec(tool) is None:
+            raise ToolError(f"{tool} is not installed")
     cmd = [
         sys.executable, "-m", "pylint",
         "--load-plugins=perflint",
-        "--disable=all",
-        "--enable=perflint",
         "--output-format=json",
         "--score=n",
+        "--persistent=no",
         *[str(f) for f in files],
     ]
     try:
         proc = subprocess.run(cmd, cwd=str(root), capture_output=True, text=True)
-    except FileNotFoundError as exc:  # pylint itself absent
+    except FileNotFoundError as exc:  # pylint entrypoint absent
         raise ToolError("pylint is not installed") from exc
     try:
         return json.loads(proc.stdout or "[]")
     except json.JSONDecodeError as exc:
-        # Non-JSON stdout almost always means the perflint plugin failed to load
-        # (pylint prints a usage error to stderr). Treat as a tooling gap, never clean.
         raise ToolError(
-            f"pylint/perflint produced unparseable output: {(proc.stderr or '').strip()[:300]}"
+            f"pylint produced unparseable output: {(proc.stderr or '').strip()[:300]}"
         ) from exc
 
 
@@ -670,9 +677,9 @@ def analyze_tree(root: str | Path, source_prefixes: list[str]) -> list[hc.Findin
     files = _python_files(root, source_prefixes)
     findings: list[hc.Finding] = []
     for msg in _run_perflint(files, root):
-        if msg.get("type") in _TOOL_FAILURE_TYPES:
-            continue  # pylint syntax/import errors in target source are not perf smells
-        code = msg.get("message-id", "") or msg.get("symbol", "")
+        code = msg.get("message-id", "") or ""
+        if not code.startswith(_PERFLINT_PREFIXES):
+            continue  # keep only perflint's own messages; drop pylint core + syntax/import errors
         findings.append(
             hc.Finding(
                 leaf=LEAF,
@@ -720,7 +727,7 @@ if __name__ == "__main__":
 - [ ] **Step 5: Run test to verify it passes**
 
 Run: `cd skills/perf-smell-audit && python -m pytest tests/test_perf_smell_findings.py -q`
-Expected: PASS (2 passed). If perflint emits zero on the dirty fixture, run `python -m pylint --load-plugins=perflint --disable=all --enable=perflint --output-format=json tests/fixtures/dirty/pkg/dirty.py` to see the live message ids, and adjust the fixture to a pattern perflint flags (keep asserting on tool+signal, not a specific code).
+Expected: PASS (4 passed — clean, dirty, missing-tool-raises, main-exit-error). If perflint emits zero on the dirty fixture, run `python -m pylint --load-plugins=perflint --output-format=json tests/fixtures/dirty/pkg/dirty.py` and confirm the flagged message-ids fall in the `W8*/R8*` range (`_PERFLINT_PREFIXES`); adjust the fixture to a pattern perflint flags (keep asserting on tool+signal, not a specific code).
 
 - [ ] **Step 6: Commit**
 
@@ -919,9 +926,9 @@ Update that test in place:
 - [ ] **Step 5: Run new + updated tests, confirm no other regression**
 
 Run: `python -m pytest tests/test_lane_resolve.py tests/test_check_skill_requirements.py tests/ -q`
-Expected: PASS — new 3 in `test_lane_resolve.py`, the one updated test now green, and the rest of the
-suite unchanged (101 passed total). If any *other* test fails, stop: it means the change reached
-beyond the intended branch.
+Expected: PASS — 104 total (101 existing baseline + 3 new in `test_lane_resolve.py`; the one updated
+`...no_benchmarks` test stays 1 test, now green). If any *other* test fails, stop: it means the change
+reached beyond the intended branch.
 
 - [ ] **Step 6: Commit**
 
@@ -1787,11 +1794,37 @@ the cheap `validate_make_input` guard first.
 
 ```python
 # tests/test_synth_run_cli.py
-import importlib, json
+import importlib, json, types
 from pathlib import Path
+import pytest
 
 sr = importlib.import_module("scripts.synth_run")
-sm = importlib.import_module("scripts.synthesize_perf")  # reused by measure
+
+
+@pytest.fixture(autouse=True)
+def _stub_synth_microbench(monkeypatch):
+    """Stub the cross-repo synth_microbench load so the driver's state logic is hermetic.
+    The REAL generator/validator is tested in perf-benchmark-skill's own suite (A2); here we
+    only exercise synth_run's transitions, so depending on ~/projects/perf-benchmark-skill
+    (absent in repo-B CI) would be a false failure."""
+    fake = types.SimpleNamespace()
+
+    def generate(*, out_dir, name, import_root, module, func):
+        out_dir = Path(out_dir); out_dir.mkdir(parents=True, exist_ok=True)
+        mi = out_dir / "make_input.py"
+        mi.write_text("def make_input(size):\n    raise NotImplementedError\n", encoding="utf-8")
+        bench = out_dir / f"bench_{name}.py"; bench.write_text("x\n", encoding="utf-8")
+        return {"make_input": str(mi), "bench": str(bench),
+                "target_command": f"python3 bench_{name}.py {{SIZE}}", "spec": {}}
+
+    def validate_make_input(harness_dir, **_k):
+        txt = (Path(harness_dir) / "make_input.py").read_text(encoding="utf-8")
+        return ({"ok": False, "reason": "make_input is still the stub"}
+                if "NotImplementedError" in txt else {"ok": True, "reason": "scales"})
+
+    fake.generate = generate
+    fake.validate_make_input = validate_make_input
+    monkeypatch.setattr(sr, "_load_synth_microbench", lambda: fake)
 
 
 def _summary(k, cpu_tier="PASS", wall_tier="PASS", cv=1.0):
@@ -2169,4 +2202,11 @@ The agent-facing loop (documented in SKILL.md, not a script) is:
   - **[soft, not CI-blocking] repo-B/repo-P self-audit/wave baselines** — new `scripts/` files (synthesize_perf, graduate_benchmark, synth_run, _complexity_label; profile_discover, synth_microbench) enter each repo's diagnosis-wave/self-audit surface. repo-B CI runs only `pytest` + `check_release` (NOT `check_wave_baseline`), so per-commit CI is green; but the next **steady-state convergence run** must re-seed `scripts/wave_baseline.json` (currently 13 entries) per C-6. Same for repo-P. Flagged here as a follow-up, not a blocker.
   - **[low] repo-B `check_release` version-sync** — it requires SKILL.md frontmatter version to have a matching `## <version>` CHANGELOG heading. C5 keeps them in sync (bump both or add the entry under the current version; do not bump one without the other).
   - **[low] `_load_by_path` module names** — registers `profile_discover`/`select_candidate`/`verify_win`/`synth_microbench` in `sys.modules`; collision risk is negligible in the repo-B test process (those live in other repos) — acceptable.
+- **End-to-end review pass (correctness + counts, this pass):**
+  - **[CI-blocking, fixed] D2 cross-repo test dependency** — `test_synth_run_cli.py`'s `select`/`measure` loaded the real `synth_microbench` from `~/projects/perf-benchmark-skill`, which is absent in repo-B CI → the tests would error. Added an autouse fixture stubbing `sr._load_synth_microbench`, making the driver's state tests hermetic. (D3's `test_synth_run_loop.py` is already fully injected via `--candidates/selection/verdict-json`, so it needs no stub.)
+  - **[correctness, fixed] perflint invocation** — `--enable=perflint` is not a valid pylint message specifier (enable takes ids, not a plugin name); replaced with `--load-plugins=perflint` + a `W8*/R8*` message-id prefix filter in `analyze_tree`, plus an `importlib.util.find_spec` check so a missing `perflint` plugin is a `ToolError`, not a JSON fatal that filters to a false "clean".
+  - **[portability, fixed] synthesized `target_command`** used `python`; now `python3` (the family's interpreter).
+  - **[counts, fixed]** A3 "4 new" → 7 (A1:2 + A2:5); B2 findings test "2 passed" → 4 (added missing-tool + main-exit-error); C1 "101 total" → 104 (101 + 3 new lane tests).
+  - **[low, noted not fixed] `_cmd_candidate`/`_cmd_verify`/`_cmd_discover`** don't enforce one-of (`--selection-json` xor `--findings-json`, etc.); passing neither raises a `Path(None)` TypeError. Not hit by tests (all inject); an executor can add a mutually-exclusive group. Cosmetic.
+  - **Verified consistent:** `decide_gate(...measured=True)` default keeps all earlier call sites valid; `extract_gate_inputs` returns `measured` consumed by C4/D2; `_TRANSITIONS` covers every transition used by D2/D3 (`gated_pass→{awaiting_optimization,done_no_win}` present); `verify_and_decide` outcome→state map (`error`→`done_no_win`); `graduate(...)` and `generate(...)`/`validate_make_input(...)` signatures match all callers; A4 `build_summary_contract` consumes the list-of-tuples `rubric["dimensions"]` form that `_base_json_summary` holds.
 - **Open spec questions baked as defaults:** trigger = agent-on-demand; 3-repo split; perf-stat middle tier NOT added (reuse existing tiers). Flagged in spec for veto.
