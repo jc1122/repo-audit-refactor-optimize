@@ -31,8 +31,8 @@
 - Create: `tests/test_synthesize_perf.py`, `tests/test_graduate_benchmark.py`, `tests/test_synthesis_e2e.py`, `tests/test_synthesis_real_e2e.py`, and `tests/test_lane_resolve.py`.
 
 **Track D — autonomous driver (repo-B)**
-- Create: `scripts/synth_run.py` — resumable file-backed state machine (`synth_state.json` + `synth_events.jsonl`) that blocks/resumes at agent-judgment gaps with a `--max-attempts` stop-condition (D1, D2).
-- Create: `tests/test_synth_run_state.py`, `tests/test_synth_run_cli.py`.
+- Create: `scripts/synth_run.py` — resumable file-backed state machine (`synth_state.json` + `synth_events.jsonl`). Subcommands `discover → select → measure → candidate → verify` block/resume at agent-judgment gaps; `--max-attempts` stop-condition; terminal `done_win`/`done_no_win`/`gated_refuse` (D1 state core, D2 select/measure, D3 discover/candidate/verify — full loop).
+- Create: `tests/test_synth_run_state.py`, `tests/test_synth_run_cli.py`, `tests/test_synth_run_loop.py`.
 
 Tracks A/B are independent; C depends on A4's contract (with a rubric fallback so it can land first); D depends on C. May run as separate execution sessions.
 
@@ -1658,7 +1658,7 @@ _TRANSITIONS: dict[str, set[str]] = {
     "awaiting_make_input": {"awaiting_make_input", "gated_pass", "gated_refuse", "gated_error"},
     "gated_error": {"awaiting_make_input", "done_no_win"},   # fix harness & retry, or give up
     "gated_refuse": set(),                                   # terminal: advisory only
-    "gated_pass": {"awaiting_optimization"},
+    "gated_pass": {"awaiting_optimization", "done_no_win"},  # → optimize, or no actionable candidate
     "awaiting_optimization": {"done_win", "done_no_win"},
     "done_win": set(),
     "done_no_win": set(),
@@ -1897,11 +1897,178 @@ git add scripts/synth_run.py tests/test_synth_run_cli.py
 git commit -m "feat(driver): synth_run subcommands — blocked/resume gaps + stop-condition"
 ```
 
-> **Out of scope for D (documented limits):** the `discover` subcommand (wrapping `profile_discover`
-> + `perf-smell`) and the `verify` subcommand (wrapping a real second pipeline run + `verify_win` +
-> `verify_and_decide`) follow the identical inject-and-transition pattern; they are deferred to a
-> D3 follow-up to keep this plan's first cut bounded. The state machine already declares their
-> transitions (`awaiting_optimization → done_win|done_no_win`), so adding them is additive.
+### Task D3: close the loop — `discover`, `candidate`, `verify` subcommands
+
+Adds the head and tail of the pipeline so the driver runs **end to end**: `discover` (entry →
+`awaiting_hotspot`), `candidate` (after a passing gate → `awaiting_optimization`, or terminal when
+nothing is actionable), and `verify` (consume `verify_win` → `done_win`/`done_no_win` with the
+revert directive). Same inject-and-transition pattern as D2 so it's testable without valgrind.
+
+**Files:**
+- Modify: `scripts/synth_run.py` (add three `_cmd_*` functions + their subparsers)
+- Test: `tests/test_synth_run_loop.py`
+
+- [ ] **Step 1: Write the failing test**
+
+```python
+# tests/test_synth_run_loop.py
+import importlib, json
+from pathlib import Path
+
+sr = importlib.import_module("scripts.synth_run")
+
+
+def test_discover_blocks_awaiting_hotspot(tmp_path):
+    cj = tmp_path / "c.json"
+    cj.write_text(json.dumps([{"id": "h1", "function": "a.py:1:f", "cumulative_s": 0.9}]))
+    rc = sr.main(["discover", "--run-dir", str(tmp_path), "--candidates-json", str(cj)])
+    assert rc == 0
+    s = sr.status(tmp_path)
+    assert s["state"] == "awaiting_hotspot" and s["blocked"] is True
+    assert s["data"]["candidates"][0]["id"] == "h1"
+
+
+def _to_gated_pass(tmp_path):
+    sr.transition(tmp_path, "awaiting_hotspot")
+    sr.transition(tmp_path, "awaiting_make_input")
+    sr.transition(tmp_path, "gated_pass", gate={"gate": "pass"})
+
+
+def test_candidate_with_selection_blocks_awaiting_optimization(tmp_path):
+    _to_gated_pass(tmp_path)
+    sel = tmp_path / "sel.json"
+    sel.write_text(json.dumps({"status": "selected", "path": "a.py", "signal": "PERF"}))
+    rc = sr.main(["candidate", "--run-dir", str(tmp_path), "--selection-json", str(sel)])
+    assert rc == 0 and sr.status(tmp_path)["state"] == "awaiting_optimization"
+    assert sr.load_state(tmp_path)["data"]["candidate"]["path"] == "a.py"
+
+
+def test_candidate_no_candidates_is_terminal(tmp_path):
+    _to_gated_pass(tmp_path)
+    sel = tmp_path / "sel.json"
+    sel.write_text(json.dumps({"status": "no_candidates"}))
+    rc = sr.main(["candidate", "--run-dir", str(tmp_path), "--selection-json", str(sel)])
+    assert rc == 1 and sr.status(tmp_path)["state"] == "done_no_win"
+
+
+def _to_awaiting_opt(tmp_path):
+    _to_gated_pass(tmp_path)
+    sr.transition(tmp_path, "awaiting_optimization", candidate={"path": "a.py"})
+
+
+def test_verify_accept_is_done_win(tmp_path):
+    _to_awaiting_opt(tmp_path)
+    vj = tmp_path / "v.json"; vj.write_text(json.dumps({"verdict": "accept"}))
+    rc = sr.main(["verify", "--run-dir", str(tmp_path), "--verdict-json", str(vj)])
+    assert rc == 0 and sr.status(tmp_path)["state"] == "done_win"
+
+
+def test_verify_reject_is_done_no_win_with_revert(tmp_path):
+    _to_awaiting_opt(tmp_path)
+    vj = tmp_path / "v.json"; vj.write_text(json.dumps({"verdict": "reject", "reasons": ["median"]}))
+    rc = sr.main(["verify", "--run-dir", str(tmp_path), "--verdict-json", str(vj)])
+    assert rc == 1
+    st = sr.load_state(tmp_path)
+    assert st["state"] == "done_no_win" and st["data"]["decision"]["revert"] is True
+```
+
+- [ ] **Step 2: Run to verify it fails** — `python -m pytest tests/test_synth_run_loop.py -q` → FAIL (subcommands unknown).
+
+- [ ] **Step 3: Implement the three subcommands** (append `_cmd_*` to `scripts/synth_run.py`):
+
+```python
+# scripts/synth_run.py  (append)
+def _load_by_path(modname: str, relpath: str):
+    import importlib.util, os
+    root = os.environ.get("PERF_BENCHMARK_ROOT", str(Path.home() / "projects" / "perf-benchmark-skill"))
+    spec = importlib.util.spec_from_file_location(modname, Path(root) / relpath)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)  # type: ignore[union-attr]
+    return mod
+
+
+def _cmd_discover(a: argparse.Namespace) -> int:
+    if a.candidates_json:                       # injected (tests / pre-computed)
+        candidates = json.loads(Path(a.candidates_json).read_text())
+    else:                                        # run the stdlib profiler
+        pd = _load_by_path("profile_discover", "scripts/profile_discover.py")
+        ranked = Path(a.run_dir) / "perf" / "discovery" / "profile_ranked.json"
+        ranked.parent.mkdir(parents=True, exist_ok=True)
+        pd.main(["--script", a.script, "--out", str(ranked), "--top", str(a.top)])
+        data = json.loads(ranked.read_text()) if ranked.is_file() else []
+        candidates = data if isinstance(data, list) else []   # {"error":…} → no candidates
+    if a.smells_json and Path(a.smells_json).is_file():        # merge static smells
+        candidates += [{"id": f"smell:{s.get('id', '?')}", **s} for s in json.loads(Path(a.smells_json).read_text())]
+    transition(a.run_dir, "awaiting_hotspot", candidates=candidates,
+               note="Pick a hotspot id from candidates, then run `select`.")
+    return 0
+
+
+def _cmd_candidate(a: argparse.Namespace) -> int:
+    if a.selection_json:                         # injected select_candidate result
+        result = json.loads(Path(a.selection_json).read_text())
+    else:
+        sc = _load_by_path("select_candidate", "perf-optimization/scripts/select_candidate.py")
+        result = sc.select_candidate(json.loads(Path(a.findings_json).read_text()))
+    if result.get("status") == "no_candidates":
+        transition(a.run_dir, "done_no_win", reason="gate-quality benchmark but no actionable PERF candidate")
+        print(json.dumps(result, indent=2))
+        return 1
+    transition(a.run_dir, "awaiting_optimization", candidate=result,
+               note="Apply the candidate change, re-run the pipeline for an after-summary, then `verify`.")
+    return 0
+
+
+def _cmd_verify(a: argparse.Namespace) -> int:
+    if a.verdict_json:                           # injected verify_win verdict
+        verdict = json.loads(Path(a.verdict_json).read_text())
+    else:
+        vw = _load_by_path("verify_win", "perf-optimization/scripts/verify_win.py")
+        out = Path(a.run_dir) / "perf" / "verdict.json"
+        out.parent.mkdir(parents=True, exist_ok=True)
+        vw.main(["--before", a.before, "--after", a.after,
+                 "--suite-exit-code", str(a.suite_exit_code), "--out", str(out)])
+        verdict = json.loads(out.read_text())
+    decision = _gate.verify_and_decide(verdict=verdict)   # never trusts a self-reported win
+    target = "done_win" if decision["outcome"] == "done_win" else "done_no_win"
+    transition(a.run_dir, target, verdict=verdict, decision=decision)
+    print(json.dumps(decision, indent=2))
+    return 0 if target == "done_win" else 1
+```
+
+Then register the three subparsers inside `main()`, before `args = p.parse_args(argv)`:
+
+```python
+    d = sub.add_parser("discover"); d.set_defaults(fn=_cmd_discover)
+    d.add_argument("--run-dir", required=True)
+    d.add_argument("--script", default=None, help="Representative script to profile (omit with --candidates-json)")
+    d.add_argument("--candidates-json", default=None, help="Pre-computed candidates (inject)")
+    d.add_argument("--smells-json", default=None, help="perf-smell findings to merge as candidates")
+    d.add_argument("--top", type=int, default=20)
+
+    c = sub.add_parser("candidate"); c.set_defaults(fn=_cmd_candidate)
+    c.add_argument("--run-dir", required=True)
+    c.add_argument("--findings-json", default=None, help="PERF findings for select_candidate")
+    c.add_argument("--selection-json", default=None, help="Pre-computed select_candidate result (inject)")
+
+    v = sub.add_parser("verify"); v.set_defaults(fn=_cmd_verify)
+    v.add_argument("--run-dir", required=True)
+    v.add_argument("--verdict-json", default=None, help="Pre-computed verify_win verdict (inject)")
+    v.add_argument("--before", default=None)
+    v.add_argument("--after", default=None)
+    v.add_argument("--suite-exit-code", type=int, default=0)
+```
+
+- [ ] **Step 4: Run to verify it passes** — `python -m pytest tests/test_synth_run_loop.py -q` → PASS (5 passed).
+
+- [ ] **Step 5: Full driver suite** — `python -m pytest tests/test_synth_run_state.py tests/test_synth_run_cli.py tests/test_synth_run_loop.py -q` → PASS. The complete loop is now `discover → select → measure → candidate → verify`, blocking/resuming at every agent-judgment gap, with terminal states `done_win` / `done_no_win` / `gated_refuse`.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add scripts/synth_run.py tests/test_synth_run_loop.py
+git commit -m "feat(driver): synth_run discover/candidate/verify — full closed loop"
+```
 
 ---
 
@@ -1931,5 +2098,5 @@ The agent-facing loop (documented in SKILL.md, not a script) is:
   - **Placement (A4):** repo-B no longer reaches into repo-P rubric internals — perf-benchmark exposes a stable top-level contract; the gate prefers it, rubric read is a fallback.
   - **Verify→revert seam (C6):** the critical "optimization made it worse" path is now wired and tested — consumes `verify_win`'s `accept`/`reject`, emits an explicit revert directive (never trusts a self-reported win).
   - **Real e2e (C7):** an actual pipeline run (wall-time tier, no valgrind) on a synthesized quadratic target → gate; skips cleanly where the pipeline can't run.
-  - **Autonomous driver (Track D):** `synth_run.py` is a resumable, file-backed state machine (`synth_state.json` + `synth_events.jsonl`, MPRR model) that blocks at the agent-judgment gaps (`awaiting_hotspot/make_input/optimization`) and carries a `--max-attempts` stop-condition. D's `discover`/`verify` subcommands are explicitly deferred to D3 (transitions already declared).
+  - **Autonomous driver (Track D, fully closed):** `synth_run.py` is a resumable, file-backed state machine (`synth_state.json` + `synth_events.jsonl`, MPRR model). The complete loop `discover → select → measure → candidate → verify` blocks at every agent-judgment gap (`awaiting_hotspot/make_input/optimization`), carries a `--max-attempts` stop-condition, and ends in `done_win`/`done_no_win`/`gated_refuse`. Every external call (profiling, pipeline, select_candidate, verify_win) has an injection seam so the whole loop is unit-testable without valgrind.
 - **Open spec questions baked as defaults:** trigger = agent-on-demand; 3-repo split; perf-stat middle tier NOT added (reuse existing tiers). Flagged in spec for veto.
