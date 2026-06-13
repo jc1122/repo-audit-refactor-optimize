@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.1
+
+SP14 — remove the unused `running_ids` accessor from the MPRR `SaturatingScheduler`
+(vulture dead-code finding; the engine never referenced it). No behavior change.
+
 ## 0.5.0
 
 SP14 — massively-parallel redundancy-remediation (MPRR) engine. New stdlib-only
