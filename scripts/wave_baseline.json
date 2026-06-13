@@ -48,24 +48,6 @@
     "metric": "maintainability_index"
   },
   {
-    "leaf": "security",
-    "path": "scripts/synthesize_packets.py",
-    "symbol": "blacklist",
-    "metric": "bandit_B404"
-  },
-  {
-    "leaf": "security",
-    "path": "scripts/synthesize_packets.py",
-    "symbol": "hardcoded_password_string",
-    "metric": "bandit_B105"
-  },
-  {
-    "leaf": "security",
-    "path": "scripts/synthesize_packets.py",
-    "symbol": "subprocess_without_shell_equals_true",
-    "metric": "bandit_B603"
-  },
-  {
     "leaf": "hotspot",
     "path": "SKILL.md",
     "symbol": "SKILL.md",

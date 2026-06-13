@@ -6,7 +6,7 @@ Advisory only — never applies generated patches.
 from __future__ import annotations
 
 import json
-import subprocess
+import subprocess  # nosec B404
 from pathlib import Path
 from typing import Any
 
@@ -67,7 +67,7 @@ def packet_for(finding: dict[str, Any], repo: str) -> dict[str, Any]:
         "must_run": [],
         "expected": [],
         "forbidden": [],
-        "token_budget": 8000,
+        "token_budget": 8000,  # nosec B105
     }
 
 
@@ -119,12 +119,13 @@ def _run_ruff(
     """Run ruff against *file_path* inside *repo* and return (stdout, error)."""
     full_cmd = ["ruff"] + check_cmd + [file_path]
     try:
-        result = subprocess.run(
+        result = subprocess.run(  # nosec B603
             full_cmd,
             capture_output=True,
             text=True,
             cwd=repo,
             timeout=30,
+            shell=False,
         )
         if result.returncode != 0:
             return result.stdout, (
