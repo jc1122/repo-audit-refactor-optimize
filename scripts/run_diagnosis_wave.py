@@ -21,8 +21,8 @@ _wave_findings = importlib.import_module(
 )
 
 # ── legacy hardcoded lanes ─────────────────────────────────────────────
-# Kept as a fallback when --registry is not supplied.  Normal operation
-# should provide --registry pointing to a wave_lanes.json file.
+# Kept as a fallback when neither --registry nor the committed default
+# registry (scripts/wave_lanes.json) is available.
 _LEGACY_LANES: dict[str, str] = {
     "code-health": "code-health-audit-pipeline/scripts/code_health_pipeline.py",
     "security": "security-audit/scripts/security_audit.py",
@@ -31,6 +31,8 @@ _LEGACY_LANES: dict[str, str] = {
     "dependency": "dependency-audit/scripts/dependency_audit.py",
     "hotspot": "hotspot-audit/scripts/hotspot_audit.py",
 }
+
+_DEFAULT_REGISTRY = Path(__file__).resolve().parent / "wave_lanes.json"
 
 DOC_EXCLUDES = ("audits", "dogfood", "plans", "superpowers")
 
@@ -299,7 +301,12 @@ def _write_wave_outputs(
 
 def main(argv: list[str] | None = None) -> int:
     args = _parse_args(argv)
-    loaded = load_lanes(args.registry) if args.registry else dict(_LEGACY_LANES)
+    if args.registry:
+        loaded = load_lanes(args.registry)
+    elif _DEFAULT_REGISTRY.exists():
+        loaded = load_lanes(_DEFAULT_REGISTRY)
+    else:
+        loaded = dict(_LEGACY_LANES)
     selected, unknown = _selected_lanes(args.lanes, loaded)
     if unknown:
         payload = {"status": "error", "error": "Unknown lane(s)", "lanes": unknown}
