@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.6
+
+SP12 W6 — release gate repair.
+
 ## 0.4.5
 
 SP12 W5 -- code-health wave-runner exit classification fix.
@@ -73,21 +77,12 @@ SP7 C4 -- perf-optimization joins the performance lane as a preferred fallback.
 
 Track B — bootstrap hardening, CI release gates, and new lane surface.
 
-- Bootstrap skill resolution now enforces `min_version` pins and detects stale
-  installed skills (SP7 B1)
-- Bootstrap report includes an advisory unreferenced-skills section listing
-  installed skills not referenced in the manifest (SP7 B2)
-- CI workflow (`check.yml`) gates on pytest + `check_release.py` on every push
-  and pull request (SP7 B3, B6)
-- Every orchestration run is now contractually required to commit a run report
-  into `docs/audits/<run-id>/`; verification fails closed when the report is
-  absent or incomplete (SP7 B4)
-- Remediation playbook adds architecture-scale RESTRUCTURE procedures
-  (dependency inversion, interface extraction, module split/merge, strangler fig)
-  with mechanical verification conditions (SP7 B5)
-- Manifest adds `hygiene` and `security` lanes, registers `hotspot-audit` and
-  `test-effectiveness-audit` as optional leaves, and pins `min_version` for all
-  repo-audit-skills leaves (SP7 B7)
+- Bootstrap skill resolution enforces `min_version` pins and detects stale installed skills (SP7 B1)
+- Bootstrap report includes advisory unreferenced-skills section (SP7 B2)
+- CI workflow gates on pytest + `check_release.py` on every push/PR (SP7 B3, B6)
+- Orchestration runs require committing a run report into `docs/audits/<run-id>/`; verification fails closed when absent (SP7 B4)
+- Remediation playbook adds architecture-scale RESTRUCTURE procedures with mechanical verification conditions (SP7 B5)
+- Manifest adds `hygiene` and `security` lanes, registers optional leaves, pins `min_version` for all repo-audit-skills leaves (SP7 B7)
 
 ## 0.2.0
 
