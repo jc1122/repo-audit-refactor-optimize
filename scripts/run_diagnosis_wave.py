@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run one diagnosis wave over selected lanes in sequence."""
+"""Run one diagnosis wave over selected lanes in parallel using a lane registry."""
 
 from __future__ import annotations
 
@@ -8,8 +8,11 @@ import importlib
 import json
 import subprocess  # nosec B404: intentional execution of configured leaves
 import sys
+import time
 from collections.abc import Iterable
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -17,8 +20,10 @@ _wave_findings = importlib.import_module(
     "scripts._wave_findings" if __package__ else "_wave_findings"
 )
 
-
-LANES = {
+# ── legacy hardcoded lanes ─────────────────────────────────────────────
+# Kept as a fallback when --registry is not supplied.  Normal operation
+# should provide --registry pointing to a wave_lanes.json file.
+_LEGACY_LANES: dict[str, str] = {
     "code-health": "code-health-audit-pipeline/scripts/code_health_pipeline.py",
     "security": "security-audit/scripts/security_audit.py",
     "hygiene": "repo-hygiene-audit/scripts/repo_hygiene_audit.py",
@@ -26,7 +31,34 @@ LANES = {
     "dependency": "dependency-audit/scripts/dependency_audit.py",
     "hotspot": "hotspot-audit/scripts/hotspot_audit.py",
 }
+
 DOC_EXCLUDES = ("audits", "dogfood", "plans", "superpowers")
+
+# ── registry loader ────────────────────────────────────────────────────
+
+
+def load_lanes(path: str | Path) -> dict[str, str]:
+    """Load ordered lane names from a JSON registry.
+
+    Expected schema::
+
+        {"lanes": [
+            {"name": "hygiene",
+             "script": "repo-hygiene-audit/scripts/repo_hygiene_audit.py",
+             "languages": ["*"]}
+        ]}
+
+    Returns ``{name: script_path}`` in registry order.
+    """
+    with open(path, encoding="utf-8") as fh:
+        registry = json.load(fh)
+    lanes: dict[str, str] = {}
+    for entry in registry.get("lanes", []):
+        lanes[entry["name"]] = entry["script"]
+    return lanes
+
+
+# ── internal helpers ────────────────────────────────────────────────────
 
 
 @dataclass(frozen=True)
@@ -51,17 +83,21 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--security-config", type=Path)
     parser.add_argument("--hotspot-config", type=Path)
     parser.add_argument("--lanes")
+    parser.add_argument("--registry", type=Path, help="Path to wave_lanes.json registry")
     return parser.parse_args(argv)
 
 
-def _selected_lanes(raw_csv: str | None) -> tuple[list[str], list[str]]:
+def _selected_lanes(
+    raw_csv: str | None,
+    lanes: dict[str, str],
+) -> tuple[list[str], list[str]]:
     if not raw_csv:
-        return list(LANES.keys()), []
+        return list(lanes.keys()), []
     requested = [name.strip() for name in raw_csv.split(",") if name.strip()]
-    unknown = sorted(set(requested) - set(LANES))
+    unknown = sorted(set(requested) - set(lanes))
     if unknown:
         return [], unknown
-    return [name for name in LANES if name in set(requested)], []
+    return [name for name in lanes if name in set(requested)], []
 
 
 def _leaf_supports_exclude_prefix(leaf: Path) -> bool:
@@ -78,7 +114,8 @@ def _leaf_supports_exclude_prefix(leaf: Path) -> bool:
 
 def _doc_prefixes(repo: Path) -> list[str]:
     includes = list(
-        ("README.md", "SKILL.md", "CHANGELOG.md") + ("references", "agents", "scripts")
+        ("README.md", "SKILL.md", "CHANGELOG.md")
+        + ("references", "agents", "scripts")
     )
     docs_dir = repo / "docs"
     if docs_dir.exists():
@@ -101,6 +138,16 @@ def _append_scope_args(
     leaf: Path,
     context: _LaneContext,
 ) -> None:
+    # exec lane: no extra args
+    if lane == "exec":
+        return
+
+    # growth lane: --baseline-rev when rev is supplied
+    if lane == "growth":
+        if context.rev is not None:
+            cmd.extend(["--baseline-rev", context.rev])
+        return
+
     if lane in {"code-health", "security", "dependency"}:
         _append_flagged(cmd, "--source-prefix", context.source_prefixes)
     elif lane == "docs":
@@ -151,33 +198,82 @@ def _status_for_exit(exit_code: int) -> str:
     return {0: "ok", 1: "findings"}.get(exit_code, "error")
 
 
+# ── wave orchestration ──────────────────────────────────────────────────
+
+
 def _run_wave(
     selected: list[str],
+    lanes: dict[str, str],
     skills_root: Path,
     context: _LaneContext,
-) -> tuple[int, dict[str, dict[str, Any]], list[dict[str, str]]]:
+) -> tuple[int, dict[str, dict[str, Any]], list[dict[str, str]], dict[str, dict[str, Any]]]:
+    """Run selected lanes in parallel, preserving registry order in outputs."""
     summary: dict[str, dict[str, Any]] = {}
     wave_findings: list[dict[str, str]] = []
+    timings: dict[str, dict[str, Any]] = {}
     wave_exit = 0
 
+    # --- partition: skip lanes whose leaf is missing or which should be skipped ---
+    runnable: dict[str, Path] = {}
     for lane in selected:
-        leaf = skills_root / LANES[lane]
+        leaf = skills_root / lanes[lane]
         if not leaf.exists():
             summary[lane] = {"exit": 2, "status": "error", "findings": 0}
             wave_exit = 1
             continue
+        # growth lane without --rev: skip entirely
+        if lane == "growth" and context.rev is None:
+            summary[lane] = {"exit": 0, "status": "skipped", "findings": 0}
+            continue
+        runnable[lane] = leaf
 
-        exit_code, findings = _run_lane(lane, leaf, context)
-        summary[lane] = {
-            "exit": exit_code,
-            "status": _status_for_exit(exit_code),
-            "findings": len(findings),
-        }
-        wave_findings.extend(findings)
-        if exit_code >= 2:
-            wave_exit = 1
+    # --- parallel execution ---
+    if runnable:
+        results: dict[str, tuple[int, list[dict[str, str]]]] = {}
+        with ThreadPoolExecutor(max_workers=len(runnable)) as executor:
+            future_to_lane: dict[Any, str] = {}
+            start_times: dict[str, float] = {}
+            for lane, leaf in runnable.items():
+                start_times[lane] = time.time()
+                future = executor.submit(_run_lane, lane, leaf, context)
+                future_to_lane[future] = lane
 
-    return wave_exit, summary, wave_findings
+            for future in as_completed(future_to_lane):
+                lane = future_to_lane[future]
+                end_ts = time.time()
+                elapsed = round(end_ts - start_times[lane], 3)
+                timings[lane] = {
+                    "start": datetime.fromtimestamp(
+                        start_times[lane], tz=timezone.utc
+                    ).isoformat(),
+                    "end": datetime.fromtimestamp(
+                        end_ts, tz=timezone.utc
+                    ).isoformat(),
+                    "elapsed": elapsed,
+                }
+                try:
+                    exit_code, findings = future.result()
+                    results[lane] = (exit_code, findings)
+                except Exception:
+                    results[lane] = (2, [])
+
+        # Build summary and findings in *registry order* (deterministic).
+        for lane in selected:
+            if lane in results:
+                exit_code, findings = results[lane]
+                summary[lane] = {
+                    "exit": exit_code,
+                    "status": _status_for_exit(exit_code),
+                    "findings": len(findings),
+                }
+                wave_findings.extend(findings)
+                if exit_code >= 2:
+                    wave_exit = 1
+
+    return wave_exit, summary, wave_findings, timings
+
+
+# ── output ──────────────────────────────────────────────────────────────
 
 
 def _write_wave_outputs(
@@ -185,19 +281,26 @@ def _write_wave_outputs(
     wave_exit: int,
     summary: dict[str, dict[str, Any]],
     wave_findings: list[dict[str, str]],
+    timings: dict[str, dict[str, Any]],
 ) -> int:
     summary_path = out_root / "wave_summary.json"
     findings_path = out_root / "wave_findings.json"
+    timings_path = out_root / "wave_timings.json"
     summary_path.write_text(json.dumps(summary, indent=2), encoding="utf-8")
     findings_path.write_text(json.dumps(wave_findings, indent=2), encoding="utf-8")
+    timings_path.write_text(json.dumps(timings, indent=2), encoding="utf-8")
     payload = {"status": "ok" if wave_exit == 0 else "error", "summary": summary}
     print(json.dumps(payload, sort_keys=True))
     return wave_exit
 
 
+# ── entry point ─────────────────────────────────────────────────────────
+
+
 def main(argv: list[str] | None = None) -> int:
     args = _parse_args(argv)
-    selected, unknown = _selected_lanes(args.lanes)
+    loaded = load_lanes(args.registry) if args.registry else dict(_LEGACY_LANES)
+    selected, unknown = _selected_lanes(args.lanes, loaded)
     if unknown:
         payload = {"status": "error", "error": "Unknown lane(s)", "lanes": unknown}
         print(json.dumps(payload, sort_keys=True))
@@ -213,7 +316,7 @@ def main(argv: list[str] | None = None) -> int:
         args.security_config,
         args.hotspot_config,
     )
-    run = _run_wave(selected, args.skills_root, context)
+    run = _run_wave(selected, loaded, args.skills_root, context)
     return _write_wave_outputs(args.out_dir, *run)
 
 
