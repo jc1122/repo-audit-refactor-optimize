@@ -21,13 +21,13 @@ def assert_scope(declared_files: Iterable[str], diff_files: Iterable[str]) -> tu
 
 def merge_clean(repo: str, branch: str) -> None:
     """Merge `branch` into the current branch; raise InvariantViolation on conflict."""
-    proc = subprocess.run(  # nosec B603 — fixed argv
+    proc = subprocess.run(  # nosec B603,B607 — fixed git argv, no shell
         ["git", "merge", "--no-ff", "--no-edit", branch],
         cwd=repo, capture_output=True, text=True,
     )
     if proc.returncode != 0:
-        subprocess.run(["git", "merge", "--abort"], cwd=repo,
-                       capture_output=True, text=True)  # nosec B603,B607
+        subprocess.run(["git", "merge", "--abort"], cwd=repo,  # nosec B603,B607
+                       capture_output=True, text=True)
         raise InvariantViolation(
             f"merge of {branch} conflicted (disjoint-file invariant violated): "
             f"{proc.stdout.strip()} {proc.stderr.strip()}"

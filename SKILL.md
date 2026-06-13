@@ -87,3 +87,49 @@ Use `verification-before-completion` as final gate.
 ## Stage 6: Run Report
 
 Write run report artifacts under `docs/audits/<run-id>/` (JSON and Markdown). Verification fails closed if `run_report.json` / `run_report.md` are missing or missing schema keys; do not claim completion without them.
+
+## MPRR Remediation Track
+
+The Massively-Parallel Redundancy Remediation (MPRR) engine runs unattended, gate-gated auto-remediation of redundancy findings in parallel. The engine lives in `scripts/mprr_run.py` (three subcommands, each answering `--help`). State is file-backed under a run directory; no state lives in chat.
+
+### Subcommands
+
+**plan** — emit file-disjoint remediation packets and persist run-state:
+
+```
+python scripts/mprr_run.py plan --run-dir DIR [--findings F.json] [--triage T.json] [--ceiling N] [--repo R]
+```
+
+Reads findings and triage inputs, selects the dispatchable batch (file-disjoint, up to `--ceiling`, default 8), emits the batch as a JSON array to stdout, and writes `mprr_state.json` + `mprr_events.jsonl` under `--run-dir`.
+
+**integrate** — re-check scope and gate ladder, merge the conflict-free branch, release locks:
+
+```
+python scripts/mprr_run.py integrate --run-dir DIR --packet-id P --evidence E.json [--diff-files a.py,b.py] [--repo R] [--branch B] [--no-merge]
+```
+
+Verifies the worker only touched declared files (scope check) and that evidence satisfies the gate ladder for the finding's `remediation_class`. On pass, merges `--branch` into the current branch (unless `--no-merge`). Always releases the packet's file locks. Exit 0 on merged, 1 on discarded.
+
+**reaudit** — check residual redundancy; exit code equals the count of remaining items (0 = converged):
+
+```
+python scripts/mprr_run.py reaudit [--findings F.json] [--triage T.json]
+```
+
+### File-level conflict rule
+
+Two findings conflict iff they share at least one file. The scheduler only dispatches file-disjoint batches, so every merge is conflict-free by construction. A merge conflict reported at integration time is an `InvariantViolation` (hard stop — partitioner or worker bug), never a condition to resolve manually.
+
+### Gate ladder
+
+| `remediation_class` | Gates required for auto-merge |
+|---|---|
+| `mechanical` | tests green + lane re-audit resolves the finding |
+| `refactor` | tests green + scoped mutation score ≥ 0.80 + duplication re-audit resolves the clone |
+| `test_removal` | coverage parity + mutation parity + triage confidence == `"high"` only |
+
+The orchestrator re-derives all gate evidence from artifacts; it never trusts a worker's self-reported "green".
+
+### R2 admission
+
+Signal MPRR makes visible: which redundancy findings are safely auto-remediable in parallel. No existing component hosts it: the wave runner and synthesis layer are advisory-only and do not manage locks, branch merges, or gate enforcement. Sunset plan: fold non-redundancy lanes into this engine in SP15.
