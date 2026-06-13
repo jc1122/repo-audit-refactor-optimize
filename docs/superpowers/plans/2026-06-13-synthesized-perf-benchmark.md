@@ -776,20 +776,44 @@ Expected: PASS once Task B2 is in (it exercises the same code via the CLI). If i
 
 - [ ] **Step 3: Register the leaf**
 
-Mirror the dead-code-audit entry wherever it appears (grep result from Files). Add `perf-smell-audit` with `version: 0.1.0`. Run the repo's release/list gate:
-Run: `node bin/install-repo-audit-skills.js --list` (or the documented command)
+Mirror the dead-code-audit entry wherever it appears (grep result from Files). Add `perf-smell-audit`:
+- `scripts/check_release.py` → `REQUIRED_SKILLS` (a **closed dict** — verified it only validates listed
+  skills, so an unregistered leaf wouldn't fail, but it also wouldn't be release-gated; add it for
+  consistency) and `REQUIRED_SCRIPTS` if applicable. Version `0.1.0` (a new standalone leaf; the family's
+  uniform-version bump is a separate release concern — note it, don't force-align here).
+- `package.json` description/list if it enumerates leaves; the installer (`bin/install-repo-audit-skills.js`)
+  auto-discovers `skills/*`, so it picks the leaf up.
+Run: `node bin/install-repo-audit-skills.js --list`
 Expected: `perf-smell-audit` appears in the leaf list.
 
-- [ ] **Step 4: Full Track B gate**
+- [ ] **Step 4: Re-seed the self-audit baseline (REQUIRED — else `check:selfaudit` fails)**
+
+> **Conflict (verified):** `scripts/self_audit.py::_prefixes()` auto-appends `skills/<name>/scripts` for
+> **every** leaf dir, so `skills/perf-smell-audit/scripts/perf_smell_audit.py` immediately enters the
+> self-audit surface. `npm run check`'s `check:selfaudit` gate compares against
+> `scripts/self_audit_baseline.json` (+ snapshot) and will **fail** on the new file's findings until the
+> baseline is re-seeded — even though every new test passes. This is repo-A's own ratchet, not a test.
+
+Per the repo's C-6 baseline discipline (fix first, then freeze residuals per-finding, shrink-only):
+```bash
+python3 scripts/self_audit.py            # regenerate scripts/self_audit_snapshot.json over the new surface
+```
+Resolve any mechanical findings in the new leaf; freeze genuine residuals per-finding into
+`scripts/self_audit_baseline.json` with a one-line justification in `scripts/self_audit_frozen.md`
+(mirroring an existing frozen entry). The leaf mirrors `dead-code-audit`, so expect few or none.
+
+- [ ] **Step 5: Full Track B gate**
 
 Run: `npm run check` (repo-A's 9-gate chain) — grep the printed gate JSON, never a piped exit code.
-Expected: all gates green (vendored-common, lint, tests, etc.).
+Expected: all 9 gates green, including `check:selfaudit` (post re-seed), `check:vendored_common`
+(byte-identical copy), tests, lint.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
-git add skills/perf-smell-audit/tests/test_perf_smell_cli.py package.json
-git commit -m "feat(perf-smell-audit): CLI contract tests + leaf registration"
+git add skills/perf-smell-audit/tests/test_perf_smell_cli.py package.json scripts/check_release.py \
+        scripts/self_audit_baseline.json scripts/self_audit_snapshot.json scripts/self_audit_frozen.md
+git commit -m "feat(perf-smell-audit): CLI tests + registration + self-audit baseline re-seed"
 ```
 
 ---
@@ -873,16 +897,37 @@ Replace the `if not profile["has_deterministic_perf_surface"]:` block (lines 287
 
 (`_all_usable` and `_usable_optionals` already exist in this module.)
 
-- [ ] **Step 4: Run test to verify it passes + no regressions**
+- [ ] **Step 4: Update the one existing test this behavior change invalidates**
 
-Run: `python -m pytest tests/test_lane_resolve.py tests/ -q`
-Expected: PASS (new 3 + existing suite green — currently 101 passed).
+> **Conflict (verified):** `tests/test_check_skill_requirements.py::test_performance_lane_manual_with_test_surface_no_benchmarks`
+> (line ~518) installs `perf-benchmark` on a pytest repo with no benchmark surface and asserts the
+> performance lane is `"manual"`. That is exactly the case now reclassified as `"synthesizable"`, so
+> the assertion must be updated (this is the intended new behavior, not a regression to avoid). The
+> sibling lane tests at lines ~356/461/489 are `blocked`/`full`/`degraded` and are **unaffected**
+> (my edit only touches the `not has_deterministic_perf_surface` branch).
 
-- [ ] **Step 5: Commit**
+Update that test in place:
+
+```python
+# tests/test_check_skill_requirements.py — in test_performance_lane_manual_with_test_surface_no_benchmarks
+# (rename to ..._synthesizable_... and update the assertions)
+    assert report["lanes"]["performance"]["state"] == "synthesizable"
+    assert "perf-benchmark" in report["lanes"]["performance"]["selected_skills"]
+    assert any("synthesi" in w.lower() for w in report["lanes"]["performance"]["warnings"])
+```
+
+- [ ] **Step 5: Run new + updated tests, confirm no other regression**
+
+Run: `python -m pytest tests/test_lane_resolve.py tests/test_check_skill_requirements.py tests/ -q`
+Expected: PASS — new 3 in `test_lane_resolve.py`, the one updated test now green, and the rest of the
+suite unchanged (101 passed total). If any *other* test fails, stop: it means the change reached
+beyond the intended branch.
+
+- [ ] **Step 6: Commit**
 
 ```bash
-git add scripts/_lane_resolve.py tests/test_lane_resolve.py
-git commit -m "feat(lane): add synthesizable performance-lane state"
+git add scripts/_lane_resolve.py tests/test_lane_resolve.py tests/test_check_skill_requirements.py
+git commit -m "feat(lane): add synthesizable performance-lane state (update existing manual-lane test)"
 ```
 
 ### Task C2: `synthesize_perf.py` — pure gate decision + honest refusal
@@ -1360,6 +1405,10 @@ git commit -m "test(perf): end-to-end synthesis gate smoke test"
 - [ ] **Step 5: Gate + commit**
 
 Run: `python -m pytest tests/ -q` (docs change is inert) — Expected: PASS.
+Run: `python scripts/check_release.py` — Expected: PASS. **Version-sync:** `check_release.py` requires
+the SKILL.md frontmatter `version` to have a matching `## <version>` heading in CHANGELOG.md. Put the
+entry under the **current** version heading, or bump SKILL.md *and* add the matching CHANGELOG heading —
+never one without the other.
 ```bash
 git add SKILL.md references/pipeline.md references/activation-matrix.md CHANGELOG.md
 git commit -m "docs(perf): document synthesized-benchmark flow + synthesizable lane"
@@ -1377,7 +1426,7 @@ git commit -m "docs(perf): document synthesized-benchmark flow + synthesizable l
 > falls back to the rubric for older summaries.
 
 **Files:**
-- Modify: `scripts/perf_benchmark/reporting.py` (where `summary = {"rubric": {...}}` is assembled, ~line 413)
+- Modify: `scripts/perf_benchmark/reporting.py` — `_base_json_summary` (line ~408, the function that returns the summary dict; called at ~line 490)
 - Test: extend `tests/test_pipeline_scoring_reporting.py`
 
 - [ ] **Step 1: Write the failing test**
@@ -1424,10 +1473,23 @@ def build_summary_contract(rubric: dict) -> dict:
     }
 ```
 
-Then merge it into the written summary where the `{"rubric": {...}}` dict is built (~line 413):
-`summary = {**build_summary_contract(rubric), "rubric": {...}, ...}`.
+Then add the two keys to the dict returned by `_base_json_summary` (line ~408) — they are **additive**
+(no test asserts an exact summary key-set; verified) and don't collide with existing keys
+(`generated_at`, `root`, `tier`, `rubric`, `prerequisites`, …):
 
-- [ ] **Step 4: Run + full suite** — `python -m pytest -q` → PASS.
+```python
+def _base_json_summary(rubric: dict, prereqs: dict, args) -> dict[str, Any]:
+    return {
+        **build_summary_contract(rubric),   # complexity_exponent, deterministic_tier (top-level contract)
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        # … existing keys unchanged …
+    }
+```
+
+`ledger.append_run`/`compare` read `summary["rubric"]`/`["tier"]`/`["wall_time_mean"]` only, so the
+extra top-level keys are inert there.
+
+- [ ] **Step 4: Run + full suite** — `python -m pytest -q` → PASS (existing summary/ledger/scoring tests unaffected by additive keys).
 
 - [ ] **Step 5: Commit**
 
@@ -2099,4 +2161,12 @@ The agent-facing loop (documented in SKILL.md, not a script) is:
   - **Verify→revert seam (C6):** the critical "optimization made it worse" path is now wired and tested — consumes `verify_win`'s `accept`/`reject`, emits an explicit revert directive (never trusts a self-reported win).
   - **Real e2e (C7):** an actual pipeline run (wall-time tier, no valgrind) on a synthesized quadratic target → gate; skips cleanly where the pipeline can't run.
   - **Autonomous driver (Track D, fully closed):** `synth_run.py` is a resumable, file-backed state machine (`synth_state.json` + `synth_events.jsonl`, MPRR model). The complete loop `discover → select → measure → candidate → verify` blocks at every agent-judgment gap (`awaiting_hotspot/make_input/optimization`), carries a `--max-attempts` stop-condition, and ends in `done_win`/`done_no_win`/`gated_refuse`. Every external call (profiling, pipeline, select_candidate, verify_win) has an injection seam so the whole loop is unit-testable without valgrind.
+- **Conflict review pass (vs existing functionality, verified against the code):**
+  - **[CI-blocking, fixed] repo-B test** — `test_performance_lane_manual_with_test_surface_no_benchmarks` asserted the perf lane is `manual` with perf-benchmark usable; that's the case now reclassified `synthesizable`. C1 Step 4 updates it. Sibling lane tests (`blocked`/`full`/`degraded`, lines ~356/461/489) are untouched — the edit only affects the `not has_deterministic_perf_surface` branch.
+  - **[CI-blocking, fixed] repo-A self-audit** — `self_audit._prefixes()` auto-audits the new leaf's `scripts/`; `check:selfaudit` fails until `self_audit_baseline.json`/snapshot/frozen are re-seeded. B Step 4 adds that (C-6 discipline).
+  - **[fixed] A4 additive keys** — top-level `complexity_exponent`/`deterministic_tier` are added inside `_base_json_summary`; verified no test asserts an exact key-set and `ledger` reads only `rubric`/`tier`/`wall_time_mean`. Insertion point corrected to the real function.
+  - **[fixed] repo-A release registry** — `check_release.py::REQUIRED_SKILLS` is a closed dict (an unregistered leaf doesn't fail it), but B3 adds the entry for proper gating; installer auto-discovers `skills/*`.
+  - **[soft, not CI-blocking] repo-B/repo-P self-audit/wave baselines** — new `scripts/` files (synthesize_perf, graduate_benchmark, synth_run, _complexity_label; profile_discover, synth_microbench) enter each repo's diagnosis-wave/self-audit surface. repo-B CI runs only `pytest` + `check_release` (NOT `check_wave_baseline`), so per-commit CI is green; but the next **steady-state convergence run** must re-seed `scripts/wave_baseline.json` (currently 13 entries) per C-6. Same for repo-P. Flagged here as a follow-up, not a blocker.
+  - **[low] repo-B `check_release` version-sync** — it requires SKILL.md frontmatter version to have a matching `## <version>` CHANGELOG heading. C5 keeps them in sync (bump both or add the entry under the current version; do not bump one without the other).
+  - **[low] `_load_by_path` module names** — registers `profile_discover`/`select_candidate`/`verify_win`/`synth_microbench` in `sys.modules`; collision risk is negligible in the repo-B test process (those live in other repos) — acceptable.
 - **Open spec questions baked as defaults:** trigger = agent-on-demand; 3-repo split; perf-stat middle tier NOT added (reuse existing tiers). Flagged in spec for veto.
