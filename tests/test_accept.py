@@ -76,3 +76,64 @@ def test_rule_kind_requires_leaf_or_metric(tmp_path: Path):
         {"match": {"kind": "rule"}, "reason": "r"}]})
     with pytest.raises(acc.AcceptError):
         acc.load_accept(tmp_path)
+
+
+def _policy(entries):
+    return acc.AcceptPolicy([acc._parse_entry(e, i) for i, e in enumerate(entries)])
+
+
+WAVE_FINDING = {"leaf": "complexity", "path": "scripts/a.py",
+                "symbol": "<module>", "metric": "maintainability_index"}
+
+
+def test_finding_kind_exact_match():
+    p = _policy([{"match": {"kind": "finding", **WAVE_FINDING}, "reason": "r"}])
+    assert p.matches(WAVE_FINDING, "report") is not None
+    other = {**WAVE_FINDING, "path": "scripts/b.py"}
+    assert p.matches(other, "report") is None
+
+
+def test_path_kind_matches_path_attr():
+    p = _policy([{"match": {"kind": "path", "glob": "**/fixtures/**"}, "reason": "r"}])
+    assert p.matches({"path": "skills/x/tests/fixtures/dirty.py"}, "report") is not None
+    assert p.matches({"path": "scripts/a.py"}, "report") is None
+
+
+def test_path_kind_matches_files_list_for_engine():
+    p = _policy([{"match": {"kind": "path", "glob": "**/fixtures/**"}, "reason": "r"}])
+    finding = {"files": ["src/x.py", "tests/fixtures/y.py"]}
+    assert p.matches(finding, "remediation") is not None
+
+
+def test_rule_kind_leaf_and_metric_subset():
+    p = _policy([{"match": {"kind": "rule", "leaf": "hotspot",
+                            "metric": "churn_complexity_product"}, "reason": "r"}])
+    assert p.matches({"leaf": "hotspot", "path": "CHANGELOG.md", "symbol": "x",
+                      "metric": "churn_complexity_product"}, "report") is not None
+    assert p.matches({"leaf": "hotspot", "metric": "other"}, "report") is None
+
+
+def test_applies_scopes_the_stage():
+    p = _policy([{"match": {"kind": "path", "glob": "x.py"}, "reason": "r",
+                  "applies": ["remediation"]}])
+    assert p.matches({"path": "x.py"}, "remediation") is not None
+    assert p.matches({"path": "x.py"}, "report") is None
+
+
+def test_partition_splits_and_reports_stale():
+    p = _policy([
+        {"match": {"kind": "finding", **WAVE_FINDING}, "reason": "accepted"},
+        {"match": {"kind": "path", "glob": "never/**"}, "reason": "dead"},
+    ])
+    other = {**WAVE_FINDING, "path": "scripts/b.py"}
+    active, accepted, stale = p.partition([WAVE_FINDING, other], "report")
+    assert [f["path"] for f in active] == ["scripts/b.py"]
+    assert accepted[0]["accepted"] is True and accepted[0]["accept_reason"] == "accepted"
+    assert any("never/**" in s for s in stale)
+
+
+def test_partition_marks_expired():
+    p = _policy([{"match": {"kind": "path", "glob": "x.py"}, "reason": "r",
+                  "expires": "2000-01-01"}])
+    active, accepted, stale = p.partition([{"path": "x.py"}], "report")
+    assert active == [] and accepted[0]["expired"] is True
