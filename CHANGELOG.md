@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.8.1
+
+Self-contained convergent family — Phase 1. The deterministic diagnosis wave now
+runs `perf-smell-audit` as a 9th lane, so the orchestrator applies every
+deterministic leaf to every target (perf smells on repo-B's own scripts triaged:
+genuine loop/container fixes applied, perflint over-approximations justify-accepted
+in `.repo-audit/accept.json`). A new `convergence-gate` CI job enforces the Tier-1
+wave self-contained and reproducibly: pinned leaf source (tag `v0.7.2`), pinned
+toolchain, Python 3.14, jscpd resolvable via `$GITHUB_PATH`, gated on the real exit
+code. LM2 fixed: `mine_iteration_kpis` now emits per-repo `rows_before`/`rows_after`
+keyed by an explicit `--repo-name` label and counts `accept.json` rows ignoring the
+`version` key, so `allocate_batches.trailing_yield` is non-zero. Dropped the stale
+`wave_baseline.json` declared-coupling pair. Recorded the dual convergence-gate
+semantics (wave auto-suppress vs repo-A equality-compare) and the `accept.json`
+non-distribution decision in `references/verification.md`.
+
 ## 0.8.0
 
 feat(accept): portable acceptance safeguard. A new `<repo>/.repo-audit/accept.json`
