@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import argparse
 import json
-import subprocess
+import subprocess  # nosec B404: trusted git/gh, shell=False
 import sys
 from pathlib import Path
 
@@ -76,7 +76,7 @@ def is_regression(cur: dict[str, object], prev: dict[str, object]) -> bool:
 def _git_commit_epoch(repo: Path, sha: str) -> float | None:
     """Committer epoch for a SHA, or None if unavailable."""
     try:
-        out = subprocess.run(
+        out = subprocess.run(  # nosec B603 B607: fixed argv, shell=False
             ["git", "-C", str(repo), "show", "-s", "--format=%ct", sha],
             capture_output=True,
             text=True,
@@ -107,7 +107,7 @@ def _load_baseline_rows(
     if not sha:
         return {}
     try:
-        out = subprocess.run(
+        out = subprocess.run(  # nosec B603 B607: fixed argv, shell=False
             ["git", "-C", str(repo), "show", f"{sha}:{baseline_rel}"],
             capture_output=True,
             text=True,
@@ -150,7 +150,7 @@ def _derive_worker_runs(runs_dir: Path) -> list[dict[str, object]]:
 def _derive_ci_wait_seconds(repo: Path) -> float:
     """CI run created->completed delta via gh; 0.0 if unavailable."""
     try:
-        out = subprocess.run(
+        out = subprocess.run(  # nosec B603 B607: fixed argv, shell=False
             [
                 "gh",
                 "run",
@@ -205,7 +205,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--runs-dir",
         type=Path,
-        default=Path("/tmp/sp13/runs"),
+        default=Path("/tmp/sp13/runs"),  # nosec B108: override via --runs-dir
         help="Directory holding per-packet worker run-dirs.",
     )
     parser.add_argument(
