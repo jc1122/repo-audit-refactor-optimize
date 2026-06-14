@@ -6,12 +6,14 @@ from pathlib import Path
 
 def test_rows_per_hour_from_counts_and_duration():
     kpi = m.compute_kpi(
-        iteration=5,
-        rows_before={"repo-a": 40, "repo-b": 7},
-        rows_after={"repo-a": 36, "repo-b": 7},
-        phase_seconds={"diagnosis": 120.0, "execution": 3480.0, "ship": 600.0},
-        worker_runs=[{"repairs": 1}, {"repairs": 0}, {"repairs": 0}],
-        ci_wait_seconds=300.0,
+        m.KpiInputs(
+            iteration=5,
+            rows_before={"repo-a": 40, "repo-b": 7},
+            rows_after={"repo-a": 36, "repo-b": 7},
+            phase_seconds={"diagnosis": 120.0, "execution": 3480.0, "ship": 600.0},
+            worker_runs=[{"repairs": 1}, {"repairs": 0}, {"repairs": 0}],
+            ci_wait_seconds=300.0,
+        )
     )
     assert kpi["rows_closed"] == 4
     assert round(kpi["rows_per_hour"], 2) == round(4 / (4200 / 3600), 2)
@@ -41,26 +43,36 @@ def test_load_baseline_rows_counts_top_level_list(tmp_path):
     bl.write_text(json.dumps([{"id": 1}, {"id": 2}, {"id": 3}]), encoding="utf-8")
     subprocess.run(["git", "-C", str(repo), "add", "b.json"], check=True)
     subprocess.run(["git", "-C", str(repo), "commit", "-q", "-m", "x"], check=True)
-    sha = subprocess.run(["git", "-C", str(repo), "rev-parse", "HEAD"],
-                         capture_output=True, text=True, check=True).stdout.strip()
+    sha = subprocess.run(
+        ["git", "-C", str(repo), "rev-parse", "HEAD"],
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.strip()
     rows = m._load_baseline_rows(repo, sha, "b.json")
-    assert sum(rows.values()) == 3      # was 0 before the fix
+    assert sum(rows.values()) == 3  # was 0 before the fix
 
 
 def test_mine_mprr_kpis_from_events(tmp_path):
     import importlib, sys
     from pathlib import Path
+
     REPO_ROOT = Path(__file__).resolve().parents[1]
     if str(REPO_ROOT) not in sys.path:
         sys.path.insert(0, str(REPO_ROOT))
     miner = importlib.import_module("scripts.mine_iteration_kpis")
     events = tmp_path / "mprr_events.jsonl"
-    events.write_text("\n".join([
-        '{"event": "start", "id": "a", "files": ["x.py"]}',
-        '{"event": "start", "id": "b", "files": ["y.py"]}',
-        '{"event": "merge", "id": "a", "conflict": false, "merged": true}',
-        '{"event": "discard", "id": "b", "conflict": false, "merged": false}',
-    ]) + "\n")
+    events.write_text(
+        "\n".join(
+            [
+                '{"event": "start", "id": "a", "files": ["x.py"]}',
+                '{"event": "start", "id": "b", "files": ["y.py"]}',
+                '{"event": "merge", "id": "a", "conflict": false, "merged": true}',
+                '{"event": "discard", "id": "b", "conflict": false, "merged": false}',
+            ]
+        )
+        + "\n"
+    )
     kpi = miner.mine_mprr_kpis(str(events), ceiling=4)
     assert kpi["dispatched"] == 2
     assert kpi["merged"] == 1
@@ -83,7 +95,9 @@ def _commit(repo, relpath, content):
     subprocess.run(["git", "-C", str(repo), "commit", "-q", "-m", "x"], check=True)
     return subprocess.run(
         ["git", "-C", str(repo), "rev-parse", "HEAD"],
-        capture_output=True, text=True, check=True,
+        capture_output=True,
+        text=True,
+        check=True,
     ).stdout.strip()
 
 
@@ -91,8 +105,11 @@ def test_main_appends_line_prints_and_returns_zero(tmp_path, capsys, monkeypatch
     repo = tmp_path / "repo"
     repo.mkdir()
     _init_repo(repo)
-    start = _commit(repo, "scripts/wave_baseline.json",
-                    json.dumps([{"id": 1}, {"id": 2}, {"id": 3}, {"id": 4}]))
+    start = _commit(
+        repo,
+        "scripts/wave_baseline.json",
+        json.dumps([{"id": 1}, {"id": 2}, {"id": 3}, {"id": 4}]),
+    )
     end = _commit(repo, "scripts/wave_baseline.json", json.dumps([{"id": 1}]))
     runs = tmp_path / "runs"
     (runs / "p1").mkdir(parents=True)
@@ -101,12 +118,24 @@ def test_main_appends_line_prints_and_returns_zero(tmp_path, capsys, monkeypatch
     monkeypatch.setattr(m, "_derive_ci_wait_seconds", lambda repo: 0.0)
     kpi_file = tmp_path / "out" / "kpis.jsonl"
 
-    rc = m.main([
-        "--iteration", "7", "--repo", str(repo),
-        "--start-sha", start, "--end-sha", end,
-        "--baseline", "scripts/wave_baseline.json",
-        "--runs-dir", str(runs), "--kpi-file", str(kpi_file),
-    ])
+    rc = m.main(
+        [
+            "--iteration",
+            "7",
+            "--repo",
+            str(repo),
+            "--start-sha",
+            start,
+            "--end-sha",
+            end,
+            "--baseline",
+            "scripts/wave_baseline.json",
+            "--runs-dir",
+            str(runs),
+            "--kpi-file",
+            str(kpi_file),
+        ]
+    )
 
     assert rc == 0
     printed = json.loads(capsys.readouterr().out.strip())
@@ -123,11 +152,16 @@ def test_main_appends_line_prints_and_returns_zero(tmp_path, capsys, monkeypatch
 def test_main_degrades_without_artifacts(tmp_path, capsys, monkeypatch):
     monkeypatch.setattr(m, "_derive_ci_wait_seconds", lambda repo: 0.0)
     kpi_file = tmp_path / "k.jsonl"
-    rc = m.main([
-        "--repo", str(tmp_path),
-        "--runs-dir", str(tmp_path / "absent"),
-        "--kpi-file", str(kpi_file),
-    ])
+    rc = m.main(
+        [
+            "--repo",
+            str(tmp_path),
+            "--runs-dir",
+            str(tmp_path / "absent"),
+            "--kpi-file",
+            str(kpi_file),
+        ]
+    )
     assert rc == 0
     kpi = json.loads(capsys.readouterr().out.strip())
     assert kpi["rows_closed"] == 0
@@ -140,11 +174,16 @@ def test_main_returns_one_when_kpi_path_is_a_directory(tmp_path, capsys, monkeyp
     monkeypatch.setattr(m, "_derive_ci_wait_seconds", lambda repo: 0.0)
     bad = tmp_path / "isadir"
     bad.mkdir()
-    rc = m.main([
-        "--repo", str(tmp_path),
-        "--runs-dir", str(tmp_path / "absent"),
-        "--kpi-file", str(bad),
-    ])
+    rc = m.main(
+        [
+            "--repo",
+            str(tmp_path),
+            "--runs-dir",
+            str(tmp_path / "absent"),
+            "--kpi-file",
+            str(bad),
+        ]
+    )
     assert rc == 1
     assert "failed to append KPI line" in capsys.readouterr().err
 
@@ -195,27 +234,38 @@ def test_derive_worker_runs_counts_repairs_and_missing_dir(tmp_path):
 
 def test_derive_ci_wait_seconds_success_and_failure(monkeypatch):
     class _R:
-        stdout = json.dumps([{
-            "createdAt": "2026-01-01T00:00:00Z",
-            "updatedAt": "2026-01-01T00:05:00Z",
-        }])
+        stdout = json.dumps(
+            [
+                {
+                    "createdAt": "2026-01-01T00:00:00Z",
+                    "updatedAt": "2026-01-01T00:05:00Z",
+                }
+            ]
+        )
+
     monkeypatch.setattr(m.subprocess, "run", lambda *a, **k: _R())
     assert m._derive_ci_wait_seconds(Path(".")) == 300.0
 
     def _boom(*a, **k):
         raise subprocess.SubprocessError("no gh")
+
     monkeypatch.setattr(m.subprocess, "run", _boom)
     assert m._derive_ci_wait_seconds(Path(".")) == 0.0
 
 
 def test_mine_mprr_kpis_skips_blanks_and_counts_conflicts(tmp_path):
     ev = tmp_path / "e.jsonl"
-    ev.write_text("\n".join([
-        '{"event": "start", "id": "a"}',
-        '',
-        '{"event": "start", "id": "b"}',
-        '{"event": "merge", "id": "a", "conflict": true}',
-    ]) + "\n")
+    ev.write_text(
+        "\n".join(
+            [
+                '{"event": "start", "id": "a"}',
+                "",
+                '{"event": "start", "id": "b"}',
+                '{"event": "merge", "id": "a", "conflict": true}',
+            ]
+        )
+        + "\n"
+    )
     kpi = m.mine_mprr_kpis(str(ev), ceiling=2)
     assert kpi["dispatched"] == 2
     assert kpi["merged"] == 1

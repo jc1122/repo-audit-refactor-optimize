@@ -16,6 +16,7 @@ import argparse
 import json
 import subprocess  # nosec B404: trusted git/gh, shell=False
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 from typing import cast
 
@@ -26,14 +27,19 @@ def _repairs(run: dict[str, object]) -> int:
     return value if isinstance(value, int) else 0
 
 
-def compute_kpi(
-    iteration: int,
-    rows_before: dict[str, int],
-    rows_after: dict[str, int],
-    phase_seconds: dict[str, float],
-    worker_runs: list[dict[str, object]],
-    ci_wait_seconds: float,
-) -> dict[str, object]:
+@dataclass(frozen=True)
+class KpiInputs:
+    """Already-mined inputs for one KPI record (groups compute_kpi's parameters)."""
+
+    iteration: int
+    rows_before: dict[str, int]
+    rows_after: dict[str, int]
+    phase_seconds: dict[str, float]
+    worker_runs: list[dict[str, object]]
+    ci_wait_seconds: float
+
+
+def compute_kpi(inputs: KpiInputs) -> dict[str, object]:
     """Compute the per-iteration KPI record from already-mined inputs.
 
     rows_closed = total baseline rows removed across repos.
@@ -41,6 +47,12 @@ def compute_kpi(
     repair_rate = fraction of worker runs that needed a follow-up repair.
     ci_wait_seconds = external wait, recorded passthrough (not loop-controlled).
     """
+    iteration = inputs.iteration
+    rows_before = inputs.rows_before
+    rows_after = inputs.rows_after
+    phase_seconds = inputs.phase_seconds
+    worker_runs = inputs.worker_runs
+    ci_wait_seconds = inputs.ci_wait_seconds
     rows_closed = sum(rows_before.values()) - sum(rows_after.values())
     total_seconds = sum(phase_seconds.values())
     rows_per_hour = rows_closed / (total_seconds / 3600.0) if total_seconds > 0 else 0.0
@@ -253,12 +265,14 @@ def main(argv: list[str] | None = None) -> int:
         ci_wait_seconds = 0.0
 
     kpi = compute_kpi(
-        iteration=args.iteration,
-        rows_before=rows_before,
-        rows_after=rows_after,
-        phase_seconds=phase_seconds,
-        worker_runs=worker_runs,
-        ci_wait_seconds=ci_wait_seconds,
+        KpiInputs(
+            iteration=args.iteration,
+            rows_before=rows_before,
+            rows_after=rows_after,
+            phase_seconds=phase_seconds,
+            worker_runs=worker_runs,
+            ci_wait_seconds=ci_wait_seconds,
+        )
     )
 
     line = json.dumps(kpi, sort_keys=True)
