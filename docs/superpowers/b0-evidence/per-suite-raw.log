@@ -1,0 +1,23 @@
+  183.69s  rc=0  skills/test-redundancy-triage/tests
+   13.45s  rc=0  skills/quality-audit/tests
+    7.58s  rc=0  tests
+    5.33s  rc=0  skills/test-effectiveness-audit/tests
+    4.62s  rc=0  skills/code-health-audit-pipeline/tests
+    2.85s  rc=0  skills/hotspot-audit/tests
+    2.47s  rc=0  skills/security-audit/tests
+    2.23s  rc=0  skills/perf-smell-audit/tests
+    1.87s  rc=0  skills/complexity-audit/tests
+    1.71s  rc=0  skills/growth-audit/tests
+    1.69s  rc=0  skills/dead-code-audit/tests
+    1.52s  rc=0  skills/duplication-audit/tests
+    1.29s  rc=0  skills/test-quality-assurance/tests
+    1.23s  rc=0  skills/structure-audit/tests
+    1.12s  rc=0  skills/exec-audit/tests
+    1.07s  rc=0  skills/coverage-gap-audit/tests
+    0.97s  rc=0  skills/test-audit-pipeline/tests
+    0.90s  rc=0  skills/repo-hygiene-audit/tests
+    0.72s  rc=0  skills/docs-consistency-audit/tests
+    0.59s  rc=0  skills/dependency-audit/tests
+TOTAL serial: 236.9 s
+DONE_EXIT=0
+wrapper-exit=0
