@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.7.0
+
+feat: self-audit hardening — honest benchmark-surface detection (no name-substring false
+positives), default tests/fixtures exclusion + `--baseline` suppression in the diagnosis
+wave, always-available process skills, and an MPRR self-engine merge guard; adds a
+self-dogfood regression test.
+
 ## 0.6.0
 
 feat: synthesized performance benchmark — when a repo has no benchmark surface, the
