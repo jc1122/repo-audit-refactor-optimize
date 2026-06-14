@@ -1116,3 +1116,39 @@ def test_audit_scope_args_emits_excludes_when_supported():
 def test_audit_scope_args_drops_excludes_when_unsupported():
     args = wave._audit_scope_args([], ["tests"], supports_exclude=False)
     assert args == []
+
+
+# ── Task 4: _resolve_accept / _apply_accept ──────────────────────────────
+
+
+def test_resolve_accept_auto_discovers_repo_file(tmp_path: Path):
+    (tmp_path / ".repo-audit").mkdir()
+    (tmp_path / ".repo-audit" / "accept.json").write_text(json.dumps(
+        {"version": 1, "accept": [
+            {"match": {"kind": "path", "glob": "**/fixtures/**"}, "reason": "r"}]}),
+        encoding="utf-8")
+    policy = wave._resolve_accept(tmp_path, accept=None, baseline=None)
+    assert len(policy.entries) == 1
+
+
+def test_resolve_accept_merges_baseline_rows(tmp_path: Path):
+    base = tmp_path / "b.json"
+    base.write_text(json.dumps([
+        {"leaf": "c", "path": "p", "symbol": "<module>", "metric": "mi"}]), encoding="utf-8")
+    policy = wave._resolve_accept(tmp_path, accept=None, baseline=base)
+    assert policy.entries[0].kind == "finding"
+    assert policy.entries[0].applies == frozenset({"report"})
+
+
+def test_apply_accept_writes_accepted_sidecar(tmp_path: Path):
+    findings = [{"leaf": "c", "path": "scripts/a.py", "symbol": "<module>", "metric": "mi"},
+                {"leaf": "c", "path": "scripts/b.py", "symbol": "f", "metric": "x"}]
+    acc = importlib.import_module("scripts._accept")
+    policy = acc.AcceptPolicy([acc._parse_entry(
+        {"match": {"kind": "finding", "leaf": "c", "path": "scripts/a.py",
+                   "symbol": "<module>", "metric": "mi"}, "reason": "ok"}, 0)])
+    active = wave._apply_accept(policy, findings, tmp_path)
+    assert [f["path"] for f in active] == ["scripts/b.py"]
+    sidecar = json.loads((tmp_path / "wave_findings.accepted.json").read_text())
+    assert sidecar["accepted"][0]["accept_reason"] == "ok"
+    assert (tmp_path / "wave_findings.suppressed.json").exists()  # back-compat
