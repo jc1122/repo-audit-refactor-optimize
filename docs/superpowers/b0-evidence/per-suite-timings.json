@@ -1,0 +1,102 @@
+[
+  {
+    "suite": "skills/test-redundancy-triage/tests",
+    "sec": 183.69,
+    "rc": 0
+  },
+  {
+    "suite": "skills/quality-audit/tests",
+    "sec": 13.45,
+    "rc": 0
+  },
+  {
+    "suite": "tests",
+    "sec": 7.58,
+    "rc": 0
+  },
+  {
+    "suite": "skills/test-effectiveness-audit/tests",
+    "sec": 5.33,
+    "rc": 0
+  },
+  {
+    "suite": "skills/code-health-audit-pipeline/tests",
+    "sec": 4.62,
+    "rc": 0
+  },
+  {
+    "suite": "skills/hotspot-audit/tests",
+    "sec": 2.85,
+    "rc": 0
+  },
+  {
+    "suite": "skills/security-audit/tests",
+    "sec": 2.47,
+    "rc": 0
+  },
+  {
+    "suite": "skills/perf-smell-audit/tests",
+    "sec": 2.23,
+    "rc": 0
+  },
+  {
+    "suite": "skills/complexity-audit/tests",
+    "sec": 1.87,
+    "rc": 0
+  },
+  {
+    "suite": "skills/growth-audit/tests",
+    "sec": 1.71,
+    "rc": 0
+  },
+  {
+    "suite": "skills/dead-code-audit/tests",
+    "sec": 1.69,
+    "rc": 0
+  },
+  {
+    "suite": "skills/duplication-audit/tests",
+    "sec": 1.52,
+    "rc": 0
+  },
+  {
+    "suite": "skills/test-quality-assurance/tests",
+    "sec": 1.29,
+    "rc": 0
+  },
+  {
+    "suite": "skills/structure-audit/tests",
+    "sec": 1.23,
+    "rc": 0
+  },
+  {
+    "suite": "skills/exec-audit/tests",
+    "sec": 1.12,
+    "rc": 0
+  },
+  {
+    "suite": "skills/coverage-gap-audit/tests",
+    "sec": 1.07,
+    "rc": 0
+  },
+  {
+    "suite": "skills/test-audit-pipeline/tests",
+    "sec": 0.97,
+    "rc": 0
+  },
+  {
+    "suite": "skills/repo-hygiene-audit/tests",
+    "sec": 0.9,
+    "rc": 0
+  },
+  {
+    "suite": "skills/docs-consistency-audit/tests",
+    "sec": 0.72,
+    "rc": 0
+  },
+  {
+    "suite": "skills/dependency-audit/tests",
+    "sec": 0.59,
+    "rc": 0
+  }
+]
