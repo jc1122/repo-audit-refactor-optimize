@@ -6,3 +6,7 @@ __pycache__/
 .venv/
 venv/
 .wave_out/
+
+# coverage.py data
+.coverage
+.coverage.*
