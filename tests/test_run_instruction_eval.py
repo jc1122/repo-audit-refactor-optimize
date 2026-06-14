@@ -52,21 +52,21 @@ def test_load_expected_json_dict(tmp_path):
 
 
 def test_load_expected_missing_file_raises():
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="neither an int nor an existing file"):
         ev._load_expected("/no/such/file.json")
 
 
 def test_load_expected_bool_json_raises(tmp_path):
     p = tmp_path / "b.json"
     p.write_text("true", encoding="utf-8")
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="not an int payload"):
         ev._load_expected(str(p))
 
 
 def test_load_expected_bad_dict_raises(tmp_path):
     p = tmp_path / "d.json"
     p.write_text(json.dumps({"nope": 1}), encoding="utf-8")
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="must be an int or"):
         ev._load_expected(str(p))
 
 
@@ -78,14 +78,14 @@ def test_load_model_findings_valid(tmp_path):
 
 
 def test_load_model_findings_missing_raises():
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="file does not exist"):
         ev._load_model_findings("/no/such.json")
 
 
 def test_load_model_findings_non_array_raises(tmp_path):
     p = tmp_path / "mf.json"
     p.write_text(json.dumps({"not": "array"}), encoding="utf-8")
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="must be a JSON array"):
         ev._load_model_findings(str(p))
 
 

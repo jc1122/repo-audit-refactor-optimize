@@ -1,0 +1,32 @@
+# Candidate Validation
+
+Baseline suite pass: `True`
+
+## Decision Counts
+
+- `KEEP_FOR_SIGNAL`: 3
+- `MERGE_RECOMMENDED`: 16
+
+## Results
+
+| test_nodeid | entrypoint | intent | decision | confidence_tier | strict | branch_exact | branch_jaccard | deselect_pass | reason |
+|---|---|---|---|---|---|---:|---:|---:|---|
+| perf-optimization/tests/test_select_candidate.py::test_each_algorithmic_substring_triggers_stop_gate | perf-optimization/tests/test_select_candidate.py::<module> | shape_dtype_contract | KEEP_FOR_SIGNAL | KEEP_CANDIDATE | disabled | True | 1.0 | True | parametrized test — evaluate variants individually before pruning |
+| perf-optimization/tests/test_select_candidate.py::test_output_shape_ok | perf-optimization/tests/test_select_candidate.py::<module> | shape_dtype_contract | KEEP_FOR_SIGNAL | KEEP_CANDIDATE | disabled | True | 1.0 | True | deselect pass + distinct source and assertion signal |
+| perf-optimization/tests/test_select_candidate.py::test_ratio_with_zero_threshold | perf-optimization/tests/test_select_candidate.py::<module> | shape_dtype_contract | KEEP_FOR_SIGNAL | KEEP_CANDIDATE | disabled | True | 1.0 | True | nearest neighbor (test_each_algorithmic_substring_triggers_stop_gate) is parametrized; merge classification suppressed to avoid false overlap |
+| perf-optimization/tests/test_select_candidate.py::test_algorithmic_stop_gate_wins_regardless_of_severity | perf-optimization/tests/test_select_candidate.py::<module> | shape_dtype_contract | MERGE_RECOMMENDED | MERGE_CANDIDATE | disabled | True | 1.0 | True | deselect pass + overlap candidate (dominated=True, src_sim=0.57, name_sim=0.55) |
+| perf-optimization/tests/test_select_candidate.py::test_byte_identical_across_runs | perf-optimization/tests/test_select_candidate.py::<module> | shape_dtype_contract | MERGE_RECOMMENDED | MERGE_CANDIDATE | disabled | True | 1.0 | True | deselect pass + overlap candidate (dominated=True, src_sim=0.45, name_sim=0.44) |
+| perf-optimization/tests/test_select_candidate.py::test_compute_ratio_normal | perf-optimization/tests/test_select_candidate.py::<module> | shape_dtype_contract | MERGE_RECOMMENDED | MERGE_CANDIDATE | disabled | False | 0.333333 | True | deselect pass + overlap candidate (dominated=True, src_sim=0.87, name_sim=0.76) |
+| perf-optimization/tests/test_select_candidate.py::test_compute_ratio_zero_threshold | perf-optimization/tests/test_select_candidate.py::<module> | shape_dtype_contract | MERGE_RECOMMENDED | MERGE_CANDIDATE | disabled | False | 0.333333 | True | deselect pass + overlap candidate (dominated=True, src_sim=0.87, name_sim=0.79) |
+| perf-optimization/tests/test_select_candidate.py::test_empty_input_exit_1 | perf-optimization/tests/test_select_candidate.py::<module> | shape_dtype_contract | MERGE_RECOMMENDED | MERGE_CANDIDATE | disabled | True | 1.0 | True | deselect pass + overlap candidate (dominated=True, src_sim=0.89, name_sim=0.60) |
+| perf-optimization/tests/test_select_candidate.py::test_equal_severity_higher_ratio_first | perf-optimization/tests/test_select_candidate.py::<module> | shape_dtype_contract | MERGE_RECOMMENDED | MERGE_CANDIDATE | disabled | True | 1.0 | True | deselect pass + overlap candidate (dominated=True, src_sim=0.54, name_sim=0.74) |
+| perf-optimization/tests/test_select_candidate.py::test_is_algorithmic_substring_match | perf-optimization/tests/test_select_candidate.py::<module> | shape_dtype_contract | MERGE_RECOMMENDED | MERGE_CANDIDATE | disabled | False | 0.5 | True | deselect pass + overlap candidate (dominated=True, src_sim=0.69, name_sim=0.71) |
+| perf-optimization/tests/test_select_candidate.py::test_malformed_findings_shape_exit_2 | perf-optimization/tests/test_select_candidate.py::<module> | shape_dtype_contract | MERGE_RECOMMENDED | MERGE_CANDIDATE | disabled | True | 1.0 | True | deselect pass + overlap candidate (dominated=True, src_sim=0.89, name_sim=0.74) |
+| perf-optimization/tests/test_select_candidate.py::test_malformed_json_exit_2 | perf-optimization/tests/test_select_candidate.py::<module> | shape_dtype_contract | MERGE_RECOMMENDED | MERGE_CANDIDATE | disabled | True | 1.0 | True | deselect pass + overlap candidate (dominated=True, src_sim=0.89, name_sim=0.79) |
+| perf-optimization/tests/test_select_candidate.py::test_malformed_not_a_list_exit_2 | perf-optimization/tests/test_select_candidate.py::<module> | shape_dtype_contract | MERGE_RECOMMENDED | MERGE_CANDIDATE | disabled | True | 1.0 | True | deselect pass + overlap candidate (dominated=True, src_sim=0.82, name_sim=0.79) |
+| perf-optimization/tests/test_select_candidate.py::test_missing_file_exit_2 | perf-optimization/tests/test_select_candidate.py::<module> | shape_dtype_contract | MERGE_RECOMMENDED | MERGE_CANDIDATE | disabled | True | 1.0 | True | deselect pass + overlap candidate (dominated=True, src_sim=0.82, name_sim=0.63) |
+| perf-optimization/tests/test_select_candidate.py::test_mixed_severities_highest_first | perf-optimization/tests/test_select_candidate.py::<module> | shape_dtype_contract | MERGE_RECOMMENDED | MERGE_CANDIDATE | disabled | True | 1.0 | True | deselect pass + overlap candidate (dominated=True, src_sim=0.80, name_sim=0.74) |
+| perf-optimization/tests/test_select_candidate.py::test_multiple_algorithmic_findings_sort_by_severity_then_ratio | perf-optimization/tests/test_select_candidate.py::<module> | shape_dtype_contract | MERGE_RECOMMENDED | MERGE_CANDIDATE | disabled | True | 1.0 | True | deselect pass + overlap candidate (dominated=True, src_sim=0.65, name_sim=0.55) |
+| perf-optimization/tests/test_select_candidate.py::test_select_candidate_empty | perf-optimization/tests/test_select_candidate.py::<module> | shape_dtype_contract | MERGE_RECOMMENDED | MERGE_CANDIDATE | disabled | False | 0.166667 | True | deselect pass + overlap candidate (dominated=True, src_sim=0.81, name_sim=0.73) |
+| perf-optimization/tests/test_select_candidate.py::test_select_candidate_single_finding | perf-optimization/tests/test_select_candidate.py::<module> | shape_dtype_contract | MERGE_RECOMMENDED | MERGE_CANDIDATE | disabled | False | 0.166667 | True | deselect pass + overlap candidate (dominated=True, src_sim=0.81, name_sim=0.73) |
+| perf-optimization/tests/test_select_candidate.py::test_tie_broken_by_path_then_metric_name | perf-optimization/tests/test_select_candidate.py::<module> | shape_dtype_contract | MERGE_RECOMMENDED | MERGE_CANDIDATE | disabled | True | 1.0 | True | deselect pass + overlap candidate (dominated=True, src_sim=0.48, name_sim=0.47) |

@@ -1,0 +1,507 @@
+{
+  "config": {
+    "auto_inferred_public_hints": false,
+    "exact_eq_pattern": "^\\s*assert\\s+\\w+\\s*==\\s*(?:expected|want|target|snapshot|golden)\\b",
+    "internal_import_patterns": [
+      "from\\s+[\\w\\.]+\\.(?:core|internal|impl|private)\\s+import",
+      "import\\s+[\\w\\.]+\\.(?:core|internal|impl|private)\\b"
+    ],
+    "public_hints": [],
+    "test_dirs": [
+      "tests"
+    ],
+    "test_globs": [
+      "test_*.py",
+      "*_test.py"
+    ]
+  },
+  "files": [
+    {
+      "classification": {
+        "black_box_candidate": false,
+        "change_indicator_candidate": false,
+        "white_box_candidate": false
+      },
+      "exact_eq_assert_count": 0,
+      "expected_literal_count": 0,
+      "given_count": 0,
+      "internal_imports": 0,
+      "markers": {},
+      "path": "/home/jakub/projects/repo-audit-skills/tests/test_adversarial_hardening.py",
+      "private_method_calls": 0,
+      "public_call_hints": 0,
+      "raises_broad_tuple": 0,
+      "raises_total": 0,
+      "raises_with_match": 0,
+      "test_functions": 1
+    },
+    {
+      "classification": {
+        "black_box_candidate": false,
+        "change_indicator_candidate": false,
+        "white_box_candidate": false
+      },
+      "exact_eq_assert_count": 0,
+      "expected_literal_count": 0,
+      "given_count": 0,
+      "internal_imports": 0,
+      "markers": {},
+      "path": "/home/jakub/projects/repo-audit-skills/tests/test_check_coverage_gap.py",
+      "private_method_calls": 0,
+      "public_call_hints": 0,
+      "raises_broad_tuple": 0,
+      "raises_total": 0,
+      "raises_with_match": 0,
+      "test_functions": 4
+    },
+    {
+      "classification": {
+        "black_box_candidate": false,
+        "change_indicator_candidate": false,
+        "white_box_candidate": false
+      },
+      "exact_eq_assert_count": 0,
+      "expected_literal_count": 0,
+      "given_count": 0,
+      "internal_imports": 0,
+      "markers": {},
+      "path": "/home/jakub/projects/repo-audit-skills/tests/test_check_coverage_gap_stale.py",
+      "private_method_calls": 0,
+      "public_call_hints": 0,
+      "raises_broad_tuple": 0,
+      "raises_total": 0,
+      "raises_with_match": 0,
+      "test_functions": 3
+    },
+    {
+      "classification": {
+        "black_box_candidate": false,
+        "change_indicator_candidate": false,
+        "white_box_candidate": true
+      },
+      "exact_eq_assert_count": 0,
+      "expected_literal_count": 0,
+      "given_count": 0,
+      "internal_imports": 0,
+      "markers": {},
+      "path": "/home/jakub/projects/repo-audit-skills/tests/test_check_dependency.py",
+      "private_method_calls": 1,
+      "public_call_hints": 0,
+      "raises_broad_tuple": 0,
+      "raises_total": 0,
+      "raises_with_match": 0,
+      "test_functions": 4
+    },
+    {
+      "classification": {
+        "black_box_candidate": false,
+        "change_indicator_candidate": false,
+        "white_box_candidate": true
+      },
+      "exact_eq_assert_count": 0,
+      "expected_literal_count": 0,
+      "given_count": 0,
+      "internal_imports": 0,
+      "markers": {},
+      "path": "/home/jakub/projects/repo-audit-skills/tests/test_check_docs.py",
+      "private_method_calls": 1,
+      "public_call_hints": 0,
+      "raises_broad_tuple": 0,
+      "raises_total": 0,
+      "raises_with_match": 0,
+      "test_functions": 4
+    },
+    {
+      "classification": {
+        "black_box_candidate": false,
+        "change_indicator_candidate": false,
+        "white_box_candidate": false
+      },
+      "exact_eq_assert_count": 0,
+      "expected_literal_count": 0,
+      "given_count": 0,
+      "internal_imports": 0,
+      "markers": {},
+      "path": "/home/jakub/projects/repo-audit-skills/tests/test_check_full_pytest.py",
+      "private_method_calls": 0,
+      "public_call_hints": 0,
+      "raises_broad_tuple": 0,
+      "raises_total": 0,
+      "raises_with_match": 0,
+      "test_functions": 6
+    },
+    {
+      "classification": {
+        "black_box_candidate": false,
+        "change_indicator_candidate": false,
+        "white_box_candidate": false
+      },
+      "exact_eq_assert_count": 0,
+      "expected_literal_count": 0,
+      "given_count": 0,
+      "internal_imports": 0,
+      "markers": {},
+      "path": "/home/jakub/projects/repo-audit-skills/tests/test_check_growth.py",
+      "private_method_calls": 0,
+      "public_call_hints": 0,
+      "raises_broad_tuple": 0,
+      "raises_total": 0,
+      "raises_with_match": 0,
+      "test_functions": 6
+    },
+    {
+      "classification": {
+        "black_box_candidate": false,
+        "change_indicator_candidate": false,
+        "white_box_candidate": false
+      },
+      "exact_eq_assert_count": 0,
+      "expected_literal_count": 0,
+      "given_count": 0,
+      "internal_imports": 0,
+      "markers": {},
+      "path": "/home/jakub/projects/repo-audit-skills/tests/test_check_instruction_lint.py",
+      "private_method_calls": 0,
+      "public_call_hints": 0,
+      "raises_broad_tuple": 0,
+      "raises_total": 0,
+      "raises_with_match": 0,
+      "test_functions": 8
+    },
+    {
+      "classification": {
+        "black_box_candidate": false,
+        "change_indicator_candidate": false,
+        "white_box_candidate": false
+      },
+      "exact_eq_assert_count": 0,
+      "expected_literal_count": 0,
+      "given_count": 0,
+      "internal_imports": 0,
+      "markers": {},
+      "path": "/home/jakub/projects/repo-audit-skills/tests/test_check_release.py",
+      "private_method_calls": 0,
+      "public_call_hints": 0,
+      "raises_broad_tuple": 0,
+      "raises_total": 0,
+      "raises_with_match": 0,
+      "test_functions": 2
+    },
+    {
+      "classification": {
+        "black_box_candidate": false,
+        "change_indicator_candidate": false,
+        "white_box_candidate": true
+      },
+      "exact_eq_assert_count": 0,
+      "expected_literal_count": 0,
+      "given_count": 0,
+      "internal_imports": 0,
+      "markers": {},
+      "path": "/home/jakub/projects/repo-audit-skills/tests/test_check_repo_hygiene.py",
+      "private_method_calls": 1,
+      "public_call_hints": 0,
+      "raises_broad_tuple": 0,
+      "raises_total": 0,
+      "raises_with_match": 0,
+      "test_functions": 4
+    },
+    {
+      "classification": {
+        "black_box_candidate": false,
+        "change_indicator_candidate": false,
+        "white_box_candidate": true
+      },
+      "exact_eq_assert_count": 0,
+      "expected_literal_count": 0,
+      "given_count": 0,
+      "internal_imports": 0,
+      "markers": {},
+      "path": "/home/jakub/projects/repo-audit-skills/tests/test_check_security.py",
+      "private_method_calls": 1,
+      "public_call_hints": 0,
+      "raises_broad_tuple": 0,
+      "raises_total": 0,
+      "raises_with_match": 0,
+      "test_functions": 4
+    },
+    {
+      "classification": {
+        "black_box_candidate": false,
+        "change_indicator_candidate": false,
+        "white_box_candidate": true
+      },
+      "exact_eq_assert_count": 0,
+      "expected_literal_count": 0,
+      "given_count": 0,
+      "internal_imports": 0,
+      "markers": {},
+      "path": "/home/jakub/projects/repo-audit-skills/tests/test_check_self_audit.py",
+      "private_method_calls": 2,
+      "public_call_hints": 0,
+      "raises_broad_tuple": 0,
+      "raises_total": 1,
+      "raises_with_match": 0,
+      "test_functions": 5
+    },
+    {
+      "classification": {
+        "black_box_candidate": false,
+        "change_indicator_candidate": false,
+        "white_box_candidate": false
+      },
+      "exact_eq_assert_count": 0,
+      "expected_literal_count": 0,
+      "given_count": 0,
+      "internal_imports": 0,
+      "markers": {},
+      "path": "/home/jakub/projects/repo-audit-skills/tests/test_check_skill_fixtures.py",
+      "private_method_calls": 0,
+      "public_call_hints": 0,
+      "raises_broad_tuple": 0,
+      "raises_total": 0,
+      "raises_with_match": 0,
+      "test_functions": 1
+    },
+    {
+      "classification": {
+        "black_box_candidate": false,
+        "change_indicator_candidate": false,
+        "white_box_candidate": false
+      },
+      "exact_eq_assert_count": 0,
+      "expected_literal_count": 0,
+      "given_count": 0,
+      "internal_imports": 0,
+      "markers": {},
+      "path": "/home/jakub/projects/repo-audit-skills/tests/test_check_vendored_common.py",
+      "private_method_calls": 0,
+      "public_call_hints": 0,
+      "raises_broad_tuple": 0,
+      "raises_total": 0,
+      "raises_with_match": 0,
+      "test_functions": 1
+    },
+    {
+      "classification": {
+        "black_box_candidate": false,
+        "change_indicator_candidate": false,
+        "white_box_candidate": false
+      },
+      "exact_eq_assert_count": 0,
+      "expected_literal_count": 0,
+      "given_count": 0,
+      "internal_imports": 0,
+      "markers": {},
+      "path": "/home/jakub/projects/repo-audit-skills/tests/test_check_vendored_common_unit.py",
+      "private_method_calls": 0,
+      "public_call_hints": 0,
+      "raises_broad_tuple": 0,
+      "raises_total": 0,
+      "raises_with_match": 0,
+      "test_functions": 1
+    },
+    {
+      "classification": {
+        "black_box_candidate": false,
+        "change_indicator_candidate": false,
+        "white_box_candidate": false
+      },
+      "exact_eq_assert_count": 0,
+      "expected_literal_count": 0,
+      "given_count": 0,
+      "internal_imports": 0,
+      "markers": {},
+      "path": "/home/jakub/projects/repo-audit-skills/tests/test_fresh_clone_doc_tokens.py",
+      "private_method_calls": 0,
+      "public_call_hints": 0,
+      "raises_broad_tuple": 0,
+      "raises_total": 0,
+      "raises_with_match": 0,
+      "test_functions": 1
+    },
+    {
+      "classification": {
+        "black_box_candidate": false,
+        "change_indicator_candidate": false,
+        "white_box_candidate": false
+      },
+      "exact_eq_assert_count": 0,
+      "expected_literal_count": 0,
+      "given_count": 0,
+      "internal_imports": 0,
+      "markers": {},
+      "path": "/home/jakub/projects/repo-audit-skills/tests/test_gate_common.py",
+      "private_method_calls": 0,
+      "public_call_hints": 0,
+      "raises_broad_tuple": 0,
+      "raises_total": 0,
+      "raises_with_match": 0,
+      "test_functions": 13
+    },
+    {
+      "classification": {
+        "black_box_candidate": false,
+        "change_indicator_candidate": false,
+        "white_box_candidate": false
+      },
+      "exact_eq_assert_count": 0,
+      "expected_literal_count": 0,
+      "given_count": 0,
+      "internal_imports": 0,
+      "markers": {},
+      "path": "/home/jakub/projects/repo-audit-skills/tests/test_health_common.py",
+      "private_method_calls": 0,
+      "public_call_hints": 0,
+      "raises_broad_tuple": 0,
+      "raises_total": 0,
+      "raises_with_match": 0,
+      "test_functions": 8
+    },
+    {
+      "classification": {
+        "black_box_candidate": false,
+        "change_indicator_candidate": false,
+        "white_box_candidate": false
+      },
+      "exact_eq_assert_count": 0,
+      "expected_literal_count": 0,
+      "given_count": 0,
+      "internal_imports": 0,
+      "markers": {},
+      "path": "/home/jakub/projects/repo-audit-skills/tests/test_root_collection.py",
+      "private_method_calls": 0,
+      "public_call_hints": 0,
+      "raises_broad_tuple": 0,
+      "raises_total": 0,
+      "raises_with_match": 0,
+      "test_functions": 1
+    },
+    {
+      "classification": {
+        "black_box_candidate": false,
+        "change_indicator_candidate": false,
+        "white_box_candidate": true
+      },
+      "exact_eq_assert_count": 0,
+      "expected_literal_count": 0,
+      "given_count": 0,
+      "internal_imports": 0,
+      "markers": {},
+      "path": "/home/jakub/projects/repo-audit-skills/tests/test_run_checks.py",
+      "private_method_calls": 15,
+      "public_call_hints": 0,
+      "raises_broad_tuple": 0,
+      "raises_total": 0,
+      "raises_with_match": 0,
+      "test_functions": 26
+    },
+    {
+      "classification": {
+        "black_box_candidate": false,
+        "change_indicator_candidate": false,
+        "white_box_candidate": false
+      },
+      "exact_eq_assert_count": 0,
+      "expected_literal_count": 0,
+      "given_count": 0,
+      "internal_imports": 0,
+      "markers": {},
+      "path": "/home/jakub/projects/repo-audit-skills/tests/test_self_audit_cli.py",
+      "private_method_calls": 0,
+      "public_call_hints": 0,
+      "raises_broad_tuple": 0,
+      "raises_total": 0,
+      "raises_with_match": 0,
+      "test_functions": 2
+    },
+    {
+      "classification": {
+        "black_box_candidate": false,
+        "change_indicator_candidate": false,
+        "white_box_candidate": true
+      },
+      "exact_eq_assert_count": 0,
+      "expected_literal_count": 0,
+      "given_count": 0,
+      "internal_imports": 0,
+      "markers": {},
+      "path": "/home/jakub/projects/repo-audit-skills/tests/test_self_audit_stable_identity.py",
+      "private_method_calls": 2,
+      "public_call_hints": 0,
+      "raises_broad_tuple": 0,
+      "raises_total": 0,
+      "raises_with_match": 0,
+      "test_functions": 3
+    }
+  ],
+  "root": "/home/jakub/projects/repo-audit-skills",
+  "rubric_scores": {
+    "Assertion Quality": {
+      "max": 3,
+      "rationale": "Raises present but low match ratio (0.0)",
+      "score": 1
+    },
+    "Behavior-First Focus": {
+      "max": 3,
+      "rationale": "Very high private/public ratio (23.0)",
+      "score": 0
+    },
+    "Contract Coverage": {
+      "max": 3,
+      "rationale": "Tests exist but no public call hints",
+      "score": 1
+    },
+    "Coverage/Mutation": {
+      "max": 3,
+      "rationale": "Statement 34.8% < 85%",
+      "score": 1
+    },
+    "Determinism/Isolation": {
+      "max": 3,
+      "rationale": "Default (static analysis cannot fully assess)",
+      "score": 2
+    },
+    "Non-Functional": {
+      "max": 3,
+      "rationale": "No benchmark markers detected",
+      "score": 1
+    },
+    "Pyramid/Scope": {
+      "max": 3,
+      "rationale": "22 files (layering signal)",
+      "score": 2
+    },
+    "White-Box Justification": {
+      "max": 3,
+      "rationale": "White-box tests present but high internal coupling",
+      "score": 1
+    },
+    "max_total": 24,
+    "total": 9
+  },
+  "summary": {
+    "classification_counts": {
+      "white_box_candidate": 7
+    },
+    "markers": {},
+    "ratios": {
+      "broad_tuple_raises_ratio": 0.0,
+      "private_to_public_call_ratio": 23.0,
+      "raises_with_match_ratio": 0.0
+    },
+    "totals": {
+      "exact_eq_assert_count": 0,
+      "expected_literal_count": 0,
+      "files": 22,
+      "hypothesis_given_calls": 0,
+      "internal_imports": 0,
+      "private_method_calls": 23,
+      "public_call_hints": 0,
+      "raises_broad_tuple": 0,
+      "raises_total": 1,
+      "raises_with_match": 0,
+      "test_functions": 108
+    }
+  }
+}

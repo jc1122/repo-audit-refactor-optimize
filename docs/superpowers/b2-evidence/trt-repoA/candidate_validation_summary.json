@@ -1,0 +1,42 @@
+{
+  "generated_at": "2026-06-15T01:24:20+0200",
+  "root": "/home/jakub/projects/repo-audit-skills",
+  "suite_files": [
+    "skills/coverage-gap-audit/tests/test_coverage_gap_cli.py",
+    "skills/coverage-gap-audit/tests/test_coverage_gap_findings.py",
+    "skills/coverage-gap-audit/tests/test_coverage_gap_idempotent.py",
+    "skills/coverage-gap-audit/tests/test_coverage_gap_relpaths.py"
+  ],
+  "comparator_suite_files": [],
+  "python_executable": "/usr/bin/python3",
+  "xdist_enabled": false,
+  "coverage_mode": "system",
+  "strict_delete_gate": false,
+  "strict_post_suite_files": [],
+  "baseline_pass": true,
+  "candidates": 11,
+  "counts": {
+    "MERGE_RECOMMENDED": 11
+  },
+  "confidence_tier_counts": {
+    "MERGE_CANDIDATE": 11
+  },
+  "strict_gate_summary": {},
+  "branch_equiv_summary": {
+    "generated_at": "2026-06-15T01:24:20+0200",
+    "pairs_total": 11,
+    "exact_branch_matches": 8,
+    "non_exact_branch_matches": 3,
+    "all_tests_passed": true,
+    "coverage_mode": "coverage_matrix_tokens",
+    "coverage_note": "all nodeids already had coverage token sets",
+    "live_collection_tests": 0,
+    "live_collection_summary": {
+      "mode": "not_needed",
+      "status_note": "all nodeids already had coverage token sets",
+      "tests_total": 0,
+      "passed_or_skipped": 0,
+      "failed": 0
+    }
+  }
+}

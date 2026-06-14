@@ -1,0 +1,739 @@
+{
+  "config": {
+    "auto_inferred_public_hints": false,
+    "exact_eq_pattern": "^\\s*assert\\s+\\w+\\s*==\\s*(?:expected|want|target|snapshot|golden)\\b",
+    "internal_import_patterns": [
+      "from\\s+[\\w\\.]+\\.(?:core|internal|impl|private)\\s+import",
+      "import\\s+[\\w\\.]+\\.(?:core|internal|impl|private)\\b"
+    ],
+    "public_hints": [],
+    "test_dirs": [
+      "tests"
+    ],
+    "test_globs": [
+      "test_*.py",
+      "*_test.py"
+    ]
+  },
+  "files": [
+    {
+      "classification": {
+        "black_box_candidate": false,
+        "change_indicator_candidate": false,
+        "white_box_candidate": true
+      },
+      "exact_eq_assert_count": 0,
+      "expected_literal_count": 0,
+      "given_count": 0,
+      "internal_imports": 0,
+      "markers": {},
+      "path": "/home/jakub/projects/repo-audit-refactor-optimize/tests/test_accept.py",
+      "private_method_calls": 1,
+      "public_call_hints": 0,
+      "raises_broad_tuple": 0,
+      "raises_total": 7,
+      "raises_with_match": 0,
+      "test_functions": 16
+    },
+    {
+      "classification": {
+        "black_box_candidate": false,
+        "change_indicator_candidate": false,
+        "white_box_candidate": false
+      },
+      "exact_eq_assert_count": 0,
+      "expected_literal_count": 0,
+      "given_count": 0,
+      "internal_imports": 0,
+      "markers": {},
+      "path": "/home/jakub/projects/repo-audit-refactor-optimize/tests/test_allocate_batches.py",
+      "private_method_calls": 0,
+      "public_call_hints": 0,
+      "raises_broad_tuple": 0,
+      "raises_total": 0,
+      "raises_with_match": 0,
+      "test_functions": 6
+    },
+    {
+      "classification": {
+        "black_box_candidate": false,
+        "change_indicator_candidate": false,
+        "white_box_candidate": false
+      },
+      "exact_eq_assert_count": 0,
+      "expected_literal_count": 0,
+      "given_count": 0,
+      "internal_imports": 0,
+      "markers": {},
+      "path": "/home/jakub/projects/repo-audit-refactor-optimize/tests/test_baseline_ledger.py",
+      "private_method_calls": 0,
+      "public_call_hints": 0,
+      "raises_broad_tuple": 0,
+      "raises_total": 0,
+      "raises_with_match": 0,
+      "test_functions": 1
+    },
+    {
+      "classification": {
+        "black_box_candidate": false,
+        "change_indicator_candidate": false,
+        "white_box_candidate": false
+      },
+      "exact_eq_assert_count": 0,
+      "expected_literal_count": 0,
+      "given_count": 0,
+      "internal_imports": 0,
+      "markers": {},
+      "path": "/home/jakub/projects/repo-audit-refactor-optimize/tests/test_bootstrap_report.py",
+      "private_method_calls": 0,
+      "public_call_hints": 0,
+      "raises_broad_tuple": 0,
+      "raises_total": 2,
+      "raises_with_match": 2,
+      "test_functions": 4
+    },
+    {
+      "classification": {
+        "black_box_candidate": false,
+        "change_indicator_candidate": false,
+        "white_box_candidate": false
+      },
+      "exact_eq_assert_count": 0,
+      "expected_literal_count": 0,
+      "given_count": 0,
+      "internal_imports": 0,
+      "markers": {},
+      "path": "/home/jakub/projects/repo-audit-refactor-optimize/tests/test_check_release.py",
+      "private_method_calls": 0,
+      "public_call_hints": 0,
+      "raises_broad_tuple": 0,
+      "raises_total": 0,
+      "raises_with_match": 0,
+      "test_functions": 4
+    },
+    {
+      "classification": {
+        "black_box_candidate": false,
+        "change_indicator_candidate": false,
+        "white_box_candidate": true
+      },
+      "exact_eq_assert_count": 0,
+      "expected_literal_count": 0,
+      "given_count": 0,
+      "internal_imports": 0,
+      "markers": {},
+      "path": "/home/jakub/projects/repo-audit-refactor-optimize/tests/test_check_skill_requirements.py",
+      "private_method_calls": 6,
+      "public_call_hints": 0,
+      "raises_broad_tuple": 0,
+      "raises_total": 7,
+      "raises_with_match": 5,
+      "test_functions": 78
+    },
+    {
+      "classification": {
+        "black_box_candidate": false,
+        "change_indicator_candidate": false,
+        "white_box_candidate": true
+      },
+      "exact_eq_assert_count": 0,
+      "expected_literal_count": 0,
+      "given_count": 0,
+      "internal_imports": 0,
+      "markers": {},
+      "path": "/home/jakub/projects/repo-audit-refactor-optimize/tests/test_check_wave_baseline.py",
+      "private_method_calls": 1,
+      "public_call_hints": 0,
+      "raises_broad_tuple": 0,
+      "raises_total": 0,
+      "raises_with_match": 0,
+      "test_functions": 6
+    },
+    {
+      "classification": {
+        "black_box_candidate": false,
+        "change_indicator_candidate": false,
+        "white_box_candidate": false
+      },
+      "exact_eq_assert_count": 0,
+      "expected_literal_count": 0,
+      "given_count": 0,
+      "internal_imports": 0,
+      "markers": {},
+      "path": "/home/jakub/projects/repo-audit-refactor-optimize/tests/test_graduate_benchmark.py",
+      "private_method_calls": 0,
+      "public_call_hints": 0,
+      "raises_broad_tuple": 0,
+      "raises_total": 0,
+      "raises_with_match": 0,
+      "test_functions": 3
+    },
+    {
+      "classification": {
+        "black_box_candidate": false,
+        "change_indicator_candidate": false,
+        "white_box_candidate": true
+      },
+      "exact_eq_assert_count": 0,
+      "expected_literal_count": 0,
+      "given_count": 0,
+      "internal_imports": 0,
+      "markers": {},
+      "path": "/home/jakub/projects/repo-audit-refactor-optimize/tests/test_lane_resolve.py",
+      "private_method_calls": 3,
+      "public_call_hints": 0,
+      "raises_broad_tuple": 0,
+      "raises_total": 0,
+      "raises_with_match": 0,
+      "test_functions": 3
+    },
+    {
+      "classification": {
+        "black_box_candidate": false,
+        "change_indicator_candidate": false,
+        "white_box_candidate": false
+      },
+      "exact_eq_assert_count": 0,
+      "expected_literal_count": 0,
+      "given_count": 0,
+      "internal_imports": 0,
+      "markers": {},
+      "path": "/home/jakub/projects/repo-audit-refactor-optimize/tests/test_lessons.py",
+      "private_method_calls": 0,
+      "public_call_hints": 0,
+      "raises_broad_tuple": 0,
+      "raises_total": 0,
+      "raises_with_match": 0,
+      "test_functions": 2
+    },
+    {
+      "classification": {
+        "black_box_candidate": false,
+        "change_indicator_candidate": false,
+        "white_box_candidate": true
+      },
+      "exact_eq_assert_count": 0,
+      "expected_literal_count": 0,
+      "given_count": 0,
+      "internal_imports": 0,
+      "markers": {},
+      "path": "/home/jakub/projects/repo-audit-refactor-optimize/tests/test_migrate_baseline.py",
+      "private_method_calls": 2,
+      "public_call_hints": 0,
+      "raises_broad_tuple": 0,
+      "raises_total": 0,
+      "raises_with_match": 0,
+      "test_functions": 5
+    },
+    {
+      "classification": {
+        "black_box_candidate": false,
+        "change_indicator_candidate": false,
+        "white_box_candidate": true
+      },
+      "exact_eq_assert_count": 0,
+      "expected_literal_count": 0,
+      "given_count": 0,
+      "internal_imports": 0,
+      "markers": {},
+      "path": "/home/jakub/projects/repo-audit-refactor-optimize/tests/test_mine_iteration_kpis.py",
+      "private_method_calls": 15,
+      "public_call_hints": 0,
+      "raises_broad_tuple": 0,
+      "raises_total": 0,
+      "raises_with_match": 0,
+      "test_functions": 15
+    },
+    {
+      "classification": {
+        "black_box_candidate": false,
+        "change_indicator_candidate": false,
+        "white_box_candidate": false
+      },
+      "exact_eq_assert_count": 0,
+      "expected_literal_count": 0,
+      "given_count": 0,
+      "internal_imports": 0,
+      "markers": {},
+      "path": "/home/jakub/projects/repo-audit-refactor-optimize/tests/test_mprr_e2e.py",
+      "private_method_calls": 0,
+      "public_call_hints": 0,
+      "raises_broad_tuple": 0,
+      "raises_total": 0,
+      "raises_with_match": 0,
+      "test_functions": 3
+    },
+    {
+      "classification": {
+        "black_box_candidate": false,
+        "change_indicator_candidate": false,
+        "white_box_candidate": false
+      },
+      "exact_eq_assert_count": 0,
+      "expected_literal_count": 0,
+      "given_count": 0,
+      "internal_imports": 0,
+      "markers": {},
+      "path": "/home/jakub/projects/repo-audit-refactor-optimize/tests/test_mprr_gate.py",
+      "private_method_calls": 0,
+      "public_call_hints": 0,
+      "raises_broad_tuple": 0,
+      "raises_total": 0,
+      "raises_with_match": 0,
+      "test_functions": 4
+    },
+    {
+      "classification": {
+        "black_box_candidate": false,
+        "change_indicator_candidate": false,
+        "white_box_candidate": false
+      },
+      "exact_eq_assert_count": 0,
+      "expected_literal_count": 0,
+      "given_count": 0,
+      "internal_imports": 0,
+      "markers": {},
+      "path": "/home/jakub/projects/repo-audit-refactor-optimize/tests/test_mprr_integrate.py",
+      "private_method_calls": 0,
+      "public_call_hints": 0,
+      "raises_broad_tuple": 0,
+      "raises_total": 1,
+      "raises_with_match": 0,
+      "test_functions": 7
+    },
+    {
+      "classification": {
+        "black_box_candidate": false,
+        "change_indicator_candidate": false,
+        "white_box_candidate": false
+      },
+      "exact_eq_assert_count": 0,
+      "expected_literal_count": 0,
+      "given_count": 0,
+      "internal_imports": 0,
+      "markers": {},
+      "path": "/home/jakub/projects/repo-audit-refactor-optimize/tests/test_mprr_normalize.py",
+      "private_method_calls": 0,
+      "public_call_hints": 0,
+      "raises_broad_tuple": 0,
+      "raises_total": 0,
+      "raises_with_match": 0,
+      "test_functions": 6
+    },
+    {
+      "classification": {
+        "black_box_candidate": false,
+        "change_indicator_candidate": false,
+        "white_box_candidate": false
+      },
+      "exact_eq_assert_count": 0,
+      "expected_literal_count": 0,
+      "given_count": 0,
+      "internal_imports": 0,
+      "markers": {},
+      "path": "/home/jakub/projects/repo-audit-refactor-optimize/tests/test_mprr_packets.py",
+      "private_method_calls": 0,
+      "public_call_hints": 0,
+      "raises_broad_tuple": 0,
+      "raises_total": 0,
+      "raises_with_match": 0,
+      "test_functions": 3
+    },
+    {
+      "classification": {
+        "black_box_candidate": false,
+        "change_indicator_candidate": false,
+        "white_box_candidate": false
+      },
+      "exact_eq_assert_count": 0,
+      "expected_literal_count": 0,
+      "given_count": 1,
+      "internal_imports": 0,
+      "markers": {},
+      "path": "/home/jakub/projects/repo-audit-refactor-optimize/tests/test_mprr_partition.py",
+      "private_method_calls": 0,
+      "public_call_hints": 0,
+      "raises_broad_tuple": 0,
+      "raises_total": 0,
+      "raises_with_match": 0,
+      "test_functions": 4
+    },
+    {
+      "classification": {
+        "black_box_candidate": false,
+        "change_indicator_candidate": false,
+        "white_box_candidate": true
+      },
+      "exact_eq_assert_count": 0,
+      "expected_literal_count": 0,
+      "given_count": 0,
+      "internal_imports": 0,
+      "markers": {},
+      "path": "/home/jakub/projects/repo-audit-refactor-optimize/tests/test_mprr_run.py",
+      "private_method_calls": 2,
+      "public_call_hints": 0,
+      "raises_broad_tuple": 0,
+      "raises_total": 0,
+      "raises_with_match": 0,
+      "test_functions": 5
+    },
+    {
+      "classification": {
+        "black_box_candidate": false,
+        "change_indicator_candidate": false,
+        "white_box_candidate": false
+      },
+      "exact_eq_assert_count": 0,
+      "expected_literal_count": 0,
+      "given_count": 1,
+      "internal_imports": 0,
+      "markers": {},
+      "path": "/home/jakub/projects/repo-audit-refactor-optimize/tests/test_mprr_schedule.py",
+      "private_method_calls": 0,
+      "public_call_hints": 0,
+      "raises_broad_tuple": 0,
+      "raises_total": 0,
+      "raises_with_match": 0,
+      "test_functions": 4
+    },
+    {
+      "classification": {
+        "black_box_candidate": false,
+        "change_indicator_candidate": false,
+        "white_box_candidate": true
+      },
+      "exact_eq_assert_count": 0,
+      "expected_literal_count": 0,
+      "given_count": 0,
+      "internal_imports": 0,
+      "markers": {},
+      "path": "/home/jakub/projects/repo-audit-refactor-optimize/tests/test_run_diagnosis_wave.py",
+      "private_method_calls": 9,
+      "public_call_hints": 0,
+      "raises_broad_tuple": 0,
+      "raises_total": 0,
+      "raises_with_match": 0,
+      "test_functions": 33
+    },
+    {
+      "classification": {
+        "black_box_candidate": false,
+        "change_indicator_candidate": false,
+        "white_box_candidate": true
+      },
+      "exact_eq_assert_count": 0,
+      "expected_literal_count": 0,
+      "given_count": 0,
+      "internal_imports": 0,
+      "markers": {},
+      "path": "/home/jakub/projects/repo-audit-refactor-optimize/tests/test_run_instruction_eval.py",
+      "private_method_calls": 10,
+      "public_call_hints": 0,
+      "raises_broad_tuple": 0,
+      "raises_total": 5,
+      "raises_with_match": 0,
+      "test_functions": 18
+    },
+    {
+      "classification": {
+        "black_box_candidate": false,
+        "change_indicator_candidate": false,
+        "white_box_candidate": true
+      },
+      "exact_eq_assert_count": 0,
+      "expected_literal_count": 0,
+      "given_count": 0,
+      "internal_imports": 0,
+      "markers": {},
+      "path": "/home/jakub/projects/repo-audit-refactor-optimize/tests/test_self_dogfood.py",
+      "private_method_calls": 4,
+      "public_call_hints": 0,
+      "raises_broad_tuple": 0,
+      "raises_total": 0,
+      "raises_with_match": 0,
+      "test_functions": 4
+    },
+    {
+      "classification": {
+        "black_box_candidate": false,
+        "change_indicator_candidate": false,
+        "white_box_candidate": true
+      },
+      "exact_eq_assert_count": 0,
+      "expected_literal_count": 0,
+      "given_count": 0,
+      "internal_imports": 0,
+      "markers": {},
+      "path": "/home/jakub/projects/repo-audit-refactor-optimize/tests/test_skill_probe.py",
+      "private_method_calls": 9,
+      "public_call_hints": 0,
+      "raises_broad_tuple": 0,
+      "raises_total": 1,
+      "raises_with_match": 1,
+      "test_functions": 9
+    },
+    {
+      "classification": {
+        "black_box_candidate": false,
+        "change_indicator_candidate": false,
+        "white_box_candidate": false
+      },
+      "exact_eq_assert_count": 0,
+      "expected_literal_count": 0,
+      "given_count": 0,
+      "internal_imports": 0,
+      "markers": {},
+      "path": "/home/jakub/projects/repo-audit-refactor-optimize/tests/test_synth_run_cli.py",
+      "private_method_calls": 0,
+      "public_call_hints": 0,
+      "raises_broad_tuple": 0,
+      "raises_total": 0,
+      "raises_with_match": 0,
+      "test_functions": 4
+    },
+    {
+      "classification": {
+        "black_box_candidate": false,
+        "change_indicator_candidate": false,
+        "white_box_candidate": false
+      },
+      "exact_eq_assert_count": 0,
+      "expected_literal_count": 0,
+      "given_count": 0,
+      "internal_imports": 0,
+      "markers": {},
+      "path": "/home/jakub/projects/repo-audit-refactor-optimize/tests/test_synth_run_loop.py",
+      "private_method_calls": 0,
+      "public_call_hints": 0,
+      "raises_broad_tuple": 0,
+      "raises_total": 0,
+      "raises_with_match": 0,
+      "test_functions": 5
+    },
+    {
+      "classification": {
+        "black_box_candidate": false,
+        "change_indicator_candidate": false,
+        "white_box_candidate": false
+      },
+      "exact_eq_assert_count": 0,
+      "expected_literal_count": 0,
+      "given_count": 0,
+      "internal_imports": 0,
+      "markers": {},
+      "path": "/home/jakub/projects/repo-audit-refactor-optimize/tests/test_synth_run_state.py",
+      "private_method_calls": 0,
+      "public_call_hints": 0,
+      "raises_broad_tuple": 0,
+      "raises_total": 1,
+      "raises_with_match": 0,
+      "test_functions": 5
+    },
+    {
+      "classification": {
+        "black_box_candidate": false,
+        "change_indicator_candidate": false,
+        "white_box_candidate": false
+      },
+      "exact_eq_assert_count": 0,
+      "expected_literal_count": 0,
+      "given_count": 0,
+      "internal_imports": 0,
+      "markers": {},
+      "path": "/home/jakub/projects/repo-audit-refactor-optimize/tests/test_synthesis_e2e.py",
+      "private_method_calls": 0,
+      "public_call_hints": 0,
+      "raises_broad_tuple": 0,
+      "raises_total": 0,
+      "raises_with_match": 0,
+      "test_functions": 2
+    },
+    {
+      "classification": {
+        "black_box_candidate": false,
+        "change_indicator_candidate": false,
+        "white_box_candidate": false
+      },
+      "exact_eq_assert_count": 0,
+      "expected_literal_count": 0,
+      "given_count": 0,
+      "internal_imports": 0,
+      "markers": {
+        "skipif": 1
+      },
+      "path": "/home/jakub/projects/repo-audit-refactor-optimize/tests/test_synthesis_real_e2e.py",
+      "private_method_calls": 0,
+      "public_call_hints": 0,
+      "raises_broad_tuple": 0,
+      "raises_total": 0,
+      "raises_with_match": 0,
+      "test_functions": 1
+    },
+    {
+      "classification": {
+        "black_box_candidate": false,
+        "change_indicator_candidate": false,
+        "white_box_candidate": true
+      },
+      "exact_eq_assert_count": 0,
+      "expected_literal_count": 0,
+      "given_count": 0,
+      "internal_imports": 0,
+      "markers": {},
+      "path": "/home/jakub/projects/repo-audit-refactor-optimize/tests/test_synthesize_packets.py",
+      "private_method_calls": 6,
+      "public_call_hints": 0,
+      "raises_broad_tuple": 0,
+      "raises_total": 0,
+      "raises_with_match": 0,
+      "test_functions": 18
+    },
+    {
+      "classification": {
+        "black_box_candidate": false,
+        "change_indicator_candidate": false,
+        "white_box_candidate": false
+      },
+      "exact_eq_assert_count": 0,
+      "expected_literal_count": 0,
+      "given_count": 0,
+      "internal_imports": 0,
+      "markers": {},
+      "path": "/home/jakub/projects/repo-audit-refactor-optimize/tests/test_synthesize_perf.py",
+      "private_method_calls": 0,
+      "public_call_hints": 0,
+      "raises_broad_tuple": 0,
+      "raises_total": 0,
+      "raises_with_match": 0,
+      "test_functions": 13
+    },
+    {
+      "classification": {
+        "black_box_candidate": false,
+        "change_indicator_candidate": false,
+        "white_box_candidate": false
+      },
+      "exact_eq_assert_count": 0,
+      "expected_literal_count": 0,
+      "given_count": 0,
+      "internal_imports": 0,
+      "markers": {},
+      "path": "/home/jakub/projects/repo-audit-refactor-optimize/tests/test_validate_accept.py",
+      "private_method_calls": 0,
+      "public_call_hints": 0,
+      "raises_broad_tuple": 0,
+      "raises_total": 0,
+      "raises_with_match": 0,
+      "test_functions": 3
+    },
+    {
+      "classification": {
+        "black_box_candidate": false,
+        "change_indicator_candidate": false,
+        "white_box_candidate": false
+      },
+      "exact_eq_assert_count": 0,
+      "expected_literal_count": 0,
+      "given_count": 0,
+      "internal_imports": 0,
+      "markers": {},
+      "path": "/home/jakub/projects/repo-audit-refactor-optimize/tests/test_validate_run_report.py",
+      "private_method_calls": 0,
+      "public_call_hints": 0,
+      "raises_broad_tuple": 0,
+      "raises_total": 0,
+      "raises_with_match": 0,
+      "test_functions": 5
+    },
+    {
+      "classification": {
+        "black_box_candidate": false,
+        "change_indicator_candidate": false,
+        "white_box_candidate": false
+      },
+      "exact_eq_assert_count": 0,
+      "expected_literal_count": 0,
+      "given_count": 0,
+      "internal_imports": 0,
+      "markers": {},
+      "path": "/home/jakub/projects/repo-audit-refactor-optimize/tests/test_wave_findings.py",
+      "private_method_calls": 0,
+      "public_call_hints": 0,
+      "raises_broad_tuple": 0,
+      "raises_total": 2,
+      "raises_with_match": 0,
+      "test_functions": 6
+    }
+  ],
+  "root": "/home/jakub/projects/repo-audit-refactor-optimize",
+  "rubric_scores": {
+    "Assertion Quality": {
+      "max": 3,
+      "rationale": "Raises present but low match ratio (0.308)",
+      "score": 1
+    },
+    "Behavior-First Focus": {
+      "max": 3,
+      "rationale": "Very high private/public ratio (68.0)",
+      "score": 0
+    },
+    "Contract Coverage": {
+      "max": 3,
+      "rationale": "Tests exist but no public call hints",
+      "score": 1
+    },
+    "Coverage/Mutation": {
+      "max": 3,
+      "rationale": "Statement 80.7% < 85%",
+      "score": 1
+    },
+    "Determinism/Isolation": {
+      "max": 3,
+      "rationale": "Hypothesis property tests detected (seed discipline)",
+      "score": 3
+    },
+    "Non-Functional": {
+      "max": 3,
+      "rationale": "No benchmark markers detected",
+      "score": 1
+    },
+    "Pyramid/Scope": {
+      "max": 3,
+      "rationale": "34 files (layering signal)",
+      "score": 2
+    },
+    "White-Box Justification": {
+      "max": 3,
+      "rationale": "White-box tests present but high internal coupling",
+      "score": 1
+    },
+    "max_total": 24,
+    "total": 10
+  },
+  "summary": {
+    "classification_counts": {
+      "white_box_candidate": 12
+    },
+    "markers": {
+      "skipif": 1
+    },
+    "ratios": {
+      "broad_tuple_raises_ratio": 0.0,
+      "private_to_public_call_ratio": 68.0,
+      "raises_with_match_ratio": 0.308
+    },
+    "totals": {
+      "exact_eq_assert_count": 0,
+      "expected_literal_count": 0,
+      "files": 34,
+      "hypothesis_given_calls": 2,
+      "internal_imports": 0,
+      "private_method_calls": 68,
+      "public_call_hints": 0,
+      "raises_broad_tuple": 0,
+      "raises_total": 26,
+      "raises_with_match": 8,
+      "test_functions": 305
+    }
+  }
+}
