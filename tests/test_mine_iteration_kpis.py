@@ -168,3 +168,26 @@ def test_derive_phase_seconds_window_and_missing(tmp_path):
     assert "window" in ps and ps["window"] >= 0.0
     assert m._derive_phase_seconds(repo, None, b) == {}
     assert m._derive_phase_seconds(repo, a, "deadbeef") == {}
+
+
+def test_load_baseline_rows_dict_shapes_and_missing(tmp_path):
+    repo = tmp_path / "r"
+    repo.mkdir()
+    _init_repo(repo)
+    sha = _commit(repo, "b.json", json.dumps({"x": [1, 2], "y": 5, "z": "skip"}))
+    assert m._load_baseline_rows(repo, sha, "b.json") == {"x": 2, "y": 5}
+    assert m._load_baseline_rows(repo, None, "b.json") == {}
+    assert m._load_baseline_rows(repo, sha, "missing.json") == {}
+
+
+def test_derive_worker_runs_counts_repairs_and_missing_dir(tmp_path):
+    runs = tmp_path / "runs"
+    (runs / "p1").mkdir(parents=True)
+    (runs / "p2").mkdir()
+    (runs / "p1" / "repairs.txt").write_text("2", encoding="utf-8")
+    (runs / "p2" / "repairs.txt").write_text("oops", encoding="utf-8")
+    assert m._derive_worker_runs(runs) == [
+        {"run": "p1", "repairs": 2},
+        {"run": "p2", "repairs": 0},
+    ]
+    assert m._derive_worker_runs(tmp_path / "absent") == []
