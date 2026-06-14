@@ -1,0 +1,306 @@
+{
+  "config": {
+    "auto_inferred_public_hints": false,
+    "exact_eq_pattern": "^\\s*assert\\s+\\w+\\s*==\\s*(?:expected|want|target|snapshot|golden)\\b",
+    "internal_import_patterns": [
+      "from\\s+[\\w\\.]+\\.(?:core|internal|impl|private)\\s+import",
+      "import\\s+[\\w\\.]+\\.(?:core|internal|impl|private)\\b"
+    ],
+    "public_hints": [],
+    "test_dirs": [
+      "tests",
+      "perf-optimization/tests"
+    ],
+    "test_globs": [
+      "test_*.py",
+      "*_test.py"
+    ]
+  },
+  "files": [
+    {
+      "classification": {
+        "black_box_candidate": false,
+        "change_indicator_candidate": false,
+        "white_box_candidate": true
+      },
+      "exact_eq_assert_count": 0,
+      "expected_literal_count": 0,
+      "given_count": 0,
+      "internal_imports": 0,
+      "markers": {
+        "parametrize": 1
+      },
+      "path": "/home/jakub/projects/perf-benchmark-skill/perf-optimization/tests/test_select_candidate.py",
+      "private_method_calls": 8,
+      "public_call_hints": 0,
+      "raises_broad_tuple": 0,
+      "raises_total": 0,
+      "raises_with_match": 0,
+      "test_functions": 19
+    },
+    {
+      "classification": {
+        "black_box_candidate": false,
+        "change_indicator_candidate": false,
+        "white_box_candidate": false
+      },
+      "exact_eq_assert_count": 0,
+      "expected_literal_count": 0,
+      "given_count": 0,
+      "internal_imports": 0,
+      "markers": {},
+      "path": "/home/jakub/projects/perf-benchmark-skill/perf-optimization/tests/test_verify_win.py",
+      "private_method_calls": 0,
+      "public_call_hints": 0,
+      "raises_broad_tuple": 0,
+      "raises_total": 0,
+      "raises_with_match": 0,
+      "test_functions": 37
+    },
+    {
+      "classification": {
+        "black_box_candidate": false,
+        "change_indicator_candidate": false,
+        "white_box_candidate": false
+      },
+      "exact_eq_assert_count": 0,
+      "expected_literal_count": 0,
+      "given_count": 0,
+      "internal_imports": 0,
+      "markers": {},
+      "path": "/home/jakub/projects/perf-benchmark-skill/tests/test_accept_policy.py",
+      "private_method_calls": 0,
+      "public_call_hints": 0,
+      "raises_broad_tuple": 0,
+      "raises_total": 0,
+      "raises_with_match": 0,
+      "test_functions": 2
+    },
+    {
+      "classification": {
+        "black_box_candidate": false,
+        "change_indicator_candidate": false,
+        "white_box_candidate": false
+      },
+      "exact_eq_assert_count": 0,
+      "expected_literal_count": 0,
+      "given_count": 0,
+      "internal_imports": 0,
+      "markers": {},
+      "path": "/home/jakub/projects/perf-benchmark-skill/tests/test_check_wave_baseline.py",
+      "private_method_calls": 0,
+      "public_call_hints": 0,
+      "raises_broad_tuple": 0,
+      "raises_total": 0,
+      "raises_with_match": 0,
+      "test_functions": 4
+    },
+    {
+      "classification": {
+        "black_box_candidate": false,
+        "change_indicator_candidate": false,
+        "white_box_candidate": false
+      },
+      "exact_eq_assert_count": 0,
+      "expected_literal_count": 0,
+      "given_count": 0,
+      "internal_imports": 0,
+      "markers": {},
+      "path": "/home/jakub/projects/perf-benchmark-skill/tests/test_findings_bridge.py",
+      "private_method_calls": 0,
+      "public_call_hints": 0,
+      "raises_broad_tuple": 0,
+      "raises_total": 0,
+      "raises_with_match": 0,
+      "test_functions": 17
+    },
+    {
+      "classification": {
+        "black_box_candidate": false,
+        "change_indicator_candidate": false,
+        "white_box_candidate": false
+      },
+      "exact_eq_assert_count": 0,
+      "expected_literal_count": 0,
+      "given_count": 0,
+      "internal_imports": 0,
+      "markers": {},
+      "path": "/home/jakub/projects/perf-benchmark-skill/tests/test_ledger.py",
+      "private_method_calls": 0,
+      "public_call_hints": 0,
+      "raises_broad_tuple": 0,
+      "raises_total": 0,
+      "raises_with_match": 0,
+      "test_functions": 18
+    },
+    {
+      "classification": {
+        "black_box_candidate": false,
+        "change_indicator_candidate": false,
+        "white_box_candidate": false
+      },
+      "exact_eq_assert_count": 0,
+      "expected_literal_count": 0,
+      "given_count": 0,
+      "internal_imports": 0,
+      "markers": {},
+      "path": "/home/jakub/projects/perf-benchmark-skill/tests/test_pipeline_cli_docs.py",
+      "private_method_calls": 0,
+      "public_call_hints": 0,
+      "raises_broad_tuple": 0,
+      "raises_total": 2,
+      "raises_with_match": 0,
+      "test_functions": 20
+    },
+    {
+      "classification": {
+        "black_box_candidate": false,
+        "change_indicator_candidate": false,
+        "white_box_candidate": true
+      },
+      "exact_eq_assert_count": 0,
+      "expected_literal_count": 0,
+      "given_count": 0,
+      "internal_imports": 0,
+      "markers": {},
+      "path": "/home/jakub/projects/perf-benchmark-skill/tests/test_pipeline_scoring_reporting.py",
+      "private_method_calls": 3,
+      "public_call_hints": 0,
+      "raises_broad_tuple": 0,
+      "raises_total": 0,
+      "raises_with_match": 0,
+      "test_functions": 21
+    },
+    {
+      "classification": {
+        "black_box_candidate": false,
+        "change_indicator_candidate": false,
+        "white_box_candidate": true
+      },
+      "exact_eq_assert_count": 0,
+      "expected_literal_count": 0,
+      "given_count": 0,
+      "internal_imports": 0,
+      "markers": {
+        "benchmark": 1
+      },
+      "path": "/home/jakub/projects/perf-benchmark-skill/tests/test_pipeline_stages.py",
+      "private_method_calls": 5,
+      "public_call_hints": 0,
+      "raises_broad_tuple": 0,
+      "raises_total": 0,
+      "raises_with_match": 0,
+      "test_functions": 25
+    },
+    {
+      "classification": {
+        "black_box_candidate": false,
+        "change_indicator_candidate": false,
+        "white_box_candidate": false
+      },
+      "exact_eq_assert_count": 0,
+      "expected_literal_count": 0,
+      "given_count": 0,
+      "internal_imports": 0,
+      "markers": {},
+      "path": "/home/jakub/projects/perf-benchmark-skill/tests/test_profile_discover.py",
+      "private_method_calls": 0,
+      "public_call_hints": 0,
+      "raises_broad_tuple": 0,
+      "raises_total": 0,
+      "raises_with_match": 0,
+      "test_functions": 2
+    },
+    {
+      "classification": {
+        "black_box_candidate": false,
+        "change_indicator_candidate": false,
+        "white_box_candidate": false
+      },
+      "exact_eq_assert_count": 0,
+      "expected_literal_count": 0,
+      "given_count": 0,
+      "internal_imports": 0,
+      "markers": {},
+      "path": "/home/jakub/projects/perf-benchmark-skill/tests/test_synth_microbench.py",
+      "private_method_calls": 0,
+      "public_call_hints": 0,
+      "raises_broad_tuple": 0,
+      "raises_total": 0,
+      "raises_with_match": 0,
+      "test_functions": 5
+    }
+  ],
+  "root": "/home/jakub/projects/perf-benchmark-skill",
+  "rubric_scores": {
+    "Assertion Quality": {
+      "max": 3,
+      "rationale": "Raises present but low match ratio (0.0)",
+      "score": 1
+    },
+    "Behavior-First Focus": {
+      "max": 3,
+      "rationale": "Very high private/public ratio (16.0)",
+      "score": 0
+    },
+    "Contract Coverage": {
+      "max": 3,
+      "rationale": "Tests exist but no public call hints",
+      "score": 1
+    },
+    "Coverage/Mutation": {
+      "max": 3,
+      "rationale": "Statement 88.5% >= 85% (branch 72.1% < 75%)",
+      "score": 2
+    },
+    "Determinism/Isolation": {
+      "max": 3,
+      "rationale": "Default (static analysis cannot fully assess)",
+      "score": 2
+    },
+    "Non-Functional": {
+      "max": 3,
+      "rationale": "1 benchmark markers detected",
+      "score": 2
+    },
+    "Pyramid/Scope": {
+      "max": 3,
+      "rationale": "11 files (layering signal)",
+      "score": 2
+    },
+    "White-Box Justification": {
+      "max": 3,
+      "rationale": "White-box tests present but high internal coupling",
+      "score": 1
+    },
+    "max_total": 24,
+    "total": 11
+  },
+  "summary": {
+    "classification_counts": {
+      "white_box_candidate": 3
+    },
+    "markers": {
+      "benchmark": 1,
+      "parametrize": 1
+    },
+    "ratios": {
+      "broad_tuple_raises_ratio": 0.0,
+      "private_to_public_call_ratio": 16.0,
+      "raises_with_match_ratio": 0.0
+    },
+    "totals": {
+      "exact_eq_assert_count": 0,
+      "expected_literal_count": 0,
+      "files": 11,
+      "hypothesis_given_calls": 0,
+      "internal_imports": 0,
+      "private_method_calls": 16,
+      "public_call_hints": 0,
+      "raises_broad_tuple": 0,
+      "raises_total": 2,
+      "raises_with_match": 0,
+      "test_functions": 170
+    }
+  }
+}
