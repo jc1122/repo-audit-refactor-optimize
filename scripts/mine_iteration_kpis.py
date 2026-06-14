@@ -17,6 +17,13 @@ import json
 import subprocess  # nosec B404: trusted git/gh, shell=False
 import sys
 from pathlib import Path
+from typing import cast
+
+
+def _repairs(run: dict[str, object]) -> int:
+    """Repair count for a worker run, coerced to int (untyped artifact field)."""
+    value = run.get("repairs", 0)
+    return value if isinstance(value, int) else 0
 
 
 def compute_kpi(
@@ -38,8 +45,7 @@ def compute_kpi(
     total_seconds = sum(phase_seconds.values())
     rows_per_hour = rows_closed / (total_seconds / 3600.0) if total_seconds > 0 else 0.0
     repair_rate = (
-        sum(1 for run in worker_runs if (run.get("repairs") or 0) > 0)
-        / len(worker_runs)
+        sum(1 for run in worker_runs if _repairs(run) > 0) / len(worker_runs)
         if worker_runs
         else 0.0
     )
@@ -62,8 +68,12 @@ def is_regression(cur: dict[str, object], prev: dict[str, object]) -> bool:
     repair burden rose >50% (repair_rate > prev*1.5). External waits
     (ci_wait_seconds and any *_wait_seconds metric) are NEVER considered (R5).
     """
-    rph_drop = cur["rows_per_hour"] < prev["rows_per_hour"] * 0.8
-    repair_rise = cur["repair_rate"] > prev["repair_rate"] * 1.5
+    rph_drop = (
+        cast(float, cur["rows_per_hour"]) < cast(float, prev["rows_per_hour"]) * 0.8
+    )
+    repair_rise = (
+        cast(float, cur["repair_rate"]) > cast(float, prev["repair_rate"]) * 1.5
+    )
     return bool(rph_drop or repair_rise)
 
 
