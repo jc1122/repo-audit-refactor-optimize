@@ -191,3 +191,33 @@ def test_derive_worker_runs_counts_repairs_and_missing_dir(tmp_path):
         {"run": "p2", "repairs": 0},
     ]
     assert m._derive_worker_runs(tmp_path / "absent") == []
+
+
+def test_derive_ci_wait_seconds_success_and_failure(monkeypatch):
+    class _R:
+        stdout = json.dumps([{
+            "createdAt": "2026-01-01T00:00:00Z",
+            "updatedAt": "2026-01-01T00:05:00Z",
+        }])
+    monkeypatch.setattr(m.subprocess, "run", lambda *a, **k: _R())
+    assert m._derive_ci_wait_seconds(Path(".")) == 300.0
+
+    def _boom(*a, **k):
+        raise subprocess.SubprocessError("no gh")
+    monkeypatch.setattr(m.subprocess, "run", _boom)
+    assert m._derive_ci_wait_seconds(Path(".")) == 0.0
+
+
+def test_mine_mprr_kpis_skips_blanks_and_counts_conflicts(tmp_path):
+    ev = tmp_path / "e.jsonl"
+    ev.write_text("\n".join([
+        '{"event": "start", "id": "a"}',
+        '',
+        '{"event": "start", "id": "b"}',
+        '{"event": "merge", "id": "a", "conflict": true}',
+    ]) + "\n")
+    kpi = m.mine_mprr_kpis(str(ev), ceiling=2)
+    assert kpi["dispatched"] == 2
+    assert kpi["merged"] == 1
+    assert kpi["merge_conflict_rate"] == 1.0
+    assert kpi["peak_concurrency"] == 2
