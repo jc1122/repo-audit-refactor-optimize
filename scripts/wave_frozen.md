@@ -1,6 +1,8 @@
 # Wave Frozen Ledger
 
-Source: live SP9 K3 wave artifact, normalized and sorted into `scripts/wave_baseline.json`.
+Source: live SP9 K3 wave artifact, normalized and sorted into the ratcheted baseline
+(historically scripts/wave_baseline.json; since Phase 2 the report-stage `finding` entries
+in `.repo-audit/accept.json`).
 
 ## K5 v0.5.0 ratchet
 
@@ -89,8 +91,8 @@ Source: live SP9 K3 wave artifact, normalized and sorted into `scripts/wave_base
   grade A, just under the leaf's `mi_low=65`). The module is 85 LOC / 3 small functions;
   chasing MI to 65 via decomposition is low-value churn. Class: `deferred-structural`.
 - **Ledger reconcile (closes prior drift):** the table above documented only 7 rows while
-  `scripts/wave_baseline.json` held 13. The table below documents EVERY row in the baseline
-  (count **14**), so the ledger and the baseline can no longer disagree.
+  the ratcheted baseline (then scripts/wave_baseline.json) held 13. The table below documents
+  EVERY row in the baseline (count **14**), so the ledger and the baseline can no longer disagree.
 
 | Row | Finding (leaf · path · symbol · metric) | Class | Justification |
 |---:|---|---|---|
@@ -133,3 +135,15 @@ to HEAD zeroed growth but surfaced 11 churn hotspots from the remediation burst 
 anchor was therefore left at the stable historical rev and the residuals ratcheted instead.
 **Follow-up:** give hotspot and growth independent anchors (or a churn-window the dogfood
 loop can exclude) so re-anchoring fixes growth without exposing loop-induced churn.
+
+## Phase 2 migration — baseline moved into `.repo-audit/accept.json`
+
+- The former scripts/wave_baseline.json has been removed; the 19 accepted-residual identities
+  it held now live as report-stage `finding` entries in `.repo-audit/accept.json`, alongside
+  the Phase 1 `scripts/_accept.py` module-MI residual (20 entries total). This ledger
+  remains the human justification and is the machine source's documentation cross-reference;
+  the convergence gate no longer reads `wave_baseline.json`.
+
+| Row | Finding (leaf · path · symbol · metric) | Class | Justification |
+|---:|---|---|---|
+| 20 | complexity · `scripts/_accept.py` · `<module>` · maintainability_index | `deferred-structural` | Cohesive fail-closed acceptance-policy module (parse/validate + 3-kind match); per-function CC <=3 after helper extraction. Module-level MI (~42.7) reflects one coherent contract's aggregate size; splitting to chase MI would fragment a single contract (cf. the accepted `scripts/mprr_normalize.py` module-MI residual). |

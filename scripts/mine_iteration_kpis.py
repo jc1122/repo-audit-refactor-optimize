@@ -221,8 +221,8 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--end-sha", default=None, help="Iteration window end SHA.")
     parser.add_argument(
         "--baseline",
-        default="scripts/wave_baseline.json",
-        help="Repo-relative path to the ratcheted baseline JSON.",
+        default=".repo-audit/accept.json",
+        help="Repo-relative path to the ratcheted baseline / accept JSON.",
     )
     parser.add_argument(
         "--runs-dir",

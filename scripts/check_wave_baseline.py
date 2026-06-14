@@ -1,7 +1,14 @@
 #!/usr/bin/env python3
-"""Convergence gate: diagnosis wave on this repo.
+"""Convergence gate: diagnosis wave on this repo (Option A — trust the wave partition).
 
-Equality-ratcheted against `wave_baseline.json`.
+The wave auto-suppresses `<repo>/.repo-audit/accept.json` entries at the report stage,
+writing the active set to `wave_findings.json` and the accept partition to
+`wave_findings.accepted.json` (`{"accepted":[...], "stale":[...]}`). Convergence is:
+
+    pass  iff  the active set is EMPTY  AND  the accepted sidecar's stale list is empty.
+
+A non-empty active set means a finding is not covered by accept.json (a new residual);
+a non-empty stale list means an accept entry matched nothing (drop it from the file).
 """
 
 import argparse
@@ -17,18 +24,12 @@ _wf = importlib.import_module(
 )
 
 REPO = Path(__file__).resolve().parents[1]
-BASELINE = Path(__file__).with_name("wave_baseline.json")
 WAVE_ANCHOR = Path(__file__).with_name("wave_anchor.txt")
 SECURITY_CONFIG = Path(__file__).with_name("security_audit_config.json")
 HOTSPOT_CONFIG = Path(__file__).with_name("hotspot_audit_config.json")
 RUNNER_REL = ".claude/skills/repo-audit-refactor-optimize/scripts/run_diagnosis_wave.py"
 DEFAULT_RUNNER = str(Path.home() / RUNNER_REL)
 DEFAULT_SKILLS_ROOT = str(Path.home() / ".claude/skills")
-
-
-# wave_timings.json contains non-deterministic timing telemetry.
-# It is intentionally excluded from convergence/baseline byte comparison.
-_TIMINGS_FILE = "wave_timings.json"
 
 
 def identities(fs):
@@ -39,26 +40,15 @@ def _load_json(path):
     return json.loads(Path(path).read_text(encoding="utf-8"))
 
 
-def _load_findings(out_dir: Path):
-    """Load wave findings for comparison, excluding timing telemetry.
-
-    wave_timings.json is produced by the wave runner alongside
-    wave_findings.json but contains non-deterministic timing data
-    that varies across runs. It is intentionally excluded from
-    the convergence ratchet — only wave_findings.json is compared
-    against wave_baseline.json.
-    """
-    return _load_json(out_dir / "wave_findings.json")
-
-
 def _parse_args(argv=None):
     ap = argparse.ArgumentParser()
-    ap.add_argument("--snapshot")
-    ap.add_argument("--baseline")
+    ap.add_argument("--snapshot", help="read the active set from this file (tests)")
+    ap.add_argument("--accepted", help="read the accept sidecar from this file (tests)")
     return ap.parse_args(argv)
 
 
 def _run_wave():
+    """Run the wave (it auto-suppresses via the in-repo accept.json); return out dir."""
     runner = os.environ.get("WAVE_RUNNER", DEFAULT_RUNNER)
     out = REPO / ".wave_out"
     cmd = [sys.executable, runner, "--repo", str(REPO), "--out-dir", str(out)]
@@ -81,7 +71,7 @@ def _run_wave():
         cmd += ["--hotspot-config", hotspot_config]
     # Runner path may come from WAVE_RUNNER; shell stays disabled.
     subprocess.run(cmd, check=False)  # nosec B603: shell=False
-    return _load_findings(out)
+    return out
 
 
 def _emit(payload):
@@ -93,30 +83,31 @@ def _fail(payload):
     return 1
 
 
-def _stale_payload(stale):
-    return {
-        "status": "fail",
-        "stale_baseline": sorted(map(list, stale)),
-        "message": f"ratchet: remove them from {BASELINE.name} in the same commit",
-    }
-
-
-def _compare(current, baseline):
-    cur, base = identities(current), identities(baseline)
-    new, stale = cur - base, base - cur
-    if new:
-        return _fail({"status": "fail", "new_findings": sorted(map(list, new))})
+def _converge(active, accepted_sidecar):
+    """Option A verdict: pass iff active is empty AND no stale acceptances."""
+    if active:
+        return _fail({
+            "status": "fail",
+            "new_findings": sorted(map(list, identities(active))),
+        })
+    stale = list(accepted_sidecar.get("stale", []))
     if stale:
-        return _fail(_stale_payload(stale))
-    _emit({"status": "pass", "count": len(cur), "baseline": len(base)})
+        return _fail({"status": "fail", "stale_acceptances": sorted(stale)})
+    accepted = accepted_sidecar.get("accepted", [])
+    _emit({"status": "pass", "accepted": len(accepted), "active": 0})
     return 0
 
 
 def main(argv=None):
     args = _parse_args(argv)
-    current = _load_json(args.snapshot) if args.snapshot else _run_wave()
-    baseline = _load_json(args.baseline or BASELINE)
-    return _compare(current, baseline)
+    if args.snapshot:
+        active = _load_json(args.snapshot)
+        sidecar = _load_json(args.accepted) if args.accepted else {"stale": []}
+    else:
+        out = _run_wave()
+        active = _load_json(out / "wave_findings.json")
+        sidecar = _load_json(out / "wave_findings.accepted.json")
+    return _converge(active, sidecar)
 
 
 if __name__ == "__main__":

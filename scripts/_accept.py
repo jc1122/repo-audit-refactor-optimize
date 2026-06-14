@@ -251,6 +251,12 @@ def load_accept(repo: Path, extra: Path | None = None) -> AcceptPolicy:
     return AcceptPolicy(entries)
 
 
+def identity_of(match: dict[str, str]) -> tuple[str, str, str, str]:
+    """The 4-tuple identity of a `finding`-kind match (parity with identity)."""
+    return (match.get("leaf", ""), match.get("path", ""),
+            match.get("symbol", ""), match.get("metric", ""))
+
+
 def from_baseline(rows: list[dict[str, str]]) -> AcceptPolicy:
     """Adapt a legacy flat --baseline array into report-stage finding acceptances."""
     entries = [

@@ -10,8 +10,13 @@ the diagnosis wave (also `--accept`; legacy `--baseline` rows fold in as report-
 new `wave_findings.accepted.json` sidecar) and the MPRR engine (remediation stage, with the old
 `remediation_excludes.json` honored as a fallback, new `mprr_excluded.json` sidecar). Malformed
 policies fail closed. Leaves still detect everything; acceptance is applied at the wave/engine
-layer and every accepted finding is recorded with its reason. Family-internal baselines migrate
-onto this schema in Phase 2.
+layer and every accepted finding is recorded with its reason. Phase 2 (folded in here):
+repo-B's internal residual baseline now lives in `.repo-audit/accept.json` (20 report-stage
+`finding` entries — the 19 former `wave_baseline.json` rows + the `_accept.py` module-MI
+residual), `scripts/wave_baseline.json` is removed, and the convergence gate no longer
+compares active-vs-baseline — it trusts the wave's report/accept partition (pass = empty
+active set + no stale acceptances). A new `scripts/migrate_baseline_to_accept.py` is the
+identity-preserving converter.
 
 ## 0.7.7
 
