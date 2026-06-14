@@ -1,0 +1,41 @@
+{
+  "generated_at": "2026-06-15T01:24:04+0200",
+  "root": "/home/jakub/projects/perf-benchmark-skill",
+  "suite_files": [
+    "perf-optimization/tests/test_select_candidate.py"
+  ],
+  "comparator_suite_files": [],
+  "python_executable": "/usr/bin/python3",
+  "xdist_enabled": false,
+  "coverage_mode": "system",
+  "strict_delete_gate": false,
+  "strict_post_suite_files": [],
+  "baseline_pass": true,
+  "candidates": 19,
+  "counts": {
+    "KEEP_FOR_SIGNAL": 3,
+    "MERGE_RECOMMENDED": 16
+  },
+  "confidence_tier_counts": {
+    "MERGE_CANDIDATE": 16,
+    "KEEP_CANDIDATE": 3
+  },
+  "strict_gate_summary": {},
+  "branch_equiv_summary": {
+    "generated_at": "2026-06-15T01:24:04+0200",
+    "pairs_total": 19,
+    "exact_branch_matches": 14,
+    "non_exact_branch_matches": 5,
+    "all_tests_passed": true,
+    "coverage_mode": "coverage_matrix_tokens",
+    "coverage_note": "all nodeids already had coverage token sets",
+    "live_collection_tests": 0,
+    "live_collection_summary": {
+      "mode": "not_needed",
+      "status_note": "all nodeids already had coverage token sets",
+      "tests_total": 0,
+      "passed_or_skipped": 0,
+      "failed": 0
+    }
+  }
+}
