@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.7.7
+
+test(hardening): self-audit dogfood run 5 — guard against the ledger/baseline drift that the
+v0.7.x audit uncovered. New dependency-free `tests/test_baseline_ledger.py` asserts every
+`wave_baseline.json` identity is justified in `wave_frozen.md`; it runs in the existing CI
+pytest job (no external audit leaves needed) and is negative-tested to fail on an
+undocumented row. The full convergence gate still requires the repo-audit leaves and stays a
+local/manual check — wiring it into CI (with leaf install) is recorded as follow-up. Gate
+green; 256 tests pass.
+
 ## 0.7.6
 
 chore(converge): self-audit dogfood run 4 — convergence gate is now GREEN (status: pass,
