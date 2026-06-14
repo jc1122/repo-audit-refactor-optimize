@@ -147,3 +147,24 @@ def test_main_returns_one_when_kpi_path_is_a_directory(tmp_path, capsys, monkeyp
     ])
     assert rc == 1
     assert "failed to append KPI line" in capsys.readouterr().err
+
+
+def test_git_commit_epoch_valid_and_invalid(tmp_path):
+    repo = tmp_path / "r"
+    repo.mkdir()
+    _init_repo(repo)
+    sha = _commit(repo, "a.txt", "x")
+    assert isinstance(m._git_commit_epoch(repo, sha), float)
+    assert m._git_commit_epoch(repo, "deadbeef") is None
+
+
+def test_derive_phase_seconds_window_and_missing(tmp_path):
+    repo = tmp_path / "r"
+    repo.mkdir()
+    _init_repo(repo)
+    a = _commit(repo, "a.txt", "x")
+    b = _commit(repo, "a.txt", "y")
+    ps = m._derive_phase_seconds(repo, a, b)
+    assert "window" in ps and ps["window"] >= 0.0
+    assert m._derive_phase_seconds(repo, None, b) == {}
+    assert m._derive_phase_seconds(repo, a, "deadbeef") == {}
