@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.7.2
+
+chore(kpis): characterize `scripts/mine_iteration_kpis.py` (coverage 38.4% -> 92%, the
+coverage-gate keystone) and remediate its 9 wave findings — inline `# nosec`
+(B404/B603/B607/B108, trusted git/gh + documented tmp default), mypy operator/misc fixes
+via a `_repairs` helper + float casts, and a `KpiInputs` dataclass (compute_kpi param_count
+6 -> 1). No behavior change (255 tests pass). Self-audit convergence gate 20 -> 11.
+
 ## 0.7.1
 
 chore: mechanical lint/format cleanup of `scripts/` to clear the self-audit quality

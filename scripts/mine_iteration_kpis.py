@@ -14,19 +14,32 @@ from __future__ import annotations
 
 import argparse
 import json
-import subprocess
+import subprocess  # nosec B404: trusted git/gh, shell=False
 import sys
+from dataclasses import dataclass
 from pathlib import Path
+from typing import cast
 
 
-def compute_kpi(
-    iteration: int,
-    rows_before: dict[str, int],
-    rows_after: dict[str, int],
-    phase_seconds: dict[str, float],
-    worker_runs: list[dict[str, object]],
-    ci_wait_seconds: float,
-) -> dict[str, object]:
+def _repairs(run: dict[str, object]) -> int:
+    """Repair count for a worker run, coerced to int (untyped artifact field)."""
+    value = run.get("repairs", 0)
+    return value if isinstance(value, int) else 0
+
+
+@dataclass(frozen=True)
+class KpiInputs:
+    """Already-mined inputs for one KPI record (groups compute_kpi's parameters)."""
+
+    iteration: int
+    rows_before: dict[str, int]
+    rows_after: dict[str, int]
+    phase_seconds: dict[str, float]
+    worker_runs: list[dict[str, object]]
+    ci_wait_seconds: float
+
+
+def compute_kpi(inputs: KpiInputs) -> dict[str, object]:
     """Compute the per-iteration KPI record from already-mined inputs.
 
     rows_closed = total baseline rows removed across repos.
@@ -34,12 +47,17 @@ def compute_kpi(
     repair_rate = fraction of worker runs that needed a follow-up repair.
     ci_wait_seconds = external wait, recorded passthrough (not loop-controlled).
     """
+    iteration = inputs.iteration
+    rows_before = inputs.rows_before
+    rows_after = inputs.rows_after
+    phase_seconds = inputs.phase_seconds
+    worker_runs = inputs.worker_runs
+    ci_wait_seconds = inputs.ci_wait_seconds
     rows_closed = sum(rows_before.values()) - sum(rows_after.values())
     total_seconds = sum(phase_seconds.values())
     rows_per_hour = rows_closed / (total_seconds / 3600.0) if total_seconds > 0 else 0.0
     repair_rate = (
-        sum(1 for run in worker_runs if (run.get("repairs") or 0) > 0)
-        / len(worker_runs)
+        sum(1 for run in worker_runs if _repairs(run) > 0) / len(worker_runs)
         if worker_runs
         else 0.0
     )
@@ -62,8 +80,12 @@ def is_regression(cur: dict[str, object], prev: dict[str, object]) -> bool:
     repair burden rose >50% (repair_rate > prev*1.5). External waits
     (ci_wait_seconds and any *_wait_seconds metric) are NEVER considered (R5).
     """
-    rph_drop = cur["rows_per_hour"] < prev["rows_per_hour"] * 0.8
-    repair_rise = cur["repair_rate"] > prev["repair_rate"] * 1.5
+    rph_drop = (
+        cast(float, cur["rows_per_hour"]) < cast(float, prev["rows_per_hour"]) * 0.8
+    )
+    repair_rise = (
+        cast(float, cur["repair_rate"]) > cast(float, prev["repair_rate"]) * 1.5
+    )
     return bool(rph_drop or repair_rise)
 
 
@@ -76,7 +98,7 @@ def is_regression(cur: dict[str, object], prev: dict[str, object]) -> bool:
 def _git_commit_epoch(repo: Path, sha: str) -> float | None:
     """Committer epoch for a SHA, or None if unavailable."""
     try:
-        out = subprocess.run(
+        out = subprocess.run(  # nosec B603 B607: fixed argv, shell=False
             ["git", "-C", str(repo), "show", "-s", "--format=%ct", sha],
             capture_output=True,
             text=True,
@@ -107,7 +129,7 @@ def _load_baseline_rows(
     if not sha:
         return {}
     try:
-        out = subprocess.run(
+        out = subprocess.run(  # nosec B603 B607: fixed argv, shell=False
             ["git", "-C", str(repo), "show", f"{sha}:{baseline_rel}"],
             capture_output=True,
             text=True,
@@ -150,7 +172,7 @@ def _derive_worker_runs(runs_dir: Path) -> list[dict[str, object]]:
 def _derive_ci_wait_seconds(repo: Path) -> float:
     """CI run created->completed delta via gh; 0.0 if unavailable."""
     try:
-        out = subprocess.run(
+        out = subprocess.run(  # nosec B603 B607: fixed argv, shell=False
             [
                 "gh",
                 "run",
@@ -205,7 +227,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--runs-dir",
         type=Path,
-        default=Path("/tmp/sp13/runs"),
+        default=Path("/tmp/sp13/runs"),  # nosec B108: override via --runs-dir
         help="Directory holding per-packet worker run-dirs.",
     )
     parser.add_argument(
@@ -243,12 +265,14 @@ def main(argv: list[str] | None = None) -> int:
         ci_wait_seconds = 0.0
 
     kpi = compute_kpi(
-        iteration=args.iteration,
-        rows_before=rows_before,
-        rows_after=rows_after,
-        phase_seconds=phase_seconds,
-        worker_runs=worker_runs,
-        ci_wait_seconds=ci_wait_seconds,
+        KpiInputs(
+            iteration=args.iteration,
+            rows_before=rows_before,
+            rows_after=rows_after,
+            phase_seconds=phase_seconds,
+            worker_runs=worker_runs,
+            ci_wait_seconds=ci_wait_seconds,
+        )
     )
 
     line = json.dumps(kpi, sort_keys=True)
