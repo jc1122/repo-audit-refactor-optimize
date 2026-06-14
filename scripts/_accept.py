@@ -58,7 +58,10 @@ def _parse_entry(raw: Any, index: int) -> AcceptEntry:
     _require(isinstance(reason, str) and reason.strip(), f"accept[{index}].reason is required")
 
     applies_raw = raw.get("applies", ["report", "remediation"])
-    _require(isinstance(applies_raw, list) and applies_raw, f"accept[{index}].applies must be a non-empty array")
+    _require(
+        isinstance(applies_raw, list) and applies_raw,
+        f"accept[{index}].applies must be a non-empty array",
+    )
     _require(all(a in _STAGES for a in applies_raw),
              f"accept[{index}].applies values must be in {sorted(_STAGES)}")
 
@@ -80,7 +83,10 @@ def _parse_entry(raw: Any, index: int) -> AcceptEntry:
                  f"accept[{index}] rule match needs 'leaf' and/or 'metric'")
 
     expires = raw.get("expires")
-    _require(expires is None or isinstance(expires, str), f"accept[{index}].expires must be string|null")
+    _require(
+        expires is None or isinstance(expires, str),
+        f"accept[{index}].expires must be string|null",
+    )
     return AcceptEntry(kind, fields, reason, frozenset(applies_raw), expires)
 
 

@@ -68,6 +68,8 @@ python3 scripts/run_diagnosis_wave.py \
 
 By default (no `--source-prefix`) the wave excludes `tests/` and `**/fixtures/` so self-noise from test code does not crowd the backlog; pass `--source-prefix <dir>` to scope positively (which disables the default exclusion), `--exclude-prefix <dir>` to exclude additional trees, and `--baseline <accepted-residuals.json>` to suppress already-triaged findings (matched by the `{leaf,path,symbol,metric}` identity; suppressed/stale entries are written to `wave_findings.suppressed.json`). The orchestration lane resolves its process skills (`verification-before-completion`, `dispatching-parallel-agents`, `subagent-driven-development`) as always-available — they are harness-guaranteed, so the lane no longer degrades to `manual` when they are absent from a skills root.
 
+Accepted-residuals policy: drop `.repo-audit/accept.json` in the target repo to suppress (report) and/or exclude-from-fix (remediation) findings — see `references/acceptance.md`.
+
 Pass test coverage with `--coverage-json` where supported. Wave output includes `wave_findings.json`, `wave_summary.json`, and one lane directory per module.
 
 ## Stage 3: Synthesis
@@ -135,3 +137,5 @@ The orchestrator re-derives all gate evidence from artifacts; it never trusts a 
 ### R2 admission
 
 Signal MPRR makes visible: which redundancy findings are safely auto-remediable in parallel. No existing component hosts it: the wave runner and synthesis layer are advisory-only and do not manage locks, branch merges, or gate enforcement. Sunset plan: fold non-redundancy lanes into this engine in SP15.
+
+Accepted-residuals policy: drop `.repo-audit/accept.json` in the target repo to suppress (report) and/or exclude-from-fix (remediation) findings — see `references/acceptance.md`.
