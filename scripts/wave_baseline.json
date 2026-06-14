@@ -82,5 +82,35 @@
     "path": "<repo>",
     "symbol": "net_loc_growth",
     "metric": "net_loc_growth"
+  },
+  {
+    "leaf": "growth-audit",
+    "path": "<repo>",
+    "symbol": "cli_flag_growth",
+    "metric": "cli_flag_growth"
+  },
+  {
+    "leaf": "growth-audit",
+    "path": "<repo>",
+    "symbol": "docs_loc_growth",
+    "metric": "docs_loc_growth"
+  },
+  {
+    "leaf": "growth-audit",
+    "path": "<repo>",
+    "symbol": "tracked_files_growth",
+    "metric": "tracked_files_growth"
+  },
+  {
+    "leaf": "hotspot",
+    "path": "CHANGELOG.md",
+    "symbol": "CHANGELOG.md",
+    "metric": "churn_complexity_product"
+  },
+  {
+    "leaf": "hotspot",
+    "path": "references/pipeline.md",
+    "symbol": "references/pipeline.md",
+    "metric": "churn_complexity_product"
   }
 ]

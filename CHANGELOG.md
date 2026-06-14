@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.7.6
+
+chore(converge): self-audit dogfood run 4 — convergence gate is now GREEN (status: pass,
+19 == 19). Ratcheted the 5 remaining anchor-relative residuals into `wave_baseline.json`
+(3 growth metrics + `CHANGELOG.md`/`references/pipeline.md` doc churn) as
+`deferred-structural`, consistent with the already-accepted `SKILL.md`/`net_loc_growth`
+rows. Documented a design finding: `wave_anchor.txt` is overloaded by growth (comparison
+baseline) and hotspot (window end-point), which pull in opposite directions — flagged for a
+future skill change (independent anchors) rather than a code fix.
+
 ## 0.7.5
 
 chore(ratchet): self-audit dogfood run 3 — ratchet the marginal `mprr_normalize` module

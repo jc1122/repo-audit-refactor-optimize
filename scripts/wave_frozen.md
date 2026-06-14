@@ -108,3 +108,28 @@ Source: live SP9 K3 wave artifact, normalized and sorted into `scripts/wave_base
 | 12 | exec-audit · `.` · benchmark_entrypoints_missing | `won't-fix-FP` | The orchestration metaskill has no runtime benchmark surface by design (its perf lane is `synthesizable`, not native). |
 | 13 | growth-audit · `<repo>` · net_loc_growth | `deferred-structural` | Net growth vs the pinned anchor; managed by re-anchoring `scripts/wave_anchor.txt`, not by editing code. |
 | 14 | complexity · `scripts/mprr_normalize.py` · `<module>` · maintainability_index | `deferred-structural` | MI 61.63 (grade A) marginally below `mi_low=65`; low-value to chase on an 85-LOC module. |
+
+## v0.7.6 dogfood ratchet — CONVERGED (gate green)
+
+- Ratchet timestamp: 2026-06-14T04:30:00Z
+- Ratcheted the 5 remaining anchor-relative residuals; the convergence gate is now
+  **green** (`status: pass`, count == baseline == 19).
+
+| Row | Finding (leaf · path · symbol · metric) | Class | Justification |
+|---:|---|---|---|
+| 15 | growth-audit · `<repo>` · cli_flag_growth | `deferred-structural` | Metaskill CLI surface grows with features; managed by anchor policy, not code edits (cf. row 13). |
+| 16 | growth-audit · `<repo>` · docs_loc_growth | `deferred-structural` | Living docs (plans/specs/references) grow with the skill; expected, not a defect. |
+| 17 | growth-audit · `<repo>` · tracked_files_growth | `deferred-structural` | New scripts/tests/docs are the unit of work for this skill; growth is the signal of progress. |
+| 18 | hotspot · `CHANGELOG.md` · churn_complexity_product | `deferred-structural` | Release-churn doc (an entry every release), analogous to the already-accepted `SKILL.md` row 6. |
+| 19 | hotspot · `references/pipeline.md` · churn_complexity_product | `deferred-structural` | Core reference doc edited as the pipeline evolves; documentation churn, not code risk. |
+
+### Design finding (re-anchor tension — deferred to a future skill change, not a code fix)
+
+`scripts/wave_anchor.txt` is shared by two lanes with opposite needs: growth-audit uses it
+as a **comparison baseline** (`--baseline-rev`, so a *recent* rev minimizes growth), while
+hotspot-audit uses it as a **window end-point** (`--rev`, walking `max_commits` back, so a
+recent rev points the window at the latest churn). During this dogfood session, re-anchoring
+to HEAD zeroed growth but surfaced 11 churn hotspots from the remediation burst itself. The
+anchor was therefore left at the stable historical rev and the residuals ratcheted instead.
+**Follow-up:** give hotspot and growth independent anchors (or a churn-window the dogfood
+loop can exclude) so re-anchoring fixes growth without exposing loop-induced churn.
