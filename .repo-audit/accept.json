@@ -832,6 +832,19 @@
       "applies": [
         "report"
       ]
+    },
+    {
+      "match": {
+        "kind": "finding",
+        "leaf": "complexity",
+        "path": "scripts/mine_iteration_kpis.py",
+        "symbol": "build_kpis",
+        "metric": "parameter_count"
+      },
+      "reason": "build_kpis is a thin per-repo KPI-record assembler: its 7 parameters (7 exceeds the max of 5) mirror exactly the KPI record's inputs (repo label + rows_before/after counts + worker_runs + phase_seconds + ci_wait_seconds + iteration), and its body only builds two per-repo dicts and delegates to compute_kpi. The parameter count reflects the breadth of a KPI record, not tangled logic; grouping into a dataclass would merely relocate the surface and break the pinned build_kpis/test signature. Accepted as cohesive-assembler.",
+      "applies": [
+        "report"
+      ]
     }
   ]
 }

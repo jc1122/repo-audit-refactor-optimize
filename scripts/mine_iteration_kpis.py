@@ -73,6 +73,65 @@ def compute_kpi(inputs: KpiInputs) -> dict[str, object]:
     }
 
 
+def _count_baseline_rows(data: object) -> int:
+    """Count logical rows in a parsed baseline JSON.
+
+    Handles three shapes:
+    - accept.json (``{"version": int, "accept": [...]}``) → len(accept list)
+    - legacy flat list (``[...]``) → len(list)
+    - legacy multi-key dict (``{"key": [...], ...}``) → sum of list lengths
+    """
+    if isinstance(data, dict) and "accept" in data:
+        val = data["accept"]
+        return len(val) if isinstance(val, list) else 0
+    if isinstance(data, list):
+        return len(data)
+    if isinstance(data, dict):
+        return sum(len(v) for v in data.values() if isinstance(v, list))
+    return 0
+
+
+def build_kpis(
+    repo_name: str,
+    rows_before_n: int,
+    rows_after_n: int,
+    worker_runs: list[dict[str, object]],
+    phase_seconds: dict[str, float],
+    ci_wait_seconds: float,
+    iteration: int = 0,
+) -> dict[str, object]:
+    """Build a full KPI record keyed by explicit repo_name.
+
+    Emits both the per-repo dicts (``rows_before``, ``rows_after``) consumed
+    by ``allocate_batches.trailing_yield`` AND the scalar ``rows_closed`` kept
+    for back-compat with callers that read only the scalar.
+    """
+    rows_before = {repo_name: rows_before_n}
+    rows_after = {repo_name: rows_after_n}
+    inputs = KpiInputs(
+        iteration=iteration,
+        rows_before=rows_before,
+        rows_after=rows_after,
+        phase_seconds=phase_seconds,
+        worker_runs=worker_runs,
+        ci_wait_seconds=ci_wait_seconds,
+    )
+    record = compute_kpi(inputs)
+    # rows_closed and rows_per_hour are overridden below (per-repo scalar + clamp)
+    # Augment with per-repo dicts so trailing_yield can read them.
+    record["rows_before"] = rows_before
+    record["rows_after"] = rows_after
+    # Ensure scalar rows_closed = max(before-after, 0) regardless of compute_kpi sign.
+    rows_closed = max(rows_before_n - rows_after_n, 0)
+    record["rows_closed"] = rows_closed
+    # Keep rows_per_hour consistent with the corrected rows_closed scalar.
+    total_seconds = cast(float, record["total_phase_seconds"])
+    record["rows_per_hour"] = (
+        rows_closed / (total_seconds / 3600.0) if total_seconds > 0 else 0.0
+    )
+    return record
+
+
 def is_regression(cur: dict[str, object], prev: dict[str, object]) -> bool:
     """True iff a LOOP-CONTROLLED KPI regressed.
 
@@ -122,12 +181,10 @@ def _derive_phase_seconds(
     return {"window": max(0.0, end - start)}
 
 
-def _load_baseline_rows(
-    repo: Path, sha: str | None, baseline_rel: str
-) -> dict[str, int]:
-    """Row counts from a ratcheted baseline JSON at a given SHA."""
+def _load_baseline_data(repo: Path, sha: str | None, baseline_rel: str) -> object:
+    """Parse raw baseline JSON at a given SHA, or return None on any error."""
     if not sha:
-        return {}
+        return None
     try:
         out = subprocess.run(  # nosec B603 B607: fixed argv, shell=False
             ["git", "-C", str(repo), "show", f"{sha}:{baseline_rel}"],
@@ -135,8 +192,21 @@ def _load_baseline_rows(
             text=True,
             check=True,
         )
-        data = json.loads(out.stdout)
+        return json.loads(out.stdout)
     except (subprocess.SubprocessError, json.JSONDecodeError, OSError):
+        return None
+
+
+def _load_baseline_rows(
+    repo: Path, sha: str | None, baseline_rel: str
+) -> dict[str, int]:
+    """Row counts from a ratcheted baseline JSON at a given SHA.
+
+    Legacy callers receive the original key→count dict. New callers should
+    use ``_load_baseline_data`` + ``_count_baseline_rows`` instead.
+    """
+    data = _load_baseline_data(repo, sha, baseline_rel)
+    if data is None:
         return {}
     rows: dict[str, int] = {}
     if isinstance(data, dict):
@@ -236,11 +306,20 @@ def _build_parser() -> argparse.ArgumentParser:
         default=Path("scripts/iteration_kpis.jsonl"),
         help="JSONL file to append one KPI line to.",
     )
+    parser.add_argument(
+        "--repo-name",
+        default=None,
+        help=(
+            "Logical repo label (e.g. repo-b) used as key in rows_before/rows_after. "
+            "Defaults to the resolved name of --repo."
+        ),
+    )
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
     args = _build_parser().parse_args(argv)
+    repo_name: str = args.repo_name or args.repo.resolve().name
 
     # Each derivation is isolated; a failure yields an empty/zero default.
     try:
@@ -248,13 +327,17 @@ def main(argv: list[str] | None = None) -> int:
     except Exception:
         phase_seconds = {}
     try:
-        rows_before = _load_baseline_rows(args.repo, args.start_sha, args.baseline)
+        data_before = _load_baseline_data(args.repo, args.start_sha, args.baseline)
+        rows_before_n = (
+            _count_baseline_rows(data_before) if data_before is not None else 0
+        )
     except Exception:
-        rows_before = {}
+        rows_before_n = 0
     try:
-        rows_after = _load_baseline_rows(args.repo, args.end_sha, args.baseline)
+        data_after = _load_baseline_data(args.repo, args.end_sha, args.baseline)
+        rows_after_n = _count_baseline_rows(data_after) if data_after is not None else 0
     except Exception:
-        rows_after = {}
+        rows_after_n = 0
     try:
         worker_runs = _derive_worker_runs(args.runs_dir)
     except Exception:
@@ -264,15 +347,14 @@ def main(argv: list[str] | None = None) -> int:
     except Exception:
         ci_wait_seconds = 0.0
 
-    kpi = compute_kpi(
-        KpiInputs(
-            iteration=args.iteration,
-            rows_before=rows_before,
-            rows_after=rows_after,
-            phase_seconds=phase_seconds,
-            worker_runs=worker_runs,
-            ci_wait_seconds=ci_wait_seconds,
-        )
+    kpi = build_kpis(
+        repo_name=repo_name,
+        rows_before_n=rows_before_n,
+        rows_after_n=rows_after_n,
+        worker_runs=worker_runs,
+        phase_seconds=phase_seconds,
+        ci_wait_seconds=ci_wait_seconds,
+        iteration=args.iteration,
     )
 
     line = json.dumps(kpi, sort_keys=True)

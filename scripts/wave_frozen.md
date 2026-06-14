@@ -201,3 +201,4 @@ loop can exclude) so re-anchoring fixes growth without exposing loop-induced chu
 | 62 | perf-smell · `tests/test_synthesize_packets.py` · `use-tuple-over-list` · W8301 | `test-fixture` | Test finding-collection fixtures; lists are idiomatic for test data. |
 | 63 | perf-smell · `tests/test_synthesize_perf.py` · `loop-global-usage` · W8202 | `test-fixture` | Module-level constant in cold-path test assertion loop; no measurable benefit from hoisting. |
 | 64 | perf-smell · `tests/test_wave_findings.py` · `use-tuple-over-list` · W8301 | `test-fixture` | `FINDINGS = [...]` module-level test fixture; list is idiomatic and allows easy extension. |
+| 65 | complexity · `scripts/mine_iteration_kpis.py` · `build_kpis` · parameter_count | `cohesive-assembler` | 7 params (>5) mirror the KPI record inputs; thin assembler delegating to compute_kpi; grouping would break the pinned signature. |

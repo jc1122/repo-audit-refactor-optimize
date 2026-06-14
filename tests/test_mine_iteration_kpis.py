@@ -54,7 +54,8 @@ def test_load_baseline_rows_counts_top_level_list(tmp_path):
 
 
 def test_mine_mprr_kpis_from_events(tmp_path):
-    import importlib, sys
+    import importlib
+    import sys
     from pathlib import Path
 
     REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -271,3 +272,26 @@ def test_mine_mprr_kpis_skips_blanks_and_counts_conflicts(tmp_path):
     assert kpi["merged"] == 1
     assert kpi["merge_conflict_rate"] == 1.0
     assert kpi["peak_concurrency"] == 2
+
+
+def test_accept_baseline_row_count_ignores_version_key():
+    # accept.json shape: count the accept[] entries, never the {version, accept} dict keys
+    assert (
+        m._count_baseline_rows({"version": 1, "accept": [{"x": 1}, {"y": 2}, {"z": 3}]})
+        == 3
+    )
+    assert m._count_baseline_rows([{"a": 1}, {"b": 2}]) == 2  # legacy flat list
+
+
+def test_emit_per_repo_rows_keyed_by_explicit_label():
+    payload = m.build_kpis(
+        repo_name="repo-b",
+        rows_before_n=20,
+        rows_after_n=19,
+        worker_runs=[],
+        phase_seconds={},
+        ci_wait_seconds=0,
+    )
+    assert payload["rows_before"] == {"repo-b": 20}
+    assert payload["rows_after"] == {"repo-b": 19}
+    assert payload["rows_closed"] == 1  # scalar kept for back-compat
