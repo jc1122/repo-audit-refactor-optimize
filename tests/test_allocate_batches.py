@@ -1,9 +1,11 @@
 import scripts.allocate_batches as ab
 
 KPIS = [
-    {"iteration": 1,
-     "rows_before": {"repo-a": 40, "repo-b": 10, "repo-p": 20},
-     "rows_after":  {"repo-a": 38, "repo-b": 4,  "repo-p": 19}},
+    {
+        "iteration": 1,
+        "rows_before": {"repo-a": 40, "repo-b": 10, "repo-p": 20},
+        "rows_after": {"repo-a": 38, "repo-b": 4, "repo-p": 19},
+    },
 ]
 # closed this window: repo-a 2, repo-b 6, repo-p 1  -> repo-b best trailing yield
 
@@ -17,7 +19,7 @@ def test_guaranteed_minimum_every_active_repo_gets_at_least_one():
 
 def test_surplus_goes_to_best_trailing_yield():
     alloc = ab.allocate(["repo-a", "repo-b", "repo-p"], KPIS, surplus=3, cap=6)
-    assert alloc["repo-b"] == max(alloc.values())   # best yield repo wins surplus
+    assert alloc["repo-b"] == max(alloc.values())  # best yield repo wins surplus
 
 
 def test_cap_per_repo_never_exceeded():
@@ -36,4 +38,22 @@ def test_rationale_is_one_line_and_cites_yield():
     r = ab.rationale(["repo-a", "repo-b", "repo-p"], KPIS, alloc)
     assert isinstance(r, str)
     assert "\n" not in r
-    assert "repo-b" in r            # names the surplus winner
+    assert "repo-b" in r  # names the surplus winner
+
+
+def test_trailing_yield_matches_miner_emitted_shape():
+    import importlib
+
+    kpi = importlib.import_module("scripts.mine_iteration_kpis")
+    alloc = importlib.import_module("scripts.allocate_batches")
+    # the record the miner emits for repo-b...
+    rec = kpi.build_kpis(
+        repo_name="repo-b",
+        rows_before_n=20,
+        rows_after_n=17,
+        worker_runs=[],
+        phase_seconds={},
+        ci_wait_seconds=0,
+    )
+    # ...is consumed by the allocator keyed on the SAME label
+    assert alloc.trailing_yield("repo-b", [rec]) == 3

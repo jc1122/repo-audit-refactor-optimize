@@ -80,3 +80,34 @@ Before completion:
 - `scripts/validate_run_report.py --run-dir docs/audits/<run-id>` is the B4 authority for final gating
 - verify that `docs/audits/<run-id>/run_report.json` and `docs/audits/<run-id>/run_report.md` both exist and contain all required keys. Absence of either report file, any required key, or v2 backlog `wont_fix` is a gate failure.
 - avoid summary language that implies proof where only intuition exists
+
+## Convergence Gate Semantics (dual shape — by design)
+
+The family's convergence gate has **two shapes by design**; this is intentional, not drift:
+
+- **Tier-1 wave repos (repo-B, repo-P)** — the deterministic wave runner reads
+  `.repo-audit/accept.json`, partitions every leaf's findings into
+  active / suppressed / stale, and writes the suppressed/stale sidecar.
+  `scripts/check_wave_baseline.py` then applies the **Option-A verdict: pass iff the
+  active set is empty AND no accepted entry is stale**. The wave **auto-suppresses**
+  accepted findings inline across all lanes.
+- **repo-A (leaf source)** — has no wave runner of its own; its
+  `scripts/check_self_audit.py` runs the code-health self-audit engine over
+  `skills/*/scripts` and **equality-compares** the result against the report-stage
+  `finding` rows in its own `.repo-audit/accept.json`, failing on regressions
+  (findings absent from the baseline) or stale rows (baseline findings no longer
+  produced). It does **not** auto-suppress; the baseline rows ARE the expected set.
+
+Both shapes are sourced from the same `.repo-audit/accept.json` schema and both fail
+on stale; they differ only in mechanism (inline wave auto-partition vs a dedicated
+equality-compare over a separate self-audit engine). repo-A is also covered by the
+orchestrator wave when it is audited as a target, so "every deterministic leaf on
+every family repo" holds regardless of this split.
+
+### `.repo-audit/accept.json` is not distributed (by design)
+
+repo-A's `.repo-audit/accept.json` is intentionally **not** listed in `package.json`
+`files`: it is a dev/CI convergence artifact (the acceptance policy the self-audit and
+the orchestrator wave read), **not** content shipped to skill consumers. Decision:
+keep it unshipped. The published skills carry only the leaf code; the acceptance
+policy travels with the repo, not the npm package.

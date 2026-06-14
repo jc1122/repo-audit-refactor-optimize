@@ -11,10 +11,6 @@
     [
       "CHANGELOG.md",
       "SKILL.md"
-    ],
-    [
-      "scripts/wave_baseline.json",
-      "scripts/wave_frozen.md"
     ]
   ]
 }

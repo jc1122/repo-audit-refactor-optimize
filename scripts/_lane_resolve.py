@@ -163,10 +163,10 @@ def load_source_overrides(
     repo_override_path = values.get("repo_override_path")
     warnings: list[str] = []
     merged: dict[str, dict[str, Any]] = {}
-    sources = [
+    sources = (
         ("user", user_override_path or _default_user_override_path(env)),
         ("repo", repo_override_path or (repo_root / DEFAULT_REPO_OVERRIDE)),
-    ]
+    )
 
     for scope, path in sources:
         skills = _read_override_payload(scope, path)
@@ -213,10 +213,11 @@ def _matches_when(profile: dict[str, Any], conditions: dict[str, Any]) -> bool:
 def _relevant_lane_names(
     profile: dict[str, Any], manifest: dict[str, Any]
 ) -> list[str]:
-    lane_names: list[str] = []
-    for name, lane in manifest["lanes"].items():
-        if lane.get("always") or _matches_when(profile, lane.get("when", {})):
-            lane_names.append(name)
+    lane_names: list[str] = [
+        name
+        for name, lane in manifest["lanes"].items()
+        if lane.get("always") or _matches_when(profile, lane.get("when", {}))
+    ]
     return lane_names
 
 

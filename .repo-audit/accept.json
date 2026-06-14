@@ -22,7 +22,7 @@
         "symbol": "<module>",
         "metric": "maintainability_index"
       },
-      "reason": "migrated accepted residual \u2014 see the repo's frozen ledger",
+      "reason": "migrated accepted residual — see the repo's frozen ledger",
       "applies": [
         "report"
       ]
@@ -35,7 +35,7 @@
         "symbol": "<module>",
         "metric": "maintainability_index"
       },
-      "reason": "migrated accepted residual \u2014 see the repo's frozen ledger",
+      "reason": "migrated accepted residual — see the repo's frozen ledger",
       "applies": [
         "report"
       ]
@@ -48,7 +48,7 @@
         "symbol": "<module>",
         "metric": "maintainability_index"
       },
-      "reason": "migrated accepted residual \u2014 see the repo's frozen ledger",
+      "reason": "migrated accepted residual — see the repo's frozen ledger",
       "applies": [
         "report"
       ]
@@ -61,7 +61,7 @@
         "symbol": "mechanical_patches",
         "metric": "function_nloc"
       },
-      "reason": "migrated accepted residual \u2014 see the repo's frozen ledger",
+      "reason": "migrated accepted residual — see the repo's frozen ledger",
       "applies": [
         "report"
       ]
@@ -74,7 +74,7 @@
         "symbol": "<module>",
         "metric": "maintainability_index"
       },
-      "reason": "migrated accepted residual \u2014 see the repo's frozen ledger",
+      "reason": "migrated accepted residual — see the repo's frozen ledger",
       "applies": [
         "report"
       ]
@@ -87,7 +87,7 @@
         "symbol": "<module>",
         "metric": "maintainability_index"
       },
-      "reason": "migrated accepted residual \u2014 see the repo's frozen ledger",
+      "reason": "migrated accepted residual — see the repo's frozen ledger",
       "applies": [
         "report"
       ]
@@ -100,7 +100,7 @@
         "symbol": "SKILL.md",
         "metric": "churn_complexity_product"
       },
-      "reason": "migrated accepted residual \u2014 see the repo's frozen ledger",
+      "reason": "migrated accepted residual — see the repo's frozen ledger",
       "applies": [
         "report"
       ]
@@ -113,7 +113,7 @@
         "symbol": "scripts/check_skill_requirements.py",
         "metric": "churn_complexity_product"
       },
-      "reason": "migrated accepted residual \u2014 see the repo's frozen ledger",
+      "reason": "migrated accepted residual — see the repo's frozen ledger",
       "applies": [
         "report"
       ]
@@ -126,7 +126,7 @@
         "symbol": "scripts/run_diagnosis_wave.py",
         "metric": "churn_complexity_product"
       },
-      "reason": "migrated accepted residual \u2014 see the repo's frozen ledger",
+      "reason": "migrated accepted residual — see the repo's frozen ledger",
       "applies": [
         "report"
       ]
@@ -139,7 +139,7 @@
         "symbol": "scripts/skill_bootstrap_manifest.json",
         "metric": "churn_complexity_product"
       },
-      "reason": "migrated accepted residual \u2014 see the repo's frozen ledger",
+      "reason": "migrated accepted residual — see the repo's frozen ledger",
       "applies": [
         "report"
       ]
@@ -152,7 +152,7 @@
         "symbol": "tests/test_check_skill_requirements.py",
         "metric": "churn_complexity_product"
       },
-      "reason": "migrated accepted residual \u2014 see the repo's frozen ledger",
+      "reason": "migrated accepted residual — see the repo's frozen ledger",
       "applies": [
         "report"
       ]
@@ -165,7 +165,7 @@
         "symbol": "tests/test_run_diagnosis_wave.py",
         "metric": "churn_complexity_product"
       },
-      "reason": "migrated accepted residual \u2014 see the repo's frozen ledger",
+      "reason": "migrated accepted residual — see the repo's frozen ledger",
       "applies": [
         "report"
       ]
@@ -178,7 +178,7 @@
         "symbol": "benchmark_entrypoints_missing",
         "metric": "benchmark_entrypoints_missing"
       },
-      "reason": "migrated accepted residual \u2014 see the repo's frozen ledger",
+      "reason": "migrated accepted residual — see the repo's frozen ledger",
       "applies": [
         "report"
       ]
@@ -191,7 +191,7 @@
         "symbol": "net_loc_growth",
         "metric": "net_loc_growth"
       },
-      "reason": "migrated accepted residual \u2014 see the repo's frozen ledger",
+      "reason": "migrated accepted residual — see the repo's frozen ledger",
       "applies": [
         "report"
       ]
@@ -204,7 +204,7 @@
         "symbol": "cli_flag_growth",
         "metric": "cli_flag_growth"
       },
-      "reason": "migrated accepted residual \u2014 see the repo's frozen ledger",
+      "reason": "migrated accepted residual — see the repo's frozen ledger",
       "applies": [
         "report"
       ]
@@ -217,7 +217,7 @@
         "symbol": "docs_loc_growth",
         "metric": "docs_loc_growth"
       },
-      "reason": "migrated accepted residual \u2014 see the repo's frozen ledger",
+      "reason": "migrated accepted residual — see the repo's frozen ledger",
       "applies": [
         "report"
       ]
@@ -230,7 +230,7 @@
         "symbol": "tracked_files_growth",
         "metric": "tracked_files_growth"
       },
-      "reason": "migrated accepted residual \u2014 see the repo's frozen ledger",
+      "reason": "migrated accepted residual — see the repo's frozen ledger",
       "applies": [
         "report"
       ]
@@ -243,7 +243,7 @@
         "symbol": "CHANGELOG.md",
         "metric": "churn_complexity_product"
       },
-      "reason": "migrated accepted residual \u2014 see the repo's frozen ledger",
+      "reason": "migrated accepted residual — see the repo's frozen ledger",
       "applies": [
         "report"
       ]
@@ -256,7 +256,592 @@
         "symbol": "references/pipeline.md",
         "metric": "churn_complexity_product"
       },
-      "reason": "migrated accepted residual \u2014 see the repo's frozen ledger",
+      "reason": "migrated accepted residual — see the repo's frozen ledger",
+      "applies": [
+        "report"
+      ]
+    },
+    {
+      "match": {
+        "kind": "finding",
+        "leaf": "hotspot",
+        "path": "scripts/wave_frozen.md",
+        "symbol": "scripts/wave_frozen.md",
+        "metric": "churn_complexity_product"
+      },
+      "reason": "scripts/wave_frozen.md is the acceptance ledger for the repo — it grows with every ratchet/triage session by design. High churn on this file is the expected signal of an active audit cycle, not a code quality risk.",
+      "applies": [
+        "report"
+      ]
+    },
+    {
+      "match": {
+        "kind": "finding",
+        "leaf": "perf-smell",
+        "path": "scripts/_accept.py",
+        "symbol": "loop-global-usage",
+        "metric": "W8202"
+      },
+      "reason": "W8202 fires on `_MATCH_KEYS` (a module-level tuple) inside `_parse_fields`. The loop iterates at most 5 elements during policy loading — a cold path called once at startup. Hoisting `_MATCH_KEYS` to a local variable adds indirection with no measurable benefit.",
+      "applies": [
+        "report"
+      ]
+    },
+    {
+      "match": {
+        "kind": "finding",
+        "leaf": "perf-smell",
+        "path": "scripts/_bootstrap_report.py",
+        "symbol": "dotted-import-in-loop",
+        "metric": "W8205"
+      },
+      "reason": "W8205 fires on `os.walk` and `os.path.join` in `scan_repo_profile`. `os.walk(repo_root)` is the iterable being iterated over, not called inside the loop body; perflint incorrectly treats the outer-scope reference as a repeated dotted import. For `os.path.join` the call is one-time per directory entry in a disk-IO-bound scan where the attribute lookup cost is negligible.",
+      "applies": [
+        "report"
+      ]
+    },
+    {
+      "match": {
+        "kind": "finding",
+        "leaf": "perf-smell",
+        "path": "scripts/_bootstrap_report.py",
+        "symbol": "loop-global-usage",
+        "metric": "W8202"
+      },
+      "reason": "W8202 fires on `dir_names`, `file_names` accesses inside `scan_repo_profile`'s `os.walk` loop. These are loop variables unpacked from the `os.walk` iterator — they are not module-level globals. perflint misidentifies them as global lookups because they shadow outer-scope names.",
+      "applies": [
+        "report"
+      ]
+    },
+    {
+      "match": {
+        "kind": "finding",
+        "leaf": "perf-smell",
+        "path": "scripts/_bootstrap_report.py",
+        "symbol": "loop-invariant-statement",
+        "metric": "W8201"
+      },
+      "reason": "W8201 fires on `manifest[\"lanes\"][lane_name]` inside `_evaluate_active_lanes` and on similar subscript-then-index patterns in `_build_merged_skills`. The outer subscript `manifest[\"lanes\"]` is invariant but the full expression `manifest[\"lanes\"][lane_name]` is loop-variant (key changes per iteration). perflint W8201 over-approximates by flagging the outer dict access rather than the full indexing expression.",
+      "applies": [
+        "report"
+      ]
+    },
+    {
+      "match": {
+        "kind": "finding",
+        "leaf": "perf-smell",
+        "path": "scripts/_lane_resolve.py",
+        "symbol": "loop-global-usage",
+        "metric": "W8202"
+      },
+      "reason": "W8202 fires on `KNOWN_LANGUAGES`, `KNOWN_TEST_SYSTEMS` (module-level frozensets) inside `_matches_when`. These are lookup-table constants iterated or membership-tested once per condition key in a cold-path lane-selection function called at startup. Hoisting them adds no value.",
+      "applies": [
+        "report"
+      ]
+    },
+    {
+      "match": {
+        "kind": "finding",
+        "leaf": "perf-smell",
+        "path": "scripts/_lane_resolve.py",
+        "symbol": "loop-invariant-statement",
+        "metric": "W8201"
+      },
+      "reason": "W8201 fires on `manifest[\"lanes\"][lane_name]` and `manifest[\"skills\"][skill_name]` patterns in `_collect_active_and_strict_skills` and `_mark_blocking_skills`. The outer dict `manifest[\"lanes\"]` is loop-invariant but the full subscript expression changes with each iteration variable. perflint over-approximates — hoisting `manifest[\"lanes\"]` to a local would only avoid one dict lookup per call, not per iteration.",
+      "applies": [
+        "report"
+      ]
+    },
+    {
+      "match": {
+        "kind": "finding",
+        "leaf": "perf-smell",
+        "path": "scripts/_lane_resolve.py",
+        "symbol": "use-tuple-over-list",
+        "metric": "W8301"
+      },
+      "reason": "W8301 fires on `warnings_list = []` in `_evaluate_lane_by_type`. This empty list is subsequently concatenated with `eval_warnings` (a list returned by the evaluator) using `+`. Changing to `()` would produce `tuple + list` which raises TypeError at runtime. The list must remain a list to support the concatenation contract.",
+      "applies": [
+        "report"
+      ]
+    },
+    {
+      "match": {
+        "kind": "finding",
+        "leaf": "perf-smell",
+        "path": "scripts/_skill_probe.py",
+        "symbol": "loop-global-usage",
+        "metric": "W8202"
+      },
+      "reason": "W8202 fires on `_REQUIRED_SKILL_FIELDS` (module-level frozenset) inside `_validate_skill_entry_fields`. The loop validates skill config fields on startup — a cold path with at most ~10 iterations. Hoisting to a local variable adds noise without measurable gain.",
+      "applies": [
+        "report"
+      ]
+    },
+    {
+      "match": {
+        "kind": "finding",
+        "leaf": "perf-smell",
+        "path": "scripts/allocate_batches.py",
+        "symbol": "dotted-import-in-loop",
+        "metric": "W8205"
+      },
+      "reason": "W8205 fires on `json.loads` inside `_load_kpis`'s line-by-line file read loop. Importing `loads` directly before the loop is a micro-optimization; this is an IO-bound analytics script called once per run.",
+      "applies": [
+        "report"
+      ]
+    },
+    {
+      "match": {
+        "kind": "finding",
+        "leaf": "perf-smell",
+        "path": "scripts/allocate_batches.py",
+        "symbol": "loop-invariant-statement",
+        "metric": "W8201"
+      },
+      "reason": "W8201 fires on `[repo for repo in active_repos if alloc[repo] < cap]` inside the greedy allocator loop. The expression is loop-variant: `alloc[repo]` changes each iteration when `alloc[winner] += 1` is applied. perflint flags `active_repos` and `cap` as invariant components but the full comprehension must be re-evaluated every iteration.",
+      "applies": [
+        "report"
+      ]
+    },
+    {
+      "match": {
+        "kind": "finding",
+        "leaf": "perf-smell",
+        "path": "scripts/check_skill_requirements.py",
+        "symbol": "dotted-import-in-loop",
+        "metric": "W8205"
+      },
+      "reason": "W8205 fires on `importlib.import_module` inside the module re-export loop. Each iteration imports a different module, so the function must be called once per iteration by design. Hoisting with `from importlib import import_module` would not change semantics but the per-call cost is dominated by the Python import machinery, not the attribute lookup.",
+      "applies": [
+        "report"
+      ]
+    },
+    {
+      "match": {
+        "kind": "finding",
+        "leaf": "perf-smell",
+        "path": "scripts/check_skill_requirements.py",
+        "symbol": "loop-global-usage",
+        "metric": "W8202"
+      },
+      "reason": "W8202 fires on `globals()`, `getattr`, `importlib` accesses inside the module re-export loop. These are built-in functions and an already-imported module. The loop runs once at module import time over a handful of entries. No measurable performance impact.",
+      "applies": [
+        "report"
+      ]
+    },
+    {
+      "match": {
+        "kind": "finding",
+        "leaf": "perf-smell",
+        "path": "scripts/check_wave_baseline.py",
+        "symbol": "use-tuple-over-list",
+        "metric": "W8301"
+      },
+      "reason": "W8301 fires on `cmd = [sys.executable, runner, ...]` in `_run_wave`. The list is immediately extended with `cmd += [...]` multiple times before being passed to `subprocess.run`. Changing to a tuple would make `+=` rebind the name to a new tuple each time; the current pattern with a mutable list is idiomatic and intentional.",
+      "applies": [
+        "report"
+      ]
+    },
+    {
+      "match": {
+        "kind": "finding",
+        "leaf": "perf-smell",
+        "path": "scripts/graduate_benchmark.py",
+        "symbol": "dotted-import-in-loop",
+        "metric": "W8205"
+      },
+      "reason": "W8205 fires on `shutil.copy2` inside `graduate`'s glob loop. Each iteration copies one file; the loop body is dominated by file-copy IO. The cost of a single attribute lookup on `shutil` is unmeasurable relative to disk IO.",
+      "applies": [
+        "report"
+      ]
+    },
+    {
+      "match": {
+        "kind": "finding",
+        "leaf": "perf-smell",
+        "path": "scripts/migrate_baseline_to_accept.py",
+        "symbol": "loop-global-usage",
+        "metric": "W8202"
+      },
+      "reason": "W8202 fires on `r.get(...)` calls inside `_build_accept_doc`'s loop. `r` is the loop variable (a dict from the baseline rows), not a global. perflint misidentifies it as a global lookup because `r` is not declared in the loop header as a classical iteration variable name.",
+      "applies": [
+        "report"
+      ]
+    },
+    {
+      "match": {
+        "kind": "finding",
+        "leaf": "perf-smell",
+        "path": "scripts/mine_iteration_kpis.py",
+        "symbol": "dotted-import-in-loop",
+        "metric": "W8205"
+      },
+      "reason": "W8205 fires on `json.loads` inside a line-by-line file-reading loop in `_parse_worker_events`. The loop is IO-bound (file reading); the attribute lookup on `json` is negligible. This is a cold-path analytics script called at most once per CI run.",
+      "applies": [
+        "report"
+      ]
+    },
+    {
+      "match": {
+        "kind": "finding",
+        "leaf": "perf-smell",
+        "path": "scripts/mine_iteration_kpis.py",
+        "symbol": "loop-invariant-statement",
+        "metric": "W8201"
+      },
+      "reason": "W8201 fires on `ev.get(\"event\")` inside a line-parsing loop. `ev` changes per iteration (it is unpacked from `json.loads(line)`), so the expression is loop-variant. perflint over-approximates: it sees the `.get` call as potentially invariant because the method binding is stable, but the object `ev` itself is not.",
+      "applies": [
+        "report"
+      ]
+    },
+    {
+      "match": {
+        "kind": "finding",
+        "leaf": "perf-smell",
+        "path": "scripts/mine_iteration_kpis.py",
+        "symbol": "use-tuple-over-list",
+        "metric": "W8301"
+      },
+      "reason": "W8301 fires on `worker_runs = []` in the except branch of `_derive_worker_runs` fallback. `worker_runs` is passed to `KpiInputs(worker_runs=...)` whose field is typed as `list[dict]`. Changing to `()` would violate the type contract and fail any downstream append or len operation.",
+      "applies": [
+        "report"
+      ]
+    },
+    {
+      "match": {
+        "kind": "finding",
+        "leaf": "perf-smell",
+        "path": "scripts/mprr_normalize.py",
+        "symbol": "loop-global-usage",
+        "metric": "W8202"
+      },
+      "reason": "W8202 fires on `_REDUNDANCY_LEAVES` and `_CLASS_BY_LEAF` (module-level frozen lookup tables) inside `normalize`'s finding loop. These are constant dicts consulted once per finding. The loop is not a hot path — it processes at most a few hundred findings per audit run.",
+      "applies": [
+        "report"
+      ]
+    },
+    {
+      "match": {
+        "kind": "finding",
+        "leaf": "perf-smell",
+        "path": "scripts/mprr_run.py",
+        "symbol": "dotted-import-in-loop",
+        "metric": "W8205"
+      },
+      "reason": "W8205 fires on `mprr_packets.remediation_packet` inside a batch-dispatch loop. The attribute lookup traverses one module reference per iteration; the batch size is small (typically 1-5 items). The call itself performs JSON serialization and subprocess coordination — the attribute lookup cost is unmeasurable.",
+      "applies": [
+        "report"
+      ]
+    },
+    {
+      "match": {
+        "kind": "finding",
+        "leaf": "perf-smell",
+        "path": "scripts/mprr_run.py",
+        "symbol": "loop-invariant-statement",
+        "metric": "W8201"
+      },
+      "reason": "W8201 fires on `list(it.files)` and `set(it.files)` inside the batch-dispatch loop. `it` changes per iteration (each element of `batch`), so both expressions are loop-variant. perflint incorrectly flags the `list()` and `set()` constructors as invariant calls.",
+      "applies": [
+        "report"
+      ]
+    },
+    {
+      "match": {
+        "kind": "finding",
+        "leaf": "perf-smell",
+        "path": "scripts/mprr_run.py",
+        "symbol": "use-list-copy",
+        "metric": "W8402"
+      },
+      "reason": "W8402 fires on `entries.append(...)` inside a nested loop in `_engine_accept_policy` (outer loop: `data.values()`, inner: `section.get('exclude_paths', [])`). The outer loop filters with `isinstance` check and pulls `reason` from each section; these per-section values are used in the constructed `AcceptEntry`. This is not a simple list copy — it cannot be replaced with `list.copy()` or a single-level comprehension.",
+      "applies": [
+        "report"
+      ]
+    },
+    {
+      "match": {
+        "kind": "finding",
+        "leaf": "perf-smell",
+        "path": "scripts/run_diagnosis_wave.py",
+        "symbol": "dotted-import-in-loop",
+        "metric": "W8205"
+      },
+      "reason": "W8205 fires on `time.time()` calls inside `_collect_lane_results`'s parallel-future loop. `time` is a C-extension module; the attribute lookup overhead is negligible. The concurrency bookkeeping (`start_times`, `timings`) requires `time.time()` at precise positions in the loop body, and the loop runs once per lane (typically 8-9 iterations).",
+      "applies": [
+        "report"
+      ]
+    },
+    {
+      "match": {
+        "kind": "finding",
+        "leaf": "perf-smell",
+        "path": "scripts/run_diagnosis_wave.py",
+        "symbol": "loop-invariant-statement",
+        "metric": "W8201"
+      },
+      "reason": "W8201 fires at multiple sites in `_partition_runnable` and `_run_wave`: on `context.rev is None` (dataclass attribute read), on `results[lane]` dict indexing, and on `_status_for_exit(exit_code, len(findings))`. These are all loop-variant: `lane` changes each iteration, making the dict lookups and function arguments different each time. perflint W8201 over-approximates by treating frozen-dataclass attribute reads and per-key dict accesses as potential loop-invariants.",
+      "applies": [
+        "report"
+      ]
+    },
+    {
+      "match": {
+        "kind": "finding",
+        "leaf": "perf-smell",
+        "path": "scripts/synthesize_packets.py",
+        "symbol": "dotted-import-in-loop",
+        "metric": "W8205"
+      },
+      "reason": "W8205 fires on `json.dumps` inside `mechanical_patches`'s finding loop. Each call serializes a per-finding `verify_payload` dict to disk; the loop body is dominated by file-write IO. Moving `from json import dumps` before the loop has no measurable effect.",
+      "applies": [
+        "report"
+      ]
+    },
+    {
+      "match": {
+        "kind": "finding",
+        "leaf": "perf-smell",
+        "path": "scripts/synthesize_packets.py",
+        "symbol": "loop-global-usage",
+        "metric": "W8202"
+      },
+      "reason": "W8202 fires on `SAFE_PATCH_TABLE` (module-level dict constant) inside `mechanical_patches`'s finding loop. This is a dispatch table consulted once per finding to determine the patch strategy. The lookup is O(1) and not on a hot path.",
+      "applies": [
+        "report"
+      ]
+    },
+    {
+      "match": {
+        "kind": "finding",
+        "leaf": "perf-smell",
+        "path": "scripts/synthesize_packets.py",
+        "symbol": "loop-invariant-statement",
+        "metric": "W8201"
+      },
+      "reason": "W8201 fires on multiple statements inside `mechanical_patches`'s finding loop: `str(finding.get('id', 'unknown'))`, `str(finding.get('path', ''))`, `entry['check_cmd']`. These all depend on `finding` or `entry` which change each iteration. perflint W8201 over-approximates — the `str()` constructor reference is invariant but its argument is loop-variant.",
+      "applies": [
+        "report"
+      ]
+    },
+    {
+      "match": {
+        "kind": "finding",
+        "leaf": "perf-smell",
+        "path": "tests/test_allocate_batches.py",
+        "symbol": "use-tuple-over-list",
+        "metric": "W8301"
+      },
+      "reason": "W8301 fires on `KPIS = [...]` module-level test fixture in test_allocate_batches.py. Test fixtures are conventionally written as lists to allow parametrize/append patterns. Changing to a tuple provides no test-quality benefit and would require updating all usages if the fixture grows.",
+      "applies": [
+        "report"
+      ]
+    },
+    {
+      "match": {
+        "kind": "finding",
+        "leaf": "perf-smell",
+        "path": "tests/test_check_skill_requirements.py",
+        "symbol": "loop-global-usage",
+        "metric": "W8202"
+      },
+      "reason": "W8202 fires on module-level name accesses inside test helper loops in test_check_skill_requirements.py. These are test utility functions called rarely in test setup, not hot paths. The suggested optimization would reduce test readability without measurable benefit.",
+      "applies": [
+        "report"
+      ]
+    },
+    {
+      "match": {
+        "kind": "finding",
+        "leaf": "perf-smell",
+        "path": "tests/test_check_skill_requirements.py",
+        "symbol": "loop-invariant-statement",
+        "metric": "W8201"
+      },
+      "reason": "W8201 fires on dict subscript patterns inside test helper loops (e.g., `manifest['skills'][name]`). The loop variable `name` changes each iteration making the full expression loop-variant. perflint over-approximates by flagging the outer subscript as invariant.",
+      "applies": [
+        "report"
+      ]
+    },
+    {
+      "match": {
+        "kind": "finding",
+        "leaf": "perf-smell",
+        "path": "tests/test_check_skill_requirements.py",
+        "symbol": "use-dict-comprehension",
+        "metric": "W8403"
+      },
+      "reason": "W8403 fires on `_lane_manifest`'s `skills` dict building loop at line 1093. The loop body assigns identical value structures for each `name`; a dict comprehension would work, but the current for-loop form makes the value template (`priority`, `source_type`, etc.) more legible in test code where clarity outweighs micro-optimization.",
+      "applies": [
+        "report"
+      ]
+    },
+    {
+      "match": {
+        "kind": "finding",
+        "leaf": "perf-smell",
+        "path": "tests/test_check_skill_requirements.py",
+        "symbol": "use-tuple-over-list",
+        "metric": "W8301"
+      },
+      "reason": "W8301 fires on list literals used as test parametrize values and fixture data in test_check_skill_requirements.py. Test fixtures are idiomatically written as lists; switching to tuples in test code is a style noise with no runtime benefit.",
+      "applies": [
+        "report"
+      ]
+    },
+    {
+      "match": {
+        "kind": "finding",
+        "leaf": "perf-smell",
+        "path": "tests/test_lessons.py",
+        "symbol": "use-tuple-over-list",
+        "metric": "W8301"
+      },
+      "reason": "W8301 fires on a list literal used as test parametrize data in test_lessons.py. Test data fixtures are idiomatically lists; no runtime benefit from changing to tuple.",
+      "applies": [
+        "report"
+      ]
+    },
+    {
+      "match": {
+        "kind": "finding",
+        "leaf": "perf-smell",
+        "path": "tests/test_migrate_baseline.py",
+        "symbol": "use-tuple-over-list",
+        "metric": "W8301"
+      },
+      "reason": "W8301 fires on test fixture list literals in test_migrate_baseline.py. Test fixtures are idiomatically lists; no benefit from changing to tuples in test code.",
+      "applies": [
+        "report"
+      ]
+    },
+    {
+      "match": {
+        "kind": "finding",
+        "leaf": "perf-smell",
+        "path": "tests/test_mprr_normalize.py",
+        "symbol": "use-tuple-over-list",
+        "metric": "W8301"
+      },
+      "reason": "W8301 fires on test fixture list literals in test_mprr_normalize.py. Test fixtures are idiomatically lists; no runtime benefit from changing to tuples.",
+      "applies": [
+        "report"
+      ]
+    },
+    {
+      "match": {
+        "kind": "finding",
+        "leaf": "perf-smell",
+        "path": "tests/test_mprr_partition.py",
+        "symbol": "loop-global-usage",
+        "metric": "W8202"
+      },
+      "reason": "W8202 fires on module-level constant accesses inside test assertion loops in test_mprr_partition.py. These are cold-path test functions; performance optimization in test assertion loops is not warranted.",
+      "applies": [
+        "report"
+      ]
+    },
+    {
+      "match": {
+        "kind": "finding",
+        "leaf": "perf-smell",
+        "path": "tests/test_mprr_run.py",
+        "symbol": "use-tuple-over-list",
+        "metric": "W8301"
+      },
+      "reason": "W8301 fires on test fixture list literals in test_mprr_run.py. Test data is idiomatically expressed as lists; no runtime benefit from converting to tuples in test code.",
+      "applies": [
+        "report"
+      ]
+    },
+    {
+      "match": {
+        "kind": "finding",
+        "leaf": "perf-smell",
+        "path": "tests/test_run_diagnosis_wave.py",
+        "symbol": "use-tuple-over-list",
+        "metric": "W8301"
+      },
+      "reason": "W8301 fires on the `[\"tests\", \"fixtures\"]` list in `test_effective_excludes_defaults_to_tests_and_fixtures`. This asserts the exact return value of `_effective_excludes`; changing to a tuple would require updating the assertion and the production function's return type. The assertion clarity outweighs the micro-optimization.",
+      "applies": [
+        "report"
+      ]
+    },
+    {
+      "match": {
+        "kind": "finding",
+        "leaf": "perf-smell",
+        "path": "tests/test_self_dogfood.py",
+        "symbol": "loop-global-usage",
+        "metric": "W8202"
+      },
+      "reason": "W8202 fires on module-level name accesses inside test verification loops in test_self_dogfood.py. These loops run once per test execution over small collections. No hot path, no measurable benefit from hoisting.",
+      "applies": [
+        "report"
+      ]
+    },
+    {
+      "match": {
+        "kind": "finding",
+        "leaf": "perf-smell",
+        "path": "tests/test_self_dogfood.py",
+        "symbol": "loop-invariant-statement",
+        "metric": "W8201"
+      },
+      "reason": "W8201 fires on expressions inside test verification loops in test_self_dogfood.py where the expression depends on the loop variable. perflint over-approximates by flagging outer object references as invariant when the full subscripted expression is loop-variant.",
+      "applies": [
+        "report"
+      ]
+    },
+    {
+      "match": {
+        "kind": "finding",
+        "leaf": "perf-smell",
+        "path": "tests/test_synthesize_packets.py",
+        "symbol": "use-tuple-over-list",
+        "metric": "W8301"
+      },
+      "reason": "W8301 fires on test fixture list literals used as finding collections in test_synthesize_packets.py. Test fixtures are idiomatically lists to allow append/extend during parametrize setup; no runtime benefit from changing to tuples.",
+      "applies": [
+        "report"
+      ]
+    },
+    {
+      "match": {
+        "kind": "finding",
+        "leaf": "perf-smell",
+        "path": "tests/test_synthesize_perf.py",
+        "symbol": "loop-global-usage",
+        "metric": "W8202"
+      },
+      "reason": "W8202 fires on a module-level constant accessed inside a test assertion loop in test_synthesize_perf.py. This is a cold-path test with negligible iteration count. No benefit from hoisting.",
+      "applies": [
+        "report"
+      ]
+    },
+    {
+      "match": {
+        "kind": "finding",
+        "leaf": "perf-smell",
+        "path": "tests/test_wave_findings.py",
+        "symbol": "use-tuple-over-list",
+        "metric": "W8301"
+      },
+      "reason": "W8301 fires on `FINDINGS = [...]` module-level test fixture list in test_wave_findings.py. The fixture is used in multiple test functions as a shared input; list form is idiomatic for test fixtures and allows easier extension.",
+      "applies": [
+        "report"
+      ]
+    },
+    {
+      "match": {
+        "kind": "finding",
+        "leaf": "complexity",
+        "path": "scripts/mine_iteration_kpis.py",
+        "symbol": "build_kpis",
+        "metric": "parameter_count"
+      },
+      "reason": "build_kpis is a thin per-repo KPI-record assembler: its 7 parameters (7 exceeds the max of 5) mirror exactly the KPI record's inputs (repo label + rows_before/after counts + worker_runs + phase_seconds + ci_wait_seconds + iteration), and its body only builds two per-repo dicts and delegates to compute_kpi. The parameter count reflects the breadth of a KPI record, not tangled logic; grouping into a dataclass would merely relocate the surface and break the pinned build_kpis/test signature. Accepted as cohesive-assembler.",
       "applies": [
         "report"
       ]
