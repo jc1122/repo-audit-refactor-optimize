@@ -14,7 +14,10 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from scripts import _accept  # static binding for the type checker only
 
 _wave_findings = importlib.import_module(
     "scripts._wave_findings" if __package__ else "_wave_findings"
@@ -381,7 +384,7 @@ def _run_wave(
 
 def _resolve_accept(
     repo: Path, accept: Path | None, baseline: Path | None
-) -> "_accept.AcceptPolicy":
+) -> _accept.AcceptPolicy:
     """Auto-discover the in-repo policy, merge --accept and a legacy --baseline."""
     policy = _accept.load_accept(repo, accept)  # raises AcceptError on a bad file
     if baseline is not None:
@@ -391,7 +394,7 @@ def _resolve_accept(
 
 
 def _apply_accept(
-    policy: "_accept.AcceptPolicy", findings: list[dict[str, str]], out_dir: Path
+    policy: _accept.AcceptPolicy, findings: list[dict[str, str]], out_dir: Path
 ) -> list[dict[str, str]]:
     """Partition at the report stage; write the accepted + back-compat sidecars."""
     active, accepted, stale = policy.partition(findings, "report")

@@ -50,7 +50,7 @@ def _write_state(
     )
 
 
-def _engine_accept_policy(repo: Path) -> "_accept.AcceptPolicy":
+def _engine_accept_policy(repo: Path) -> _accept.AcceptPolicy:
     """Policy for the target repo + back-compat remediation_excludes.json fallback."""
     policy = _accept.load_accept(repo)
     legacy = Path(repo) / "scripts" / "remediation_excludes.json"
