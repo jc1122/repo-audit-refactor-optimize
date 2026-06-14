@@ -36,6 +36,8 @@ _DEFAULT_REGISTRY = Path(__file__).resolve().parent / "wave_lanes.json"
 
 DOC_EXCLUDES = ("audits", "dogfood", "plans", "superpowers")
 
+DEFAULT_EXCLUDES = ("tests", "fixtures")
+
 # ── registry loader ────────────────────────────────────────────────────
 
 
@@ -68,6 +70,7 @@ class _LaneContext:
     repo: Path
     out_root: Path
     source_prefixes: list[str]
+    exclude_prefixes: list[str]
     rev: str | None
     coverage_json: Path | None
     security_config: Path | None
@@ -80,6 +83,7 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--out-dir", required=True, type=Path)
     parser.add_argument("--skills-root", required=True, type=Path)
     parser.add_argument("--source-prefix", action="append", default=[])
+    parser.add_argument("--exclude-prefix", action="append", default=[])
     parser.add_argument("--coverage-json", type=Path)
     parser.add_argument("--rev")
     parser.add_argument("--security-config", type=Path)
@@ -136,6 +140,36 @@ def _append_flagged(cmd: list[str], flag: str, values: Iterable[str]) -> None:
         cmd.extend([flag, value])
 
 
+def _effective_excludes(
+    source_prefixes: list[str], exclude_prefixes: list[str]
+) -> list[str]:
+    """Default exclusions when scoping is implicit; explicit scoping overrides.
+
+    Explicit --exclude-prefix always wins. Otherwise, when no --source-prefix is
+    given the wave scopes nothing positively, so it excludes tests/fixtures by
+    default; an explicit --source-prefix means the caller is scoping deliberately,
+    so no default exclusion is added.
+    """
+    if exclude_prefixes:
+        return list(exclude_prefixes)
+    if source_prefixes:
+        return []
+    return list(DEFAULT_EXCLUDES)
+
+
+def _audit_scope_args(
+    source_prefixes: list[str], exclude_prefixes: list[str], supports_exclude: bool
+) -> list[str]:
+    """Scope flags for the source-auditing lanes (code-health/security/dependency)."""
+    args: list[str] = []
+    for prefix in source_prefixes:
+        args.extend(["--source-prefix", prefix])
+    if supports_exclude:
+        for prefix in exclude_prefixes:
+            args.extend(["--exclude-prefix", prefix])
+    return args
+
+
 def _add_growth_args(cmd: list[str], context: _LaneContext) -> None:
     """Append growth-lane flags: --baseline-rev and auto-detected --config."""
     if context.rev is not None:
@@ -178,7 +212,10 @@ def _append_scope_args(
         return
 
     if lane in {"code-health", "security", "dependency"}:
-        _append_flagged(cmd, "--source-prefix", context.source_prefixes)
+        supports = _leaf_supports_exclude_prefix(leaf)
+        cmd.extend(
+            _audit_scope_args(context.source_prefixes, context.exclude_prefixes, supports)
+        )
     elif lane == "docs":
         _add_docs_args(cmd, leaf, context)
     elif lane == "hotspot":
@@ -373,6 +410,7 @@ def main(argv: list[str] | None = None) -> int:
         args.repo,
         args.out_dir,
         args.source_prefix,
+        _effective_excludes(args.source_prefix, args.exclude_prefix),
         args.rev,
         args.coverage_json,
         args.security_config,
