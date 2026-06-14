@@ -50,3 +50,23 @@ def test_merge_clean_raises_on_conflict(tmp_path):
     (repo / "base.py").write_text("x = 3\n"); _git(repo, "add", "."); _git(repo, "commit", "-qm", "main")
     with pytest.raises(integ.InvariantViolation):
         integ.merge_clean(str(repo), "w1")      # overlapping edit -> must raise
+
+
+def test_self_guard_blocks_engine_self_merge(monkeypatch):
+    monkeypatch.setattr(integ, "_git_toplevel", lambda p: "/repo")  # engine == target
+    ok, reasons = integ.self_guard("/repo", ["scripts/mprr_run.py", "docs/x.md"])
+    assert ok is False
+    assert any("self-engine" in r and "mprr_run.py" in r for r in reasons)
+
+
+def test_self_guard_allows_non_engine_files_in_self_repo(monkeypatch):
+    monkeypatch.setattr(integ, "_git_toplevel", lambda p: "/repo")
+    ok, reasons = integ.self_guard("/repo", ["docs/x.md", "README.md"])
+    assert ok is True and reasons == []
+
+
+def test_self_guard_allows_different_repo(monkeypatch):
+    monkeypatch.setattr(integ, "_git_toplevel",
+                        lambda p: "/engine" if p == integ._ENGINE_DIR else "/target")
+    ok, reasons = integ.self_guard("/target", ["scripts/mprr_run.py"])
+    assert ok is True and reasons == []

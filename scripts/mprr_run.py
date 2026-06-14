@@ -79,9 +79,10 @@ def _cmd_integrate(a: argparse.Namespace) -> int:
     rc = evidence.get("remediation_class") or _class_of(a, run_dir)
     scope_ok, scope_reasons = mprr_integrate.assert_scope(files, diff_files)
     gate_ok, gate_reasons = mprr_gate.verify(rc, evidence)
+    guard_ok, guard_reasons = mprr_integrate.self_guard(a.repo, diff_files)
     merged = False
     status = "discard"
-    if scope_ok and gate_ok:
+    if scope_ok and gate_ok and guard_ok:
         if not a.no_merge:
             mprr_integrate.merge_clean(a.repo, a.branch)  # raises on conflict
         merged = True
@@ -91,7 +92,8 @@ def _cmd_integrate(a: argparse.Namespace) -> int:
     locked -= set(files)
     _write_state(run_dir, running, locked)
     _log(run_dir, {"event": status, "id": a.packet_id, "conflict": False,
-                   "merged": merged, "reasons": scope_reasons + gate_reasons})
+                   "merged": merged,
+                   "reasons": scope_reasons + gate_reasons + guard_reasons})
     return 0 if merged else 1
 
 

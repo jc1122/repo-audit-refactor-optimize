@@ -7,6 +7,7 @@ normal merge conflict to resolve.
 from __future__ import annotations
 
 import subprocess  # nosec B404 — fixed git argv, no shell
+from pathlib import Path
 from typing import Iterable
 
 
@@ -32,3 +33,41 @@ def merge_clean(repo: str, branch: str) -> None:
             f"merge of {branch} conflicted (disjoint-file invariant violated): "
             f"{proc.stdout.strip()} {proc.stderr.strip()}"
         )
+
+
+_ENGINE_DIR = Path(__file__).resolve().parent  # the engine repo's scripts/ dir
+
+
+def _git_toplevel(path: Path | str) -> str | None:
+    """Return the git toplevel for *path*, or None if it cannot be resolved."""
+    try:
+        proc = subprocess.run(  # nosec B603,B607 — fixed git argv, no shell
+            ["git", "-C", str(path), "rev-parse", "--show-toplevel"],
+            capture_output=True, text=True,
+        )
+    except OSError:
+        return None
+    if proc.returncode != 0:
+        return None
+    return proc.stdout.strip() or None
+
+
+def self_guard(repo: str, diff_files: Iterable[str]) -> tuple[bool, list[str]]:
+    """Refuse to auto-merge edits to the engine's own ``scripts/*.py`` when the
+    target resolves to the engine's own repo (or the target is unresolvable —
+    fail closed). Defense-in-depth against the in-place / self-modification topology.
+    """
+    engine_root = _git_toplevel(_ENGINE_DIR)
+    if engine_root is None:
+        return True, []  # cannot identify the engine repo; nothing to protect
+    target_root = _git_toplevel(Path(repo))
+    if target_root is not None and target_root != engine_root:
+        return True, []  # clearly a different repo
+    offenders = sorted(
+        f for f in diff_files if f.startswith("scripts/") and f.endswith(".py")
+    )
+    if offenders:
+        return False, [
+            f"self-engine modification requires human review: {f}" for f in offenders
+        ]
+    return True, []
