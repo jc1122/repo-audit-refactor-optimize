@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.7.1
+
+chore: mechanical lint/format cleanup of `scripts/` to clear the self-audit quality
+lane (diagnosis-wave findings 124 -> 20; no behavior change, 246 tests green). Applied
+`ruff check --fix` + `ruff format`, wrapped over-long docstrings and message strings
+(string values byte-identical), dropped an unused `typing.Dict/List` import, and added
+justified `# noqa: E402` to the two deferred package-bootstrap imports. The format reflow
+pushed `synth_run.main`'s argparse builder over the complexity NLOC threshold, so the
+parser construction was split into `_add_core_parsers` / `_add_perf_parsers` /
+`_build_parser` helpers to keep the batch finding-neutral (public `main()` unchanged).
+The remaining 20 wave findings (TYPE, bandit-security, growth, deferred-structural) are
+tracked follow-ups, not mechanical cleanup.
+
 ## 0.7.0
 
 feat: self-audit hardening — honest benchmark-surface detection (no name-substring false

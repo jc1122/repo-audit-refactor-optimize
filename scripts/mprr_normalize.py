@@ -2,6 +2,7 @@
 
 The only module that knows the input schemas. Stdlib only, deterministic.
 """
+
 from __future__ import annotations
 
 import re
@@ -43,15 +44,17 @@ def normalize(findings: list[dict[str, Any]]) -> list[RemediationItem]:
         leaf = str(f.get("leaf", ""))
         if leaf not in _REDUNDANCY_LEAVES:
             continue
-        items.append(RemediationItem(
-            id=str(f.get("id", "")),
-            lane=leaf,
-            signal=str(f.get("signal", "")),
-            files=_files_for(f),
-            remediation_class=_CLASS_BY_LEAF[leaf],
-            confidence=str(f.get("confidence", "low")),
-            finding=f,
-        ))
+        items.append(
+            RemediationItem(
+                id=str(f.get("id", "")),
+                lane=leaf,
+                signal=str(f.get("signal", "")),
+                files=_files_for(f),
+                remediation_class=_CLASS_BY_LEAF[leaf],
+                confidence=str(f.get("confidence", "low")),
+                finding=f,
+            )
+        )
     return sorted(items, key=lambda it: it.id)
 
 
@@ -60,19 +63,23 @@ def from_triage_report(rows: list[dict[str, Any]]) -> list[RemediationItem]:
     items: list[RemediationItem] = []
     for r in rows:
         decision = str(r.get("validation_decision", ""))
-        if not decision.endswith("_HIGH") or not decision.startswith(("DELETE", "MERGE")):
+        if not decision.endswith("_HIGH") or not decision.startswith(
+            ("DELETE", "MERGE")
+        ):
             continue
         nodeid = str(r.get("test_nodeid", ""))
         path = nodeid.split("::", 1)[0]
         if not path:
             continue
-        items.append(RemediationItem(
-            id=str(r.get("id") or nodeid),
-            lane="test-redundancy",
-            signal=decision.split("_", 1)[0],  # DELETE | MERGE
-            files=(path,),
-            remediation_class="test_removal",
-            confidence="high",
-            finding=dict(r),
-        ))
+        items.append(
+            RemediationItem(
+                id=str(r.get("id") or nodeid),
+                lane="test-redundancy",
+                signal=decision.split("_", 1)[0],  # DELETE | MERGE
+                files=(path,),
+                remediation_class="test_removal",
+                confidence="high",
+                finding=dict(r),
+            )
+        )
     return sorted(items, key=lambda it: it.id)

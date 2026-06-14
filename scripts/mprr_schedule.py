@@ -1,6 +1,7 @@
 """Continuous saturating scheduler. Pure state machine; the caller injects
 dispatch (start) and completion. The disjoint-lock invariant is enforced here.
 """
+
 from __future__ import annotations
 
 from typing import Any

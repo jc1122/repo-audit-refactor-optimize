@@ -5,6 +5,7 @@ Copies the harness (*.py) into ``benchmarks/<name>/`` only. The perf trend ledge
 is owned entirely by perf-benchmark's ``--baseline-ledger`` (ledger.append_run) — this
 script never writes it, so the two never disagree on format.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -26,12 +27,16 @@ def graduate(*, harness_dir: Path, repo_root: Path, name: str) -> dict[str, obje
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Copy a synthesized harness into benchmarks/.")
+    parser = argparse.ArgumentParser(
+        description="Copy a synthesized harness into benchmarks/."
+    )
     parser.add_argument("--harness-dir", required=True, type=Path)
     parser.add_argument("--repo-root", required=True, type=Path)
     parser.add_argument("--name", required=True)
     args = parser.parse_args(argv)
-    res = graduate(harness_dir=args.harness_dir, repo_root=args.repo_root, name=args.name)
+    res = graduate(
+        harness_dir=args.harness_dir, repo_root=args.repo_root, name=args.name
+    )
     print(json.dumps(res, indent=2))
     return 0
 

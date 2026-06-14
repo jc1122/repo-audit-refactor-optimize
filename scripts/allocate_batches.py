@@ -10,7 +10,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from typing import Dict, List, Mapping, Sequence
+from collections.abc import Mapping, Sequence
 
 
 def trailing_yield(repo: str, kpis: Sequence[Mapping]) -> int:
@@ -31,7 +31,7 @@ def allocate(
     kpis: Sequence[Mapping],
     surplus: int,
     cap: int = 6,
-) -> Dict[str, int]:
+) -> dict[str, int]:
     """Allocate batches to active repos.
 
     Every active repo starts at the guaranteed minimum of 1. Surplus batches
@@ -39,7 +39,7 @@ def allocate(
     yield that is still below ``cap`` (ties broken stably by ``active_repos``
     order). Stops when all repos are at ``cap``. Never exceeds ``cap``.
     """
-    alloc: Dict[str, int] = {repo: 1 for repo in active_repos}
+    alloc: dict[str, int] = {repo: 1 for repo in active_repos}
     yields = {repo: trailing_yield(repo, kpis) for repo in active_repos}
 
     for _ in range(max(surplus, 0)):
@@ -72,8 +72,8 @@ def rationale(
     )
 
 
-def _load_kpis(path: str) -> List[Mapping]:
-    records: List[Mapping] = []
+def _load_kpis(path: str) -> list[Mapping]:
+    records: list[Mapping] = []
     with open(path, encoding="utf-8") as fh:
         for line in fh:
             line = line.strip()

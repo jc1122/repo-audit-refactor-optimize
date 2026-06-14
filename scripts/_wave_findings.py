@@ -107,7 +107,8 @@ def partition(
     * suppressed — findings whose identity IS in the baseline (accepted residuals)
     * stale      — baseline identities that matched nothing (sorted)
 
-    The wave drops ``suppressed``; the convergence ratchet fails on ``active`` and ``stale``.
+    The wave drops ``suppressed``; the convergence ratchet fails on ``active``
+    and ``stale``.
     """
     baseline_ids = {identity(entry) for entry in baseline}
     matched: set[tuple[str, str, str, str]] = set()

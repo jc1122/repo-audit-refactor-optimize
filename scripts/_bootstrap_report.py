@@ -185,7 +185,8 @@ _NON_SURFACE_DIRS: frozenset[str] = frozenset({"scripts", "tests"})
 
 
 def _is_harness_name(lower_name: str, suffix: str) -> bool:
-    """True for the benchmark harness naming convention: ``bench_*.<ext>`` or ``bench.<ext>``."""
+    """True for the benchmark harness naming convention:
+    ``bench_*.<ext>`` or ``bench.<ext>``."""
     return lower_name.startswith("bench_") or lower_name == f"bench{suffix}"
 
 
@@ -342,9 +343,7 @@ def _collect_discovery_inputs(
     )
     usable_skills = _discover_skills(roots["usable_roots"])
     advisory_skills = _discover_skills(roots["advisory_roots"])
-    unreferenced_skills = sorted(
-        set(usable_skills) - set(manifest["skills"])
-    )
+    unreferenced_skills = sorted(set(usable_skills) - set(manifest["skills"]))
     merged_skills = _build_merged_skills(
         options["active_skills"],
         manifest,
@@ -403,9 +402,7 @@ def _evaluate_lanes(
     return lanes
 
 
-def _collect_skill_warnings(
-    merged_skills: dict[str, Any], warnings: list[str]
-) -> None:
+def _collect_skill_warnings(merged_skills: dict[str, Any], warnings: list[str]) -> None:
     """Append warnings from merged skill descriptors."""
     for skill in merged_skills.values():
         if "warnings" in skill:

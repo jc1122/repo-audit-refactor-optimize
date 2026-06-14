@@ -1,7 +1,9 @@
 """File-level conflict model. Pure; duck-types on `.files` (a tuple of paths)."""
+
 from __future__ import annotations
 
-from typing import Any, Iterable
+from typing import Any
+from collections.abc import Iterable
 
 
 def conflicts(a: Any, b: Any) -> bool:

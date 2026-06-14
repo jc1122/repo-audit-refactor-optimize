@@ -12,7 +12,9 @@ import subprocess  # nosec B404: local trusted wave runner
 import sys
 from pathlib import Path
 
-_wf = importlib.import_module("scripts._wave_findings" if __package__ else "_wave_findings")
+_wf = importlib.import_module(
+    "scripts._wave_findings" if __package__ else "_wave_findings"
+)
 
 REPO = Path(__file__).resolve().parents[1]
 BASELINE = Path(__file__).with_name("wave_baseline.json")

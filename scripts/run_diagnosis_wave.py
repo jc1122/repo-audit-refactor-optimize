@@ -92,7 +92,9 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--registry", type=Path, help="Path to wave_lanes.json registry"
     )
-    parser.add_argument("--baseline", type=Path, help="Accepted-residuals JSON to suppress")
+    parser.add_argument(
+        "--baseline", type=Path, help="Accepted-residuals JSON to suppress"
+    )
     return parser.parse_args(argv)
 
 
@@ -123,8 +125,7 @@ def _leaf_supports_exclude_prefix(leaf: Path) -> bool:
 
 def _doc_prefixes(repo: Path) -> list[str]:
     includes = list(
-        ("README.md", "SKILL.md", "CHANGELOG.md")
-        + ("references", "agents", "scripts")
+        ("README.md", "SKILL.md", "CHANGELOG.md") + ("references", "agents", "scripts")
     )
     docs_dir = repo / "docs"
     if docs_dir.exists():
@@ -215,7 +216,9 @@ def _append_scope_args(
     if lane in {"code-health", "security", "dependency"}:
         supports = _leaf_supports_exclude_prefix(leaf)
         cmd.extend(
-            _audit_scope_args(context.source_prefixes, context.exclude_prefixes, supports)
+            _audit_scope_args(
+                context.source_prefixes, context.exclude_prefixes, supports
+            )
         )
     elif lane == "docs":
         _add_docs_args(cmd, leaf, context)
@@ -323,9 +326,7 @@ def _collect_lane_results(
                 "start": datetime.fromtimestamp(
                     start_times[lane], tz=timezone.utc
                 ).isoformat(),
-                "end": datetime.fromtimestamp(
-                    end_ts, tz=timezone.utc
-                ).isoformat(),
+                "end": datetime.fromtimestamp(end_ts, tz=timezone.utc).isoformat(),
                 "elapsed": elapsed,
             }
             try:
