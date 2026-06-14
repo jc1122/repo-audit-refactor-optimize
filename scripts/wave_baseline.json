@@ -30,6 +30,12 @@
     "metric": "maintainability_index"
   },
   {
+    "leaf": "complexity",
+    "path": "scripts/mprr_normalize.py",
+    "symbol": "<module>",
+    "metric": "maintainability_index"
+  },
+  {
     "leaf": "hotspot",
     "path": "SKILL.md",
     "symbol": "SKILL.md",

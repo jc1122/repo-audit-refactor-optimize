@@ -81,3 +81,30 @@ Source: live SP9 K3 wave artifact, normalized and sorted into `scripts/wave_base
 | 5 | hotspot `scripts/skill_bootstrap_manifest.json` `churn_complexity_product` for `scripts/skill_bootstrap_manifest.json` | `deferred-structural` | The manifest is central configuration with expected release churn; changes should be evaluated during convergence rather than as a K3 mechanical fix. | v0.5.1 convergence review |
 | 6 | hotspot `tests/test_check_skill_requirements.py` `churn_complexity_product` for `tests/test_check_skill_requirements.py` | `deferred-structural` | The checker test suite is intentionally high-churn while contract behavior stabilizes; broader test decomposition is deferred until after convergence. | v0.5.1 convergence review |
 | 7 | hotspot `scripts/run_diagnosis_wave.py` `churn_complexity_product` for `scripts/run_diagnosis_wave.py` | `loop-reanchor-residue` | The iteration accepted runner helper extraction, pushing the file over the hotspot churn threshold at the new anchor. The row is real and remains in the baseline for the next structural visit. | SP11 iteration 4 |
+
+## v0.7.5 dogfood ratchet + ledger reconcile
+
+- Ratchet timestamp: 2026-06-14T04:00:00Z
+- Added `scripts/mprr_normalize.py` `<module>` `maintainability_index` (MI 61.63, radon
+  grade A, just under the leaf's `mi_low=65`). The module is 85 LOC / 3 small functions;
+  chasing MI to 65 via decomposition is low-value churn. Class: `deferred-structural`.
+- **Ledger reconcile (closes prior drift):** the table above documented only 7 rows while
+  `scripts/wave_baseline.json` held 13. The table below documents EVERY row in the baseline
+  (count **14**), so the ledger and the baseline can no longer disagree.
+
+| Row | Finding (leaf · path · symbol · metric) | Class | Justification |
+|---:|---|---|---|
+| 1 | complexity · `scripts/_bootstrap_report.py` · `<module>` · maintainability_index | `deferred-structural` | K3 split report assembly out of the checker; remaining module decomposition is future structural work. |
+| 2 | complexity · `scripts/_lane_resolve.py` · `<module>` · maintainability_index | `deferred-structural` | K3 isolated lane resolution; any further split owned by a future decomposition batch. |
+| 3 | complexity · `scripts/_skill_probe.py` · `<module>` · maintainability_index | `deferred-structural` | K3 isolated skill probing; additional decomposition deferred beyond the mechanical wave. |
+| 4 | complexity · `scripts/synthesize_packets.py` · `mechanical_patches` · function_nloc | `deferred-structural` | Cohesive patch-emitter pipeline; splitting relocates rather than reduces the finding. |
+| 5 | complexity · `scripts/synthesize_packets.py` · `<module>` · maintainability_index | `deferred-structural` | Central synthesis module; decomposition is future structural work, not a mechanical fix. |
+| 6 | hotspot · `SKILL.md` · churn_complexity_product | `deferred-structural` | Release-churn surface (version + changelog edits each release); expected, not a code defect. |
+| 7 | hotspot · `scripts/check_skill_requirements.py` · churn_complexity_product | `deferred-structural` | Historically high-churn checker; reduction crosses CLI and bootstrap contracts. |
+| 8 | hotspot · `scripts/run_diagnosis_wave.py` · churn_complexity_product | `deferred-structural` | Core runner; churn from accepted helper extractions, revisit on the next structural pass. |
+| 9 | hotspot · `scripts/skill_bootstrap_manifest.json` · churn_complexity_product | `deferred-structural` | Central configuration with expected release churn. |
+| 10 | hotspot · `tests/test_check_skill_requirements.py` · churn_complexity_product | `deferred-structural` | Checker test suite, intentionally high-churn while contract behavior stabilizes. |
+| 11 | hotspot · `tests/test_run_diagnosis_wave.py` · churn_complexity_product | `deferred-structural` | Runner test suite churn paired with runner evolution; deferred to a structural visit. |
+| 12 | exec-audit · `.` · benchmark_entrypoints_missing | `won't-fix-FP` | The orchestration metaskill has no runtime benchmark surface by design (its perf lane is `synthesizable`, not native). |
+| 13 | growth-audit · `<repo>` · net_loc_growth | `deferred-structural` | Net growth vs the pinned anchor; managed by re-anchoring `scripts/wave_anchor.txt`, not by editing code. |
+| 14 | complexity · `scripts/mprr_normalize.py` · `<module>` · maintainability_index | `deferred-structural` | MI 61.63 (grade A) marginally below `mi_low=65`; low-value to chase on an 85-LOC module. |

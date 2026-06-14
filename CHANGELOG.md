@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.7.5
+
+chore(ratchet): self-audit dogfood run 3 — ratchet the marginal `mprr_normalize` module
+maintainability-index finding (MI 61.63, grade A, just under `mi_low=65`) into
+`wave_baseline.json` as `deferred-structural`, and reconcile the wave ledger drift
+(integrity gap): `wave_frozen.md` documented only 7 rows while the baseline held 13; the
+ledger now documents all 14. Convergence gate 6 -> 5 (remaining: 3 growth + 2 hotspot,
+both anchor-relative — cleared by the next run's re-anchor).
+
 ## 0.7.4
 
 fix(types): self-audit dogfood run 2 — clear the 4 remaining TYPE findings (mypy). Widened
