@@ -49,3 +49,27 @@ The spec §6 rule fires on its **first branch**: double-run share ≈ 0.49 **AND
 3. **The lost signal is practically nil.** The only thing unique to the plain gate is "tests pass *without* coverage instrumentation." coverage.py (sys.monitoring/settrace) does not change test outcomes; no test in the suite today depends on an inactive tracer (both gates currently pass). If such a test were added later, the coverage gate would correctly catch it.
 
 **Implementation:** Task 3-C1 of `../plans/2026-06-14-phase2-b0-audit-budget-perf.md`. Verified via identical perf-benchmark re-measure + `verify_win.py` (≥5% median, suite green) — expected median win ≈ 49%.
+
+## Implementation refinement: C1 → C1′ ("unwire, don't delete")
+
+De-risking surfaced that **deleting** `check_full_pytest.py` would create dead-path
+findings in the historical `docs/self-audit/2026-06-sp11-unattended-loop.md`
+(bare backtick paths like `` `scripts/check_full_pytest.py` ``), which the
+docs-consistency gate (scope includes `docs/self-audit`) flags via
+`_INLINE_CODE_RE`+`_DEAD_PATH_RE`+`.exists()` → the ratchet would go red.
+
+**Refined C1′ — unwire from the default chain, keep the files:**
+- `scripts/run_checks.py`: remove the `("pytest", …)` entry from `HEAVY`.
+- `scripts/check_budget.json`: remove the now-unused `"pytest"` key.
+- `tests/test_run_checks.py`: update the two `HEAVY`-shape assertions (`== 2` → `== 1`;
+  `== {"coverage","pytest"}` → `== {"coverage"}`).
+- **Keep** `scripts/check_full_pytest.py`, `tests/test_check_full_pytest.py`, and the
+  `package.json` `check:pytest` script.
+
+Why C1′ is strictly better than delete-C1:
+1. The expensive full-suite re-run leaves the default `npm run check` budget → same ~51% win.
+2. The uninstrumented-green signal is **preserved as opt-in** (`npm run check:pytest`) — removes the only C1 downside the spec flagged.
+3. No deletions → **no docs-consistency dead-path cascade**, no editing historical run-logs.
+4. The script stays exercised (`tests/test_check_full_pytest.py` runs inside the coverage gate), so it cannot silently bitrot.
+
+Net change: 3 files, additive-safe. Verdict unchanged (≥5% median expected ≈ 51%).
