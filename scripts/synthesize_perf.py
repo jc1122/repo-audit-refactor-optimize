@@ -13,7 +13,7 @@ import argparse
 import json
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from scripts import (
     _complexity_label as _cl,
@@ -167,7 +167,7 @@ def main(argv: list[str] | None = None) -> int:
     gate = decide_gate(**extract_gate_inputs(summary, max_cv=args.max_cv))
     write_report(out_dir=args.out_dir, gate=gate, target=args.target)
     print(json.dumps(gate, indent=2))
-    return {"pass": 0, "refuse": 1, "error": 2}[gate["gate"]]  # nosec B105
+    return {"pass": 0, "refuse": 1, "error": 2}[cast(str, gate["gate"])]  # nosec B105
 
 
 def verify_and_decide(*, verdict: dict[str, Any]) -> dict[str, Any]:

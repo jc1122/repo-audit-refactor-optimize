@@ -100,7 +100,9 @@ def load_baseline(path: Path) -> list[dict[str, str]]:
 
 def partition(
     findings: list[dict[str, str]], baseline: list[dict[str, str]]
-) -> tuple[list[dict[str, str]], list[dict[str, str]], list[tuple[str, str, str, str]]]:
+) -> tuple[
+    list[dict[str, str]], list[dict[str, object]], list[tuple[str, str, str, str]]
+]:
     """Split findings against a baseline by identity → (active, suppressed, stale).
 
     * active     — findings whose identity is NOT in the baseline (new work)
@@ -113,7 +115,7 @@ def partition(
     baseline_ids = {identity(entry) for entry in baseline}
     matched: set[tuple[str, str, str, str]] = set()
     active: list[dict[str, str]] = []
-    suppressed: list[dict[str, str]] = []
+    suppressed: list[dict[str, object]] = []
     for finding in findings:
         fid = identity(finding)
         if fid in baseline_ids:

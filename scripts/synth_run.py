@@ -43,7 +43,7 @@ _TRANSITIONS: dict[str, set[str]] = {
 _BLOCKED = {"awaiting_hotspot", "awaiting_make_input", "awaiting_optimization"}
 
 
-def _state_path(run_dir: Path) -> Path:
+def _state_path(run_dir: str | Path) -> Path:
     return Path(run_dir) / "synth_state.json"
 
 
@@ -182,8 +182,10 @@ def _load_by_path(modname: str, relpath: str):
         "PERF_BENCHMARK_ROOT", str(Path.home() / "projects" / "perf-benchmark-skill")
     )
     spec = importlib.util.spec_from_file_location(modname, Path(root) / relpath)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"cannot load {modname} from {relpath}")
     mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)  # type: ignore[union-attr]
+    spec.loader.exec_module(mod)
     return mod
 
 

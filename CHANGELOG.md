@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.7.4
+
+fix(types): self-audit dogfood run 2 — clear the 4 remaining TYPE findings (mypy). Widened
+`_wave_findings.partition` suppressed-list type to `dict[str, object]` (it carries a bool
+`suppressed` flag); widened `synth_run._state_path` to accept `str | Path`; added a
+None-guard for the importlib `ModuleSpec` in `synth_run._load_by_path` (removing a blanket
+`type: ignore`); cast the gate-outcome key in `synthesize_perf` exit-code map. No behavior
+change (255 tests pass). Convergence gate 10 -> 6.
+
 ## 0.7.3
 
 fix(security): self-audit dogfood run 1 — clear the 2 remaining SECURITY findings. The
