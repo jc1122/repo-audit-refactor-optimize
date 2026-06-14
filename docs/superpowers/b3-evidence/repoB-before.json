@@ -1,0 +1,25 @@
+[
+  {
+    "confidence": "high",
+    "evidence": {
+      "raw": "scripts.mine_iteration_kpis.x__build_parser__mutmut_101=survived; scripts.mine_iteration_kpis.x__build_parser__mutmut_103=survived; scripts.mine_iteration_kpis.x__build_parser__mutmut_104=survived; scripts.mine_iteration_kpis.x__build_parser__mutmut_107=survived; scripts.mine_iteration_kpis.x__build_parser__mutmut_108=survived; scripts.mine_iteration_kpis.x__build_parser__mutmut_109=survived; scripts.mine_iteration_kpis.x__build_parser__mutmut_110=survived; scripts.mine_iteration_kpis.x__build_parser__mutmut_111=survived; scripts.mine_iteration_kpis.x__build_parser__mutmut_112=survived; scripts.mine_iteration_kpis.x__build_parser__mutmut_12=survived ...(+190 more)\n@@ -28,9 +28,6 @@\n@@ -27,7 +27,6 @@\n@@ -28,9 +28,5 @@",
+      "tool": "mutmut"
+    },
+    "id": "5699b1da5b07b80f",
+    "leaf": "test-effectiveness",
+    "location": {
+      "line_end": 1,
+      "line_start": 1,
+      "symbol": "<module>"
+    },
+    "metric": {
+      "name": "mutation_kill_rate",
+      "threshold": 0.8,
+      "value": 0.671
+    },
+    "path": "scripts/mine_iteration_kpis.py",
+    "severity": "medium",
+    "signal": "TEST",
+    "suggested_action": "Strengthen assertions/cases for scripts/mine_iteration_kpis.py: surviving mutants listed in evidence"
+  }
+]
