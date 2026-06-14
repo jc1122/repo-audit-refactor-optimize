@@ -118,3 +118,32 @@ def test_main_appends_line_prints_and_returns_zero(tmp_path, capsys, monkeypatch
     lines = kpi_file.read_text(encoding="utf-8").splitlines()
     assert len(lines) == 1
     assert json.loads(lines[0]) == printed
+
+
+def test_main_degrades_without_artifacts(tmp_path, capsys, monkeypatch):
+    monkeypatch.setattr(m, "_derive_ci_wait_seconds", lambda repo: 0.0)
+    kpi_file = tmp_path / "k.jsonl"
+    rc = m.main([
+        "--repo", str(tmp_path),
+        "--runs-dir", str(tmp_path / "absent"),
+        "--kpi-file", str(kpi_file),
+    ])
+    assert rc == 0
+    kpi = json.loads(capsys.readouterr().out.strip())
+    assert kpi["rows_closed"] == 0
+    assert kpi["rows_per_hour"] == 0.0
+    assert kpi["worker_count"] == 0
+    assert kpi["phase_seconds"] == {}
+
+
+def test_main_returns_one_when_kpi_path_is_a_directory(tmp_path, capsys, monkeypatch):
+    monkeypatch.setattr(m, "_derive_ci_wait_seconds", lambda repo: 0.0)
+    bad = tmp_path / "isadir"
+    bad.mkdir()
+    rc = m.main([
+        "--repo", str(tmp_path),
+        "--runs-dir", str(tmp_path / "absent"),
+        "--kpi-file", str(bad),
+    ])
+    assert rc == 1
+    assert "failed to append KPI line" in capsys.readouterr().err
