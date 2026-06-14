@@ -69,6 +69,26 @@ Use `--coverage-json` when present in the test artifact so code-health can run a
 
 **Scoping and suppression.** With no `--source-prefix`, the wave excludes `tests` and `fixtures` by default so the orchestrator's own test code does not generate self-noise; an explicit `--source-prefix <dir>` scopes positively and disables the default exclusion, and `--exclude-prefix <dir>` adds further exclusions (honored by the code-health/security/dependency lanes that support it). Pass `--baseline <accepted-residuals.json>` — a JSON array of accepted residuals keyed by the `{leaf, path, symbol, metric}` identity — to suppress already-triaged findings; suppressed findings and stale baseline entries (baseline identities that matched nothing) are written to `wave_findings.suppressed.json`. This identity is the single source of truth shared with `check_wave_baseline.py`'s convergence ratchet, so suppression and the ratchet can never disagree.
 
+**Acceptance policy (auto-discovery).** Place `.repo-audit/accept.json` in the audited
+repo to mark findings acceptable without changing audit leaves. The wave auto-discovers it
+at the `report` stage; the MPRR engine honors it at the `remediation` stage. Three match
+kinds are supported: `finding` (exact `{leaf,path,symbol,metric}` identity), `path` (repo-
+relative `fnmatch` glob against a finding's `path` or `files`), and `rule` (`leaf`/`metric`
+subset, AND). Every accepted finding is recorded with its reason in a sidecar:
+
+- `wave_findings.accepted.json` — findings accepted at the reporting stage (the old
+  `wave_findings.suppressed.json` is still written for back-compat).
+- `mprr_excluded.json` — findings excluded from remediation by the MPRR engine.
+
+The policy is **fail-closed**: a malformed or invalid `accept.json` is a hard error —
+the wave and engine exit non-zero rather than silently ignoring the file or accepting
+everything. Validate with `python3 scripts/validate_accept.py --file <repo>/.repo-audit/accept.json`.
+Pass `--accept <file>` to the wave runner to merge an additional policy file; legacy
+`--baseline` rows are automatically adapted as report-stage `finding` entries. The old
+`scripts/remediation_excludes.json` (dead-code section `exclude_paths` globs) is honored
+as a back-compat remediation fallback. See `references/acceptance.md` for the full
+authoring guide.
+
 **MPRR self-engine merge guard.** When the merge-parallel-review-runner integrates a packet, `mprr_integrate.self_guard` refuses to auto-merge edits to the engine's own `scripts/*.py` when the target repo resolves to the engine's own repository (or the target is unresolvable — it fails closed). This is defense-in-depth for the in-place/self-modification topology; such edits require human review rather than automatic merge.
 
 ### Parallelism Rules
