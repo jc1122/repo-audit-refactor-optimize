@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "accept": [
+    {
+      "match": {
+        "kind": "finding",
+        "leaf": "complexity",
+        "path": "scripts/_accept.py",
+        "symbol": "<module>",
+        "metric": "maintainability_index"
+      },
+      "reason": "scripts/_accept.py is a cohesive fail-closed acceptance-policy module (parse/validate + 3-kind match). After helper extraction its per-function cyclomatic complexity is all <=3; the module-level maintainability_index (~42.7) reflects the aggregate size of one coherent contract, not per-unit complexity. Splitting it to chase MI would fragment a single contract across files without reducing real complexity (cf. the accepted scripts/mprr_normalize.py module-MI residual). Accepted as deferred-structural.",
+      "applies": ["report"]
+    }
+  ]
+}
