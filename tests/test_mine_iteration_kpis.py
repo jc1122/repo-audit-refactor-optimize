@@ -295,3 +295,33 @@ def test_emit_per_repo_rows_keyed_by_explicit_label():
     assert payload["rows_before"] == {"repo-b": 20}
     assert payload["rows_after"] == {"repo-b": 19}
     assert payload["rows_closed"] == 1  # scalar kept for back-compat
+
+
+def test_build_parser_defaults_and_dests():
+    p = m._build_parser()
+    ns = p.parse_args([])
+    assert ns.iteration == 0
+    assert ns.repo == Path(".")
+    assert ns.start_sha is None
+    assert ns.end_sha is None
+    assert ns.baseline == ".repo-audit/accept.json"
+    assert ns.runs_dir == Path("/tmp/sp13/runs")
+    assert ns.kpi_file == Path("scripts/iteration_kpis.jsonl")
+    assert ns.repo_name is None
+
+
+def test_build_parser_explicit_args():
+    p = m._build_parser()
+    ns = p.parse_args([
+        "--iteration", "5", "--repo", "/x", "--start-sha", "aaa", "--end-sha", "bbb",
+        "--baseline", "b.json", "--runs-dir", "/r", "--kpi-file", "k.jsonl",
+        "--repo-name", "repo-b",
+    ])
+    assert ns.iteration == 5
+    assert ns.repo == Path("/x")
+    assert ns.start_sha == "aaa"
+    assert ns.end_sha == "bbb"
+    assert ns.baseline == "b.json"
+    assert ns.runs_dir == Path("/r")
+    assert ns.kpi_file == Path("k.jsonl")
+    assert ns.repo_name == "repo-b"
