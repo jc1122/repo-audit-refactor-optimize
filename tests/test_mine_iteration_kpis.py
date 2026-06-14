@@ -1,6 +1,7 @@
 import json
 import subprocess
 import scripts.mine_iteration_kpis as m
+from pathlib import Path
 
 
 def test_rows_per_hour_from_counts_and_duration():
@@ -66,3 +67,54 @@ def test_mine_mprr_kpis_from_events(tmp_path):
     assert kpi["merge_conflict_rate"] == 0.0
     assert kpi["peak_concurrency"] == 2
     assert 0.0 <= kpi["pool_utilization"] <= 1.0
+
+
+def _init_repo(path):
+    subprocess.run(["git", "-C", str(path), "init", "-q"], check=True)
+    subprocess.run(["git", "-C", str(path), "config", "user.email", "t@t"], check=True)
+    subprocess.run(["git", "-C", str(path), "config", "user.name", "t"], check=True)
+
+
+def _commit(repo, relpath, content):
+    f = repo / relpath
+    f.parent.mkdir(parents=True, exist_ok=True)
+    f.write_text(content, encoding="utf-8")
+    subprocess.run(["git", "-C", str(repo), "add", relpath], check=True)
+    subprocess.run(["git", "-C", str(repo), "commit", "-q", "-m", "x"], check=True)
+    return subprocess.run(
+        ["git", "-C", str(repo), "rev-parse", "HEAD"],
+        capture_output=True, text=True, check=True,
+    ).stdout.strip()
+
+
+def test_main_appends_line_prints_and_returns_zero(tmp_path, capsys, monkeypatch):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _init_repo(repo)
+    start = _commit(repo, "scripts/wave_baseline.json",
+                    json.dumps([{"id": 1}, {"id": 2}, {"id": 3}, {"id": 4}]))
+    end = _commit(repo, "scripts/wave_baseline.json", json.dumps([{"id": 1}]))
+    runs = tmp_path / "runs"
+    (runs / "p1").mkdir(parents=True)
+    (runs / "p2").mkdir()
+    (runs / "p1" / "repairs.txt").write_text("1", encoding="utf-8")
+    monkeypatch.setattr(m, "_derive_ci_wait_seconds", lambda repo: 0.0)
+    kpi_file = tmp_path / "out" / "kpis.jsonl"
+
+    rc = m.main([
+        "--iteration", "7", "--repo", str(repo),
+        "--start-sha", start, "--end-sha", end,
+        "--baseline", "scripts/wave_baseline.json",
+        "--runs-dir", str(runs), "--kpi-file", str(kpi_file),
+    ])
+
+    assert rc == 0
+    printed = json.loads(capsys.readouterr().out.strip())
+    assert printed["iteration"] == 7
+    assert printed["rows_closed"] == 3
+    assert printed["worker_count"] == 2
+    assert printed["repair_rate"] == 0.5
+    assert "window" in printed["phase_seconds"]
+    lines = kpi_file.read_text(encoding="utf-8").splitlines()
+    assert len(lines) == 1
+    assert json.loads(lines[0]) == printed
