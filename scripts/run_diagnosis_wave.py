@@ -92,6 +92,7 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--registry", type=Path, help="Path to wave_lanes.json registry"
     )
+    parser.add_argument("--baseline", type=Path, help="Accepted-residuals JSON to suppress")
     return parser.parse_args(argv)
 
 
@@ -416,8 +417,22 @@ def main(argv: list[str] | None = None) -> int:
         args.security_config,
         args.hotspot_config,
     )
-    run = _run_wave(selected, loaded, args.skills_root, context)
-    return _write_wave_outputs(args.out_dir, *run)
+    wave_exit, summary, wave_findings, timings = _run_wave(
+        selected, loaded, args.skills_root, context
+    )
+    if args.baseline is not None:
+        baseline = _wave_findings.load_baseline(args.baseline)  # raises on bad input
+        wave_findings, suppressed, stale = _wave_findings.partition(
+            wave_findings, baseline
+        )
+        (args.out_dir / "wave_findings.suppressed.json").write_text(
+            json.dumps(
+                {"suppressed": suppressed, "stale_baseline": [list(s) for s in stale]},
+                indent=2,
+            ),
+            encoding="utf-8",
+        )
+    return _write_wave_outputs(args.out_dir, wave_exit, summary, wave_findings, timings)
 
 
 if __name__ == "__main__":

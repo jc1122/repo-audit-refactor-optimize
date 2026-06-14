@@ -5,11 +5,14 @@ Equality-ratcheted against `wave_baseline.json`.
 """
 
 import argparse
+import importlib
 import json
 import os
 import subprocess  # nosec B404: local trusted wave runner
 import sys
 from pathlib import Path
+
+_wf = importlib.import_module("scripts._wave_findings" if __package__ else "_wave_findings")
 
 REPO = Path(__file__).resolve().parents[1]
 BASELINE = Path(__file__).with_name("wave_baseline.json")
@@ -27,7 +30,7 @@ _TIMINGS_FILE = "wave_timings.json"
 
 
 def identities(fs):
-    return {tuple(sorted(d.items())) for d in fs}
+    return {_wf.identity(d) for d in fs}
 
 
 def _load_json(path):
