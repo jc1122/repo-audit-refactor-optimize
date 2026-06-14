@@ -1,0 +1,79 @@
+{
+  "complexity_exponent": null,
+  "deterministic_tier": false,
+  "generated_at": "2026-06-14T21:14:15.712090+00:00",
+  "root": "/home/jakub/projects/repo-audit-skills",
+  "tier": "fast",
+  "rubric": {
+    "total": 2,
+    "max_possible": 4,
+    "dimensions": {
+      "Algorithmic Scaling": {
+        "score": -1,
+        "tier": "N/A",
+        "sub_checks": {},
+        "note": "Insufficient data for scaling analysis"
+      },
+      "Wall-Time Stability": {
+        "score": 2,
+        "tier": "WARN",
+        "cv": 6.1
+      },
+      "CPU Efficiency": {
+        "score": -1,
+        "tier": "N/A"
+      },
+      "L1 Cache Efficiency": {
+        "score": -1,
+        "tier": "N/A"
+      },
+      "Last-Level Cache": {
+        "score": -1,
+        "tier": "N/A"
+      },
+      "Branch Prediction": {
+        "score": -1,
+        "tier": "N/A"
+      },
+      "Memory Profile": {
+        "score": -1,
+        "tier": "N/A"
+      }
+    }
+  },
+  "prerequisites": {
+    "python_ok": true,
+    "valgrind": false,
+    "perf_paranoid": 4,
+    "governor": "powersave",
+    "cache_topology": {
+      "D1": "49152,12,64",
+      "I1": "32768,8,64",
+      "LL": "12582912,8,64"
+    },
+    "ram_mb": 15091
+  },
+  "baseline_regressions": [],
+  "regression_blocker": false,
+  "wall_time_cv": 6.1,
+  "wall_time_mean": 367.2333,
+  "environment": {
+    "cpu_model": "13th Gen Intel(R) Core(TM) i5-1340P",
+    "kernel": "7.0.0-22-generic",
+    "governor": "powersave",
+    "smt": "1",
+    "load_avg_1m": 2.51,
+    "python_version": "3.14.4",
+    "timestamp_utc": "2026-06-14T21:14:15+00:00"
+  },
+  "wall_time_percentiles": {
+    "p50": 371.03,
+    "p95": 400.658,
+    "p99": 403.29160000000013
+  },
+  "ledger_regressions": {
+    "vs_last": [],
+    "vs_best": [],
+    "warnings": []
+  }
+}
