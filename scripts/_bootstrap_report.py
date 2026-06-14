@@ -527,16 +527,16 @@ def _markdown_report(report: dict[str, Any]) -> str:
                 f"{', '.join(f'`{name}`' for name in lane['selected_skills'])}"
             )
     lines.extend(["", "## Skill States", ""])
-    for skill_name, skill in report["skills"].items():
-        lines.append(f"- `{skill_name}`: `{skill['state']}`")
+    lines.extend(
+        f"- `{skill_name}`: `{skill['state']}`"
+        for skill_name, skill in report["skills"].items()
+    )
     if report["warnings"]:
         lines.extend(["", "## Warnings", ""])
-        for warning in report["warnings"]:
-            lines.append(f"- {warning}")
+        lines.extend(f"- {warning}" for warning in report["warnings"])
     if report.get("unreferenced_skills"):
         lines.extend(["", "## Unreferenced Skills (advisory)", ""])
-        for name in report["unreferenced_skills"]:
-            lines.append(f"- `{name}`")
+        lines.extend(f"- `{name}`" for name in report["unreferenced_skills"])
     lines.append("")
     return "\n".join(lines)
 

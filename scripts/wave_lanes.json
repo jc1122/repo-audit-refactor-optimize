@@ -26,6 +26,11 @@
       "languages": ["python"]
     },
     {
+      "name": "perf-smell",
+      "script": "perf-smell-audit/scripts/perf_smell_audit.py",
+      "languages": ["python"]
+    },
+    {
       "name": "hotspot",
       "script": "hotspot-audit/scripts/hotspot_audit.py",
       "languages": ["*"]

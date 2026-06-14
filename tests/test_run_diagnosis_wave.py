@@ -1152,3 +1152,9 @@ def test_apply_accept_writes_accepted_sidecar(tmp_path: Path):
     sidecar = json.loads((tmp_path / "wave_findings.accepted.json").read_text())
     assert sidecar["accepted"][0]["accept_reason"] == "ok"
     assert (tmp_path / "wave_findings.suppressed.json").exists()  # back-compat
+
+
+def test_perf_smell_lane_is_registered():
+    lanes = wave.load_lanes(wave._DEFAULT_REGISTRY)
+    assert "perf-smell" in lanes
+    assert lanes["perf-smell"].endswith("perf-smell-audit/scripts/perf_smell_audit.py")

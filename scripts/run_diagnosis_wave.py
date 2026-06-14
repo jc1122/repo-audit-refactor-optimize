@@ -62,9 +62,9 @@ def load_lanes(path: str | Path) -> dict[str, str]:
     """
     with open(path, encoding="utf-8") as fh:
         registry = json.load(fh)
-    lanes: dict[str, str] = {}
-    for entry in registry.get("lanes", []):
-        lanes[entry["name"]] = entry["script"]
+    lanes: dict[str, str] = {
+        entry["name"]: entry["script"] for entry in registry.get("lanes", [])
+    }
     return lanes
 
 
@@ -123,7 +123,7 @@ def _selected_lanes(
 
 def _leaf_supports_exclude_prefix(leaf: Path) -> bool:
     try:
-        cmd = [sys.executable, str(leaf), "--help"]
+        cmd = (sys.executable, str(leaf), "--help")
         proc = subprocess.run(  # nosec B603: shell=False and trusted leaf path
             cmd, check=False, capture_output=True, text=True
         )

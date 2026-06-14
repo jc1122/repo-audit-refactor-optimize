@@ -20,9 +20,7 @@ def _parse_version(v: str | None) -> tuple[int, int, int]:
         return (0, 0, 0)
     try:
         parts = v.split(".")
-        nums: list[int] = []
-        for part in parts[:3]:
-            nums.append(int(part))
+        nums: list[int] = [int(part) for part in parts[:3]]
         while len(nums) < 3:
             nums.append(0)
         return (nums[0], nums[1], nums[2])

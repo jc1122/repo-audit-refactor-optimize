@@ -147,3 +147,57 @@ loop can exclude) so re-anchoring fixes growth without exposing loop-induced chu
 | Row | Finding (leaf · path · symbol · metric) | Class | Justification |
 |---:|---|---|---|
 | 20 | complexity · `scripts/_accept.py` · `<module>` · maintainability_index | `deferred-structural` | Cohesive fail-closed acceptance-policy module (parse/validate + 3-kind match); per-function CC <=3 after helper extraction. Module-level MI (~42.7) reflects one coherent contract's aggregate size; splitting to chase MI would fragment a single contract (cf. the accepted `scripts/mprr_normalize.py` module-MI residual). |
+
+## feat/convergent-family — perf-smell lane integration
+
+- Ratchet timestamp: 2026-06-14
+- Added `perf-smell-audit` as deterministic wave lane (9th lane).
+- Genuine fixes applied: dict comprehension in `load_lanes`, tuple for `cmd` in `_leaf_supports_exclude_prefix`, list comprehension in `_relevant_lane_names`, list comprehension for `_parse_version`'s `nums`, `extend`+genexp in `_markdown_report`, tuple for `KEYS` in `validate_run_report`, tuple for `sources` in `load_source_overrides`.
+- Remaining 113 findings across 43 unique (path, symbol, metric) keys: 52 W8201, 25 W8202, 12 W8205, 24 W8301, 1 W8402, 1 W8403. All accepted as `perflint-FP` or `non-hot-path` (see rows 21–63 below).
+
+| Row | Finding (leaf · path · symbol · metric) | Class | Justification |
+|---:|---|---|---|
+| 21 | perf-smell · `scripts/_accept.py` · `loop-global-usage` · W8202 | `perflint-FP` | `_MATCH_KEYS` is a module-level tuple iterated at most 5 times in a cold-path policy-loading function. Hoisting adds noise without measurable gain. |
+| 22 | perf-smell · `scripts/_bootstrap_report.py` · `dotted-import-in-loop` · W8205 | `perflint-FP` | `os.walk` is the iterable in `for current_root, dir_names, file_names in os.walk(repo_root)` — it is not called inside the loop body. `os.path.join` call in an IO-bound directory scan; attribute lookup cost negligible relative to disk IO. |
+| 23 | perf-smell · `scripts/_bootstrap_report.py` · `loop-global-usage` · W8202 | `perflint-FP` | perflint flags `dir_names` and `file_names` as global lookups; these are loop variables unpacked from `os.walk`. |
+| 24 | perf-smell · `scripts/_bootstrap_report.py` · `loop-invariant-statement` · W8201 | `perflint-FP` | Fires on `manifest["lanes"][lane_name]` in `_evaluate_active_lanes`. The full expression is loop-variant (`lane_name` changes); perflint over-approximates by flagging the outer dict access. |
+| 25 | perf-smell · `scripts/_lane_resolve.py` · `loop-global-usage` · W8202 | `perflint-FP` | `KNOWN_LANGUAGES`, `KNOWN_TEST_SYSTEMS` (module-level frozensets) in `_matches_when`'s cold-path condition check. Loop runs over a handful of condition keys at startup. |
+| 26 | perf-smell · `scripts/_lane_resolve.py` · `loop-invariant-statement` · W8201 | `perflint-FP` | Fires on `manifest["lanes"][lane_name]` and `manifest["skills"][skill_name]` in collect/mark functions. Full expressions are loop-variant; perflint over-approximates the outer dict reference. |
+| 27 | perf-smell · `scripts/_lane_resolve.py` · `use-tuple-over-list` · W8301 | `cant-fix` | `warnings_list = []` is concatenated with `eval_warnings` (a list) via `+`; changing to `()` raises TypeError at runtime. |
+| 28 | perf-smell · `scripts/_skill_probe.py` · `loop-global-usage` · W8202 | `perflint-FP` | `_REQUIRED_SKILL_FIELDS` module-level frozenset in cold-path field-validation loop (~10 iterations at startup). |
+| 29 | perf-smell · `scripts/allocate_batches.py` · `dotted-import-in-loop` · W8205 | `non-hot-path` | `json.loads` in IO-bound line-reading loop in `_load_kpis`; attribute lookup negligible vs disk IO. |
+| 30 | perf-smell · `scripts/allocate_batches.py` · `loop-invariant-statement` · W8201 | `perflint-FP` | Fires on `[repo for repo in active_repos if alloc[repo] < cap]` — `alloc[repo]` changes each iteration. Full comprehension is loop-variant; perflint sees `active_repos` and `cap` as invariant components of the expression. |
+| 31 | perf-smell · `scripts/check_skill_requirements.py` · `dotted-import-in-loop` · W8205 | `perflint-FP` | `importlib.import_module` must be called per iteration (different module each time); cannot be hoisted. |
+| 32 | perf-smell · `scripts/check_skill_requirements.py` · `loop-global-usage` · W8202 | `non-hot-path` | `globals()`, `getattr`, `importlib` in once-at-import module re-export loop (~5 iterations). |
+| 33 | perf-smell · `scripts/check_wave_baseline.py` · `use-tuple-over-list` · W8301 | `cant-fix` | `cmd` list is immediately extended with `+=` multiple times before `subprocess.run`; mutable list is required. |
+| 34 | perf-smell · `scripts/graduate_benchmark.py` · `dotted-import-in-loop` · W8205 | `non-hot-path` | `shutil.copy2` in a glob-iteration loop; each iteration copies one file. Body dominated by disk IO. |
+| 35 | perf-smell · `scripts/migrate_baseline_to_accept.py` · `loop-global-usage` · W8202 | `perflint-FP` | perflint flags `r.get(...)` as global usage; `r` is the loop variable (dict from baseline rows), not a global. |
+| 36 | perf-smell · `scripts/mine_iteration_kpis.py` · `dotted-import-in-loop` · W8205 | `non-hot-path` | `json.loads` in line-by-line file-reading loop in `_parse_worker_events`; IO-bound cold-path analytics. |
+| 37 | perf-smell · `scripts/mine_iteration_kpis.py` · `loop-invariant-statement` · W8201 | `perflint-FP` | Fires on `ev.get("event")` where `ev` changes per iteration. perflint sees `.get` method binding as stable and over-approximates. |
+| 38 | perf-smell · `scripts/mine_iteration_kpis.py` · `use-tuple-over-list` · W8301 | `cant-fix` | `worker_runs = []` in except clause passed to `KpiInputs(worker_runs=...)` typed as `list[dict]`. Tuple violates the type contract. |
+| 39 | perf-smell · `scripts/mprr_normalize.py` · `loop-global-usage` · W8202 | `non-hot-path` | `_REDUNDANCY_LEAVES`, `_CLASS_BY_LEAF` frozen lookup tables consulted once per finding in a non-hot remediation normalization pass. |
+| 40 | perf-smell · `scripts/mprr_run.py` · `dotted-import-in-loop` · W8205 | `non-hot-path` | `mprr_packets.remediation_packet` in small batch-dispatch loop (1–5 items); body dominated by JSON serialization and subprocess coordination. |
+| 41 | perf-smell · `scripts/mprr_run.py` · `loop-invariant-statement` · W8201 | `perflint-FP` | Fires on `list(it.files)` and `set(it.files)` where `it` is the loop variable. Both expressions are loop-variant. |
+| 42 | perf-smell · `scripts/mprr_run.py` · `use-list-copy` · W8402 | `perflint-FP` | Nested loop with filter in `_engine_accept_policy`: outer filters `isinstance`, inner appends. Cannot be a simple `list.copy()`. |
+| 43 | perf-smell · `scripts/run_diagnosis_wave.py` · `dotted-import-in-loop` · W8205 | `non-hot-path` | `time.time()` in parallel-future completion loop (~8–9 iterations). `time` is a C-extension; attribute lookup negligible. |
+| 44 | perf-smell · `scripts/run_diagnosis_wave.py` · `loop-invariant-statement` · W8201 | `perflint-FP` | Fires on `context.rev is None` (frozen dataclass read), `results[lane]` dict access, and `_status_for_exit(...)`. All are loop-variant: `lane` changes each iteration. |
+| 45 | perf-smell · `scripts/synthesize_packets.py` · `dotted-import-in-loop` · W8205 | `non-hot-path` | `json.dumps` per finding in `mechanical_patches`; each iteration writes to disk, making IO the bottleneck. |
+| 46 | perf-smell · `scripts/synthesize_packets.py` · `loop-global-usage` · W8202 | `non-hot-path` | `SAFE_PATCH_TABLE` dispatch-table constant consulted once per finding. O(1) lookup, not a hot path. |
+| 47 | perf-smell · `scripts/synthesize_packets.py` · `loop-invariant-statement` · W8201 | `perflint-FP` | Fires on `str(finding.get('id', ...))` where `finding` is the loop variable. Expressions are loop-variant; perflint sees `str()` as invariant. |
+| 48 | hotspot · `scripts/wave_frozen.md` · churn_complexity_product | `deferred-structural` | `scripts/wave_frozen.md` is the acceptance ledger; it grows with every ratchet/triage session by design. Churn on this file signals an active audit cycle, not a code risk. |
+| 49 | perf-smell · `tests/test_allocate_batches.py` · `use-tuple-over-list` · W8301 | `test-fixture` | `KPIS = [...]` test fixture; lists are idiomatic for test data and allow future append/parametrize extension. |
+| 50 | perf-smell · `tests/test_check_skill_requirements.py` · `loop-global-usage` · W8202 | `test-fixture` | Cold-path test helper loops; performance optimization in test setup is not warranted. |
+| 51 | perf-smell · `tests/test_check_skill_requirements.py` · `loop-invariant-statement` · W8201 | `perflint-FP` | Fires on dict subscript patterns in test helpers where the subscript key is the loop variable. perflint over-approximates. |
+| 52 | perf-smell · `tests/test_check_skill_requirements.py` · `use-dict-comprehension` · W8403 | `test-fixture` | `_lane_manifest`'s skills dict-building loop at line 1093 has a complex multi-field value template; for-loop form is more legible in test code. |
+| 53 | perf-smell · `tests/test_check_skill_requirements.py` · `use-tuple-over-list` · W8301 | `test-fixture` | List literals as parametrize values and fixture data; idiomatic for tests. |
+| 54 | perf-smell · `tests/test_lessons.py` · `use-tuple-over-list` · W8301 | `test-fixture` | Test fixture list literal; no runtime benefit from changing to tuple. |
+| 55 | perf-smell · `tests/test_migrate_baseline.py` · `use-tuple-over-list` · W8301 | `test-fixture` | Test fixture list literal; idiomatic for test data. |
+| 56 | perf-smell · `tests/test_mprr_normalize.py` · `use-tuple-over-list` · W8301 | `test-fixture` | Test fixture list literals; idiomatic for test data. |
+| 57 | perf-smell · `tests/test_mprr_partition.py` · `loop-global-usage` · W8202 | `test-fixture` | Module-level constant in cold-path test assertion loop; performance optimization not warranted in tests. |
+| 58 | perf-smell · `tests/test_mprr_run.py` · `use-tuple-over-list` · W8301 | `test-fixture` | Test fixture list literals; idiomatic for test data. |
+| 59 | perf-smell · `tests/test_run_diagnosis_wave.py` · `use-tuple-over-list` · W8301 | `cant-fix` | The `["tests", "fixtures"]` list is the expected return value of `_effective_excludes`; asserting against a tuple would require changing the production function's return type. |
+| 60 | perf-smell · `tests/test_self_dogfood.py` · `loop-global-usage` · W8202 | `test-fixture` | Module-level name in test verification loop; cold path with trivial iteration count. |
+| 61 | perf-smell · `tests/test_self_dogfood.py` · `loop-invariant-statement` · W8201 | `perflint-FP` | Fires on dict subscript in test assertion loop where subscript key is the loop variable. perflint over-approximates. |
+| 62 | perf-smell · `tests/test_synthesize_packets.py` · `use-tuple-over-list` · W8301 | `test-fixture` | Test finding-collection fixtures; lists are idiomatic for test data. |
+| 63 | perf-smell · `tests/test_synthesize_perf.py` · `loop-global-usage` · W8202 | `test-fixture` | Module-level constant in cold-path test assertion loop; no measurable benefit from hoisting. |
+| 64 | perf-smell · `tests/test_wave_findings.py` · `use-tuple-over-list` · W8301 | `test-fixture` | `FINDINGS = [...]` module-level test fixture; list is idiomatic and allows easy extension. |

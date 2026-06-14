@@ -8,7 +8,7 @@ import json
 import sys
 from pathlib import Path
 
-KEYS = [
+KEYS = (
     "schema_version",
     "repo_root",
     "started_utc",
@@ -20,7 +20,7 @@ KEYS = [
     "batches",
     "verification",
     "warnings",
-]
+)
 
 BACKLOG = {
     1: {"accepted", "deferred", "coverage_gated"},
