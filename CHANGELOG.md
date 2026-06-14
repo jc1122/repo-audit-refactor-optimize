@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.8.0
+
+feat(accept): portable acceptance safeguard. A new `<repo>/.repo-audit/accept.json`
+(schema in `schema/accept.schema.json`, validator `scripts/validate_accept.py`) marks findings
+acceptable at three granularities (exact finding / path glob / rule class), blocking reporting
+and/or remediation (`applies`), with a mandatory reason and optional expiry. Auto-discovered by
+the diagnosis wave (also `--accept`; legacy `--baseline` rows fold in as report-stage findings,
+new `wave_findings.accepted.json` sidecar) and the MPRR engine (remediation stage, with the old
+`remediation_excludes.json` honored as a fallback, new `mprr_excluded.json` sidecar). Malformed
+policies fail closed. Leaves still detect everything; acceptance is applied at the wave/engine
+layer and every accepted finding is recorded with its reason. Phase 2 (folded in here):
+repo-B's internal residual baseline now lives in `.repo-audit/accept.json` (20 report-stage
+`finding` entries — the 19 former `wave_baseline.json` rows + the `_accept.py` module-MI
+residual), `scripts/wave_baseline.json` is removed, and the convergence gate no longer
+compares active-vs-baseline — it trusts the wave's report/accept partition (pass = empty
+active set + no stale acceptances). A new `scripts/migrate_baseline_to_accept.py` is the
+identity-preserving converter.
+
 ## 0.7.7
 
 test(hardening): self-audit dogfood run 5 — guard against the ledger/baseline drift that the

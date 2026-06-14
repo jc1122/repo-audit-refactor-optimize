@@ -45,3 +45,30 @@ def test_integrate_releases_locks_on_gate_fail(tmp_path):
     assert code == 1  # gate failed
     state = json.loads((run_dir / "mprr_state.json").read_text())
     assert "d1" not in state["running"] and "a.py" not in state["locked"]
+
+
+# ── Task 5: acceptance policy wiring ──────────────────────────────────────────
+
+def test_remediation_excludes_fallback_maps_to_path_entries(tmp_path: Path):
+    (tmp_path / "scripts").mkdir(parents=True)
+    (tmp_path / "scripts" / "remediation_excludes.json").write_text(json.dumps(
+        {"dead_code": {"exclude_paths": ["**/fixtures/**"], "reason": "intentional"}}),
+        encoding="utf-8")
+    policy = run._engine_accept_policy(tmp_path)
+    finding = {"files": ["tests/fixtures/x.py"]}
+    assert policy.matches(finding, "remediation") is not None
+
+
+def test_filter_findings_drops_remediation_accepted_and_writes_sidecar(tmp_path: Path):
+    (tmp_path / ".repo-audit").mkdir()
+    (tmp_path / ".repo-audit" / "accept.json").write_text(json.dumps(
+        {"version": 1, "accept": [
+            {"match": {"kind": "path", "glob": "**/fixtures/**"}, "reason": "intentional"}]}),
+        encoding="utf-8")
+    findings = [{"id": "a", "files": ["src/x.py"]},
+                {"id": "b", "files": ["tests/fixtures/y.py"]}]
+    kept = run._filter_remediation(findings, tmp_path, run_dir=tmp_path)
+    assert [f["id"] for f in kept] == ["a"]
+    excluded = json.loads((tmp_path / "mprr_excluded.json").read_text())
+    assert excluded["excluded"][0]["id"] == "b"
+    assert excluded["excluded"][0]["accept_reason"] == "intentional"

@@ -1,4 +1,8 @@
-"""Tests for scripts/check_wave_baseline.py — canonical convergence gate."""
+"""Tests for scripts/check_wave_baseline.py — canonical convergence gate (Option A).
+
+Convergence trusts the wave's report/accept partition: pass iff the active set
+(`wave_findings.json`) is empty AND the accept sidecar's stale list is empty.
+"""
 
 from __future__ import annotations
 
@@ -15,78 +19,74 @@ if str(REPO_ROOT) not in sys.path:
 mod = importlib.import_module("scripts.check_wave_baseline")
 
 
-def _dump(path: Path, payload: list[dict]) -> None:
+def _dump(path: Path, payload) -> None:
     path.write_text(json.dumps(payload), encoding="utf-8")
 
 
-def test_status_pass_when_equal(tmp_path, capsys):
-    snapshot = tmp_path / "snapshot.json"
-    baseline = tmp_path / "baseline.json"
-    findings = [
-        {"path": "x", "metric": "m", "symbol": "s", "leaf": "a"},
-    ]
-    _dump(snapshot, findings)
-    _dump(baseline, findings)
+def test_pass_when_active_empty_and_no_stale(tmp_path, capsys):
+    snapshot = tmp_path / "active.json"
+    accepted = tmp_path / "accepted.json"
+    _dump(snapshot, [])
+    _dump(accepted, {"accepted": [{"leaf": "a"}, {"leaf": "b"}], "stale": []})
 
-    rc = mod.main(["--snapshot", str(snapshot), "--baseline", str(baseline)])
+    rc = mod.main(["--snapshot", str(snapshot), "--accepted", str(accepted)])
     captured = json.loads(capsys.readouterr().out)
     assert rc == 0
     assert captured["status"] == "pass"
-    assert captured["count"] == 1
-    assert captured["baseline"] == 1
+    assert captured["active"] == 0
+    assert captured["accepted"] == 2
 
 
-def test_status_new_findings(tmp_path, capsys):
-    snapshot = tmp_path / "snapshot.json"
-    baseline = tmp_path / "baseline.json"
-    _dump(baseline, [{"path": "x", "metric": "m", "symbol": "s", "leaf": "a"}])
-    _dump(
-        snapshot,
-        [
-            {"path": "x", "metric": "m", "symbol": "s", "leaf": "a"},
-            {"path": "y", "metric": "m", "symbol": "t", "leaf": "a"},
-        ],
-    )
+def test_pass_when_no_accepted_sidecar_given(tmp_path, capsys):
+    snapshot = tmp_path / "active.json"
+    _dump(snapshot, [])
 
-    rc = mod.main(["--snapshot", str(snapshot), "--baseline", str(baseline)])
+    rc = mod.main(["--snapshot", str(snapshot)])
+    captured = json.loads(capsys.readouterr().out)
+    assert rc == 0
+    assert captured["status"] == "pass"
+    assert captured["active"] == 0
+    assert captured["accepted"] == 0
+
+
+def test_fail_when_active_non_empty(tmp_path, capsys):
+    snapshot = tmp_path / "active.json"
+    accepted = tmp_path / "accepted.json"
+    _dump(snapshot, [{"path": "y", "metric": "m", "symbol": "t", "leaf": "a"}])
+    _dump(accepted, {"accepted": [], "stale": []})
+
+    rc = mod.main(["--snapshot", str(snapshot), "--accepted", str(accepted)])
     captured = json.loads(capsys.readouterr().out)
     assert rc == 1
     assert captured["status"] == "fail"
+    assert captured["new_findings"] == [["a", "y", "t", "m"]]
+
+
+def test_fail_when_stale_non_empty(tmp_path, capsys):
+    snapshot = tmp_path / "active.json"
+    accepted = tmp_path / "accepted.json"
+    _dump(snapshot, [])
+    _dump(accepted, {"accepted": [], "stale": ["finding:{'leaf': 'gone'}"]})
+
+    rc = mod.main(["--snapshot", str(snapshot), "--accepted", str(accepted)])
+    captured = json.loads(capsys.readouterr().out)
+    assert rc == 1
+    assert captured["status"] == "fail"
+    assert captured["stale_acceptances"] == ["finding:{'leaf': 'gone'}"]
+
+
+def test_active_wins_over_stale(tmp_path, capsys):
+    """A non-empty active set is reported even when stale is also non-empty."""
+    snapshot = tmp_path / "active.json"
+    accepted = tmp_path / "accepted.json"
+    _dump(snapshot, [{"path": "y", "metric": "m", "symbol": "t", "leaf": "a"}])
+    _dump(accepted, {"accepted": [], "stale": ["finding:{'leaf': 'gone'}"]})
+
+    rc = mod.main(["--snapshot", str(snapshot), "--accepted", str(accepted)])
+    captured = json.loads(capsys.readouterr().out)
+    assert rc == 1
     assert "new_findings" in captured
-
-
-def test_status_stale_baseline_has_ratchet_message(tmp_path, capsys):
-    snapshot = tmp_path / "snapshot.json"
-    baseline = tmp_path / "baseline.json"
-    _dump(snapshot, [{"path": "x", "metric": "m", "symbol": "s", "leaf": "a"}])
-    _dump(
-        baseline,
-        [
-            {"path": "x", "metric": "m", "symbol": "s", "leaf": "a"},
-            {"path": "z", "metric": "m", "symbol": "stale", "leaf": "a"},
-        ],
-    )
-
-    rc = mod.main(["--snapshot", str(snapshot), "--baseline", str(baseline)])
-    captured = json.loads(capsys.readouterr().out)
-    assert rc == 1
-    assert captured["status"] == "fail"
-    assert "stale_baseline" in captured
-    assert captured["message"] == "ratchet: remove them from wave_baseline.json in the same commit"
-
-
-def test_finding_identity_is_order_insensitive(tmp_path, capsys):
-    snapshot = tmp_path / "snapshot.json"
-    baseline = tmp_path / "baseline.json"
-    snapshot_payload = {"metric": "m", "symbol": "s", "leaf": "a", "path": "x"}
-    baseline_payload = {"path": "x", "leaf": "a", "metric": "m", "symbol": "s"}
-    _dump(snapshot, [snapshot_payload])
-    _dump(baseline, [baseline_payload])
-
-    rc = mod.main(["--snapshot", str(snapshot), "--baseline", str(baseline)])
-    captured = json.loads(capsys.readouterr().out)
-    assert rc == 0
-    assert captured["status"] == "pass"
+    assert "stale_acceptances" not in captured
 
 
 def test_run_wave_forwards_anchor_and_wave_configs(tmp_path, monkeypatch):
@@ -120,7 +120,8 @@ def test_run_wave_forwards_anchor_and_wave_configs(tmp_path, monkeypatch):
     monkeypatch.delenv("SECURITY_CONFIG", raising=False)
     monkeypatch.delenv("HOTSPOT_CONFIG", raising=False)
 
-    assert mod._run_wave() == []
+    out = mod._run_wave()
+    assert out == repo / ".wave_out"
     argv = json.loads((repo / ".wave_out" / "argv.json").read_text(encoding="utf-8"))
     assert argv[argv.index("--rev") + 1] == "anchor-sha"
     assert argv[argv.index("--security-config") + 1] == str(security_config)

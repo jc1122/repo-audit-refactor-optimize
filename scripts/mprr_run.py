@@ -13,6 +13,7 @@ if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
 # Imports follow the sys.path bootstrap above (lets the CLI run as a script).
+from scripts import _accept  # noqa: E402
 from scripts import mprr_gate, mprr_integrate, mprr_normalize, mprr_packets  # noqa: E402
 from scripts.mprr_schedule import SaturatingScheduler  # noqa: E402
 
@@ -49,9 +50,46 @@ def _write_state(
     )
 
 
+def _engine_accept_policy(repo: Path) -> _accept.AcceptPolicy:
+    """Policy for the target repo + back-compat remediation_excludes.json fallback."""
+    policy = _accept.load_accept(repo)
+    legacy = Path(repo) / "scripts" / "remediation_excludes.json"
+    if legacy.exists():
+        data = json.loads(legacy.read_text())
+        entries = []
+        for section in data.values():
+            if not isinstance(section, dict):
+                continue
+            reason = section.get("reason", "(remediation_excludes.json)")
+            for glob in section.get("exclude_paths", []):
+                entries.append(_accept.AcceptEntry(
+                    "path", {"glob": glob}, reason,
+                    frozenset({"remediation"}), None))
+        policy = policy.merge(_accept.AcceptPolicy(entries))
+    return policy
+
+
+def _filter_remediation(
+    findings: list[dict[str, Any]], repo: Path, run_dir: Path
+) -> list[dict[str, Any]]:
+    """Drop findings accepted at the remediation stage; record them in a sidecar."""
+    policy = _engine_accept_policy(repo)
+    if not policy.entries:
+        return findings
+    active, excluded, stale = policy.partition(findings, "remediation")
+    (Path(run_dir) / "mprr_excluded.json").write_text(
+        json.dumps({"excluded": excluded, "stale": stale}, indent=2), encoding="utf-8")
+    return active
+
+
 def _cmd_plan(a: argparse.Namespace) -> int:
     run_dir = Path(a.run_dir)
-    items = _items(a.findings, a.triage)
+    raw_findings = _load(a.findings)
+    if a.repo:
+        raw_findings = _filter_remediation(raw_findings, Path(a.repo), run_dir)
+    items = mprr_normalize.normalize(raw_findings)
+    items += mprr_normalize.from_triage_report(_load(a.triage))
+    items = sorted(items, key=lambda it: it.id)
     by_id = {it.id: it for it in items}
     state = _read_state(run_dir)
     running: dict[str, list[str]] = dict(state["running"])

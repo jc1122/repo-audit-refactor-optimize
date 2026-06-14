@@ -14,10 +14,16 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from scripts import _accept  # static binding for the type checker only
 
 _wave_findings = importlib.import_module(
     "scripts._wave_findings" if __package__ else "_wave_findings"
+)
+_accept = importlib.import_module(
+    "scripts._accept" if __package__ else "_accept"
 )
 
 # ── legacy hardcoded lanes ─────────────────────────────────────────────
@@ -94,6 +100,10 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--baseline", type=Path, help="Accepted-residuals JSON to suppress"
+    )
+    parser.add_argument(
+        "--accept", type=Path,
+        help="Extra acceptance policy file merged with <repo>/.repo-audit/accept.json",
     )
     return parser.parse_args(argv)
 
@@ -372,6 +382,31 @@ def _run_wave(
 # ── output ──────────────────────────────────────────────────────────────
 
 
+def _resolve_accept(
+    repo: Path, accept: Path | None, baseline: Path | None
+) -> _accept.AcceptPolicy:
+    """Auto-discover the in-repo policy, merge --accept and a legacy --baseline."""
+    policy = _accept.load_accept(repo, accept)  # raises AcceptError on a bad file
+    if baseline is not None:
+        rows = _wave_findings.load_baseline(baseline)  # raises on bad input
+        policy = policy.merge(_accept.from_baseline(rows))
+    return policy
+
+
+def _apply_accept(
+    policy: _accept.AcceptPolicy, findings: list[dict[str, str]], out_dir: Path
+) -> list[dict[str, str]]:
+    """Partition at the report stage; write the accepted + back-compat sidecars."""
+    active, accepted, stale = policy.partition(findings, "report")
+    (out_dir / "wave_findings.accepted.json").write_text(
+        json.dumps({"accepted": accepted, "stale": stale}, indent=2), encoding="utf-8")
+    # back-compat: keep the old suppressed.json shape for existing readers
+    (out_dir / "wave_findings.suppressed.json").write_text(
+        json.dumps({"suppressed": accepted, "stale_baseline": stale}, indent=2),
+        encoding="utf-8")
+    return active
+
+
 def _write_wave_outputs(
     out_root: Path,
     wave_exit: int,
@@ -421,18 +456,9 @@ def main(argv: list[str] | None = None) -> int:
     wave_exit, summary, wave_findings, timings = _run_wave(
         selected, loaded, args.skills_root, context
     )
-    if args.baseline is not None:
-        baseline = _wave_findings.load_baseline(args.baseline)  # raises on bad input
-        wave_findings, suppressed, stale = _wave_findings.partition(
-            wave_findings, baseline
-        )
-        (args.out_dir / "wave_findings.suppressed.json").write_text(
-            json.dumps(
-                {"suppressed": suppressed, "stale_baseline": [list(s) for s in stale]},
-                indent=2,
-            ),
-            encoding="utf-8",
-        )
+    policy = _resolve_accept(args.repo, args.accept, args.baseline)
+    if policy.entries:
+        wave_findings = _apply_accept(policy, wave_findings, args.out_dir)
     return _write_wave_outputs(args.out_dir, wave_exit, summary, wave_findings, timings)
 
 
