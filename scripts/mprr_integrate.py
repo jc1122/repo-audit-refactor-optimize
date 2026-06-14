@@ -25,16 +25,16 @@ def assert_scope(
 
 def merge_clean(repo: str, branch: str) -> None:
     """Merge `branch` into the current branch; raise InvariantViolation on conflict."""
-    proc = subprocess.run(  # nosec B603,B607 — fixed git argv, no shell
+    proc = subprocess.run(  # nosec B603 B607: fixed git argv, no shell
         ["git", "merge", "--no-ff", "--no-edit", branch],
         cwd=repo,
         capture_output=True,
         text=True,
     )
     if proc.returncode != 0:
-        subprocess.run(
+        subprocess.run(  # nosec B603 B607: fixed git argv, no shell
             ["git", "merge", "--abort"],
-            cwd=repo,  # nosec B603,B607
+            cwd=repo,
             capture_output=True,
             text=True,
         )
@@ -50,7 +50,7 @@ _ENGINE_DIR = Path(__file__).resolve().parent  # the engine repo's scripts/ dir
 def _git_toplevel(path: Path | str) -> str | None:
     """Return the git toplevel for *path*, or None if it cannot be resolved."""
     try:
-        proc = subprocess.run(  # nosec B603,B607 — fixed git argv, no shell
+        proc = subprocess.run(  # nosec B603 B607: fixed git argv, no shell
             ["git", "-C", str(path), "rev-parse", "--show-toplevel"],
             capture_output=True,
             text=True,

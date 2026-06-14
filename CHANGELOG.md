@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.7.3
+
+fix(security): self-audit dogfood run 1 — clear the 2 remaining SECURITY findings. The
+`mprr_integrate.py` git-subprocess nosec comments used the comma syntax (`# nosec
+B603,B607`) which bandit does NOT honor for the second id (it splits on whitespace), so
+B603 was never actually suppressed; one nosec was also on the wrong physical line. Fixed
+to space-separated form on the call lines. Annotated the two `synthesize_perf.py` B105
+false positives (the gate-outcome key `"pass"`, not a credential). Convergence gate 11 -> 10.
+
 ## 0.7.2
 
 chore(kpis): characterize `scripts/mine_iteration_kpis.py` (coverage 38.4% -> 92%, the

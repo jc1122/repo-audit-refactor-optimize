@@ -119,7 +119,7 @@ def write_report(*, out_dir: Path, gate: dict[str, Any], target: str) -> Path:
         json.dumps(gate, indent=2) + "\n", encoding="utf-8"
     )
     verdict = {
-        "pass": "GATE PASS",
+        "pass": "GATE PASS",  # nosec B105: gate-outcome label, not a credential
         "refuse": "HONEST REFUSAL (advisory only)",
         "error": "MEASUREMENT ERROR (fix the harness)",
     }.get(gate["gate"], gate["gate"])
@@ -167,7 +167,7 @@ def main(argv: list[str] | None = None) -> int:
     gate = decide_gate(**extract_gate_inputs(summary, max_cv=args.max_cv))
     write_report(out_dir=args.out_dir, gate=gate, target=args.target)
     print(json.dumps(gate, indent=2))
-    return {"pass": 0, "refuse": 1, "error": 2}[gate["gate"]]
+    return {"pass": 0, "refuse": 1, "error": 2}[gate["gate"]]  # nosec B105
 
 
 def verify_and_decide(*, verdict: dict[str, Any]) -> dict[str, Any]:
