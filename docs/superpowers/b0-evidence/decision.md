@@ -73,3 +73,26 @@ Why C1′ is strictly better than delete-C1:
 4. The script stays exercised (`tests/test_check_full_pytest.py` runs inside the coverage gate), so it cannot silently bitrot.
 
 Net change: 3 files, additive-safe. Verdict unchanged (≥5% median expected ≈ 51%).
+
+## Outcome: VERIFIED WIN (verify_win = accept)
+
+| metric | baseline | after | result |
+|--------|----------|-------|--------|
+| `npm run check` p50 wall | **371.03s** | **181.07s** | **−51.20% median win** |
+| coverage gate | 182.7s | ~181s | unchanged (authoritative green) |
+| pytest gate (default chain) | 175.1s | **removed** | opt-in via `npm run check:pytest` |
+| suite green (SUITE_RC) | — | **0** | tests still pass |
+
+`verify_win.py` verdict: `{"verdict":"accept","median_win_percent":51.198016,"reasons":[],"vs_last":{}}`.
+Environment fingerprint identical before/after (i5-1340P / kernel 7.0.0-22 / powersave / smt 1 / py3.14.4); no rubric tier drop (Wall-Time Stability WARN→WARN; Memory N/A→PASS improved). Implemented in repo-A commit `ad025f4` (`feat/phase2-b0`).
+
+### Debugging note (root cause found & fixed during measurement)
+The first after-run failed: `npm run check` went red on the **growth** gate
+(`net_loc_growth = +1` vs threshold `0.0`). Root cause: the C1′ commit was net **+1 LOC**
+because a **3-line explanatory comment** in `run_checks.py` outweighed the removed code.
+The growth gate is zero-tolerance for net-positive LOC pre-release (it re-baselines on the
+next release tag, per the Phase-1 guardrail). That nonzero `run_checks` exit also made
+perf-benchmark invalidate the after-run timing (no `wall_time_percentiles`) and set
+`SUITE_RC=1`. **Fix:** trimmed the comment to one line → commit net **−1 LOC** → growth
+`{"status":"pass"}` → clean re-measure. (At ship time the version bump + CHANGELOG + SP15
+note are net-positive and will go green once `v0.7.3` is tagged, which re-baselines growth.)
