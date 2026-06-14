@@ -15,6 +15,7 @@ from typing import Any
 # K-7 worker packet shape
 # ---------------------------------------------------------------------------
 
+
 def packet_for(finding: dict[str, Any], repo: str) -> dict[str, Any]:
     """Build a K-7 worker packet for a single wave finding.
 
@@ -54,10 +55,7 @@ def packet_for(finding: dict[str, Any], repo: str) -> dict[str, Any]:
     else:
         to_phrase = "to acceptable level"
 
-    goal = (
-        f"Reduce {metric_name} of {symbol} in {path_val} "
-        f"{from_phrase} {to_phrase}"
-    )
+    goal = f"Reduce {metric_name} of {symbol} in {path_val} {from_phrase} {to_phrase}"
 
     return {
         "packet_id": finding_id,
@@ -74,6 +72,7 @@ def packet_for(finding: dict[str, Any], repo: str) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 # Safe mechanical patch mapping
 # ---------------------------------------------------------------------------
+
 
 def _finding_class(finding: dict[str, Any]) -> str:
     """Derive a safe-table class key from a finding."""
@@ -139,6 +138,7 @@ def _run_ruff(
 # ---------------------------------------------------------------------------
 # Two-tier lessons ledger: capped scope-matched injection + escalation
 # ---------------------------------------------------------------------------
+
 
 def inject_lessons(
     packet: dict[str, Any],
@@ -237,14 +237,16 @@ def mechanical_patches(
 
         if error:
             # Ruff failed — record error result without writing patch/verify files
-            results.append({
-                "id": finding_id,
-                "class": fclass,
-                "patch_path": None,
-                "verify_path": None,
-                "diff_bytes": 0,
-                "error": error,
-            })
+            results.append(
+                {
+                    "id": finding_id,
+                    "class": fclass,
+                    "patch_path": None,
+                    "verify_path": None,
+                    "diff_bytes": 0,
+                    "error": error,
+                }
+            )
             continue
 
         # Write patch file
@@ -273,13 +275,15 @@ def mechanical_patches(
             json.dumps(verify_payload, indent=2) + "\n", encoding="utf-8"
         )
 
-        results.append({
-            "id": finding_id,
-            "class": fclass,
-            "patch_path": str(patch_path),
-            "verify_path": str(verify_path),
-            "diff_bytes": len(diff),
-            "error": None,
-        })
+        results.append(
+            {
+                "id": finding_id,
+                "class": fclass,
+                "patch_path": str(patch_path),
+                "verify_path": str(verify_path),
+                "diff_bytes": len(diff),
+                "error": None,
+            }
+        )
 
     return results

@@ -36,9 +36,7 @@ def compute_kpi(
     """
     rows_closed = sum(rows_before.values()) - sum(rows_after.values())
     total_seconds = sum(phase_seconds.values())
-    rows_per_hour = (
-        rows_closed / (total_seconds / 3600.0) if total_seconds > 0 else 0.0
-    )
+    rows_per_hour = rows_closed / (total_seconds / 3600.0) if total_seconds > 0 else 0.0
     repair_rate = (
         sum(1 for run in worker_runs if (run.get("repairs") or 0) > 0)
         / len(worker_runs)
@@ -102,7 +100,9 @@ def _derive_phase_seconds(
     return {"window": max(0.0, end - start)}
 
 
-def _load_baseline_rows(repo: Path, sha: str | None, baseline_rel: str) -> dict[str, int]:
+def _load_baseline_rows(
+    repo: Path, sha: str | None, baseline_rel: str
+) -> dict[str, int]:
     """Row counts from a ratcheted baseline JSON at a given SHA."""
     if not sha:
         return {}
@@ -176,7 +176,13 @@ def _derive_ci_wait_seconds(repo: Path) -> float:
                 runs[0]["updatedAt"].replace("Z", "+00:00")
             )
             return max(0.0, (updated - created).total_seconds())
-    except (subprocess.SubprocessError, json.JSONDecodeError, KeyError, ValueError, OSError):
+    except (
+        subprocess.SubprocessError,
+        json.JSONDecodeError,
+        KeyError,
+        ValueError,
+        OSError,
+    ):
         return 0.0
     return 0.0
 

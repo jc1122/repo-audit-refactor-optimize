@@ -67,6 +67,10 @@ The wave emits:
 
 Use `--coverage-json` when present in the test artifact so code-health can run artifact-gated checks.
 
+**Scoping and suppression.** With no `--source-prefix`, the wave excludes `tests` and `fixtures` by default so the orchestrator's own test code does not generate self-noise; an explicit `--source-prefix <dir>` scopes positively and disables the default exclusion, and `--exclude-prefix <dir>` adds further exclusions (honored by the code-health/security/dependency lanes that support it). Pass `--baseline <accepted-residuals.json>` — a JSON array of accepted residuals keyed by the `{leaf, path, symbol, metric}` identity — to suppress already-triaged findings; suppressed findings and stale baseline entries (baseline identities that matched nothing) are written to `wave_findings.suppressed.json`. This identity is the single source of truth shared with `check_wave_baseline.py`'s convergence ratchet, so suppression and the ratchet can never disagree.
+
+**MPRR self-engine merge guard.** When the merge-parallel-review-runner integrates a packet, `mprr_integrate.self_guard` refuses to auto-merge edits to the engine's own `scripts/*.py` when the target repo resolves to the engine's own repository (or the target is unresolvable — it fails closed). This is defense-in-depth for the in-place/self-modification topology; such edits require human review rather than automatic merge.
+
 ### Parallelism Rules
 
 Allow parallel execution when:

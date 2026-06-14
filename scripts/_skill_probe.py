@@ -63,15 +63,11 @@ def _build_skill_entry_base(
         "source_type": skill_config["source_type"],
         "install_source": skill_config.get("install_source"),
         "manual_fallback": skill_config["manual_fallback"],
-        "restart_required_if_installed": skill_config[
-            "restart_required_if_installed"
-        ],
+        "restart_required_if_installed": skill_config["restart_required_if_installed"],
     }
 
 
-def _validate_skill_entry_fields(
-    skill_name: str, skill_config: dict[str, Any]
-) -> None:
+def _validate_skill_entry_fields(skill_name: str, skill_config: dict[str, Any]) -> None:
     for field in _REQUIRED_SKILL_FIELDS:
         if field not in skill_config:
             raise ValueError(
@@ -209,6 +205,16 @@ def _skill_entry(
 ) -> dict[str, Any]:
     _validate_skill_entry_fields(skill_name, skill_config)
     entry = _build_skill_entry_base(skill_name, skill_config)
+    if skill_config.get("always_available"):
+        # Harness/process skills are guaranteed by the runtime, not the skills-root;
+        # resolve them as usable without a filesystem probe
+        # (fixes orchestration=manual).
+        return {
+            **entry,
+            "state": "usable_now",
+            "root_kind": "harness",
+            "skill_path": None,
+        }
     if skill_name in usable_skills:
         return {
             **entry,

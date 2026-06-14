@@ -54,21 +54,8 @@ _LANG_MAP: dict[str, str] = {
     ".asm": "assembly",
 }
 
-_BENCH_NAME_KW: dict[str, tuple[str, ...]] = {
-    ".py": ("bench", "benchmark"),
-    ".c": ("bench", "perf"),
-    ".h": ("bench", "perf"),
-    ".cc": ("bench", "perf"),
-    ".cpp": ("bench", "perf"),
-    ".hpp": ("bench", "perf"),
-    ".rs": ("bench",),
-    ".s": ("bench", "perf"),
-    ".S": ("bench", "perf"),
-    ".asm": ("bench", "perf"),
-}
-
 _BENCH_PATH_KW: dict[str, tuple[str, ...]] = {
-    ".py": ("benches",),
+    ".py": ("benches", "benchmarks"),
     ".c": ("benchmark",),
     ".h": ("benchmark",),
     ".cc": ("benchmark",),
@@ -161,11 +148,6 @@ def _coerce_bootstrap_report_request(
     return BootstrapReportRequest(**kwargs)
 
 
-def _has_any_keyword(text: str, keywords: tuple[str, ...]) -> bool:
-    """Return True when *text* contains any of the given *keywords*."""
-    return any(kw in text for kw in keywords)
-
-
 def _dir_marker_contributions(
     file_names: list[str],
 ) -> tuple[set[str], set[str]]:
@@ -198,12 +180,30 @@ def _has_any_suffix_py(file_names: list[str]) -> bool:
     return any(name.endswith(".py") for name in file_names)
 
 
+# Directories that hold tooling or tests — never a benchmark *surface*.
+_NON_SURFACE_DIRS: frozenset[str] = frozenset({"scripts", "tests"})
+
+
+def _is_harness_name(lower_name: str, suffix: str) -> bool:
+    """True for the benchmark harness naming convention:
+    ``bench_*.<ext>`` or ``bench.<ext>``."""
+    return lower_name.startswith("bench_") or lower_name == f"bench{suffix}"
+
+
 def _benchmark_surface(
     suffix: str, lower_name: str, parts_lower: set[str]
 ) -> str | None:
-    """Return the benchmark surface for a file, or None."""
-    bench_kws = _BENCH_NAME_KW.get(suffix)
-    if bench_kws and _has_any_keyword(lower_name, bench_kws):
+    """Return the benchmark surface for a file, or None.
+
+    A file counts as a benchmark *surface* only when it follows the harness naming
+    convention (``bench_*.<ext>``) OR sits under a benchmark directory — and is not
+    under a tooling/test directory. This stops source/tests that merely mention
+    "benchmark" (e.g. ``scripts/graduate_benchmark.py``) from being mistaken for a
+    committed benchmark surface.
+    """
+    if parts_lower & _NON_SURFACE_DIRS:
+        return None
+    if suffix in _BENCH_SURFACE and _is_harness_name(lower_name, suffix):
         return _BENCH_SURFACE.get(suffix)
     path_kws = _BENCH_PATH_KW.get(suffix)
     if path_kws:
@@ -343,9 +343,7 @@ def _collect_discovery_inputs(
     )
     usable_skills = _discover_skills(roots["usable_roots"])
     advisory_skills = _discover_skills(roots["advisory_roots"])
-    unreferenced_skills = sorted(
-        set(usable_skills) - set(manifest["skills"])
-    )
+    unreferenced_skills = sorted(set(usable_skills) - set(manifest["skills"]))
     merged_skills = _build_merged_skills(
         options["active_skills"],
         manifest,
@@ -404,9 +402,7 @@ def _evaluate_lanes(
     return lanes
 
 
-def _collect_skill_warnings(
-    merged_skills: dict[str, Any], warnings: list[str]
-) -> None:
+def _collect_skill_warnings(merged_skills: dict[str, Any], warnings: list[str]) -> None:
     """Append warnings from merged skill descriptors."""
     for skill in merged_skills.values():
         if "warnings" in skill:

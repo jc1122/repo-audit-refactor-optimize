@@ -1,4 +1,5 @@
 """Orchestrator-facing CLI. Stdlib only. State lives on disk, never in chat."""
+
 from __future__ import annotations
 
 import argparse
@@ -11,8 +12,9 @@ _REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
-from scripts import mprr_gate, mprr_integrate, mprr_normalize, mprr_packets
-from scripts.mprr_schedule import SaturatingScheduler
+# Imports follow the sys.path bootstrap above (lets the CLI run as a script).
+from scripts import mprr_gate, mprr_integrate, mprr_normalize, mprr_packets  # noqa: E402
+from scripts.mprr_schedule import SaturatingScheduler  # noqa: E402
 
 
 def _load(path: str | None) -> list[dict[str, Any]]:
@@ -39,9 +41,12 @@ def _read_state(run_dir: Path) -> dict[str, Any]:
     return {"running": {}, "locked": []}
 
 
-def _write_state(run_dir: Path, running: dict[str, list[str]], locked: set[str]) -> None:
+def _write_state(
+    run_dir: Path, running: dict[str, list[str]], locked: set[str]
+) -> None:
     (run_dir / "mprr_state.json").write_text(
-        json.dumps({"running": running, "locked": sorted(locked)}, indent=2))
+        json.dumps({"running": running, "locked": sorted(locked)}, indent=2)
+    )
 
 
 def _cmd_plan(a: argparse.Namespace) -> int:
@@ -54,14 +59,16 @@ def _cmd_plan(a: argparse.Namespace) -> int:
     pending = [it for it in items if it.id not in running]
     sched = SaturatingScheduler(pending, ceiling=a.ceiling)
     # seed scheduler with already-running locks by lowering effective room
-    sched._locked = set(locked)                      # noqa: SLF001 (deliberate seed)
+    sched._locked = set(locked)  # noqa: SLF001 (deliberate seed)
     sched._running = {k: by_id.get(k) for k in running}  # noqa: SLF001
     batch = sched.dispatchable()
     packets = []
     for it in batch:
         running[it.id] = list(it.files)
         locked |= set(it.files)
-        packets.append(mprr_packets.remediation_packet(it, repo=a.repo or "", lessons=[]))
+        packets.append(
+            mprr_packets.remediation_packet(it, repo=a.repo or "", lessons=[])
+        )
         _log(run_dir, {"event": "start", "id": it.id, "files": list(it.files)})
     _write_state(run_dir, running, locked)
     print(json.dumps(packets, indent=2))
@@ -79,9 +86,10 @@ def _cmd_integrate(a: argparse.Namespace) -> int:
     rc = evidence.get("remediation_class") or _class_of(a, run_dir)
     scope_ok, scope_reasons = mprr_integrate.assert_scope(files, diff_files)
     gate_ok, gate_reasons = mprr_gate.verify(rc, evidence)
+    guard_ok, guard_reasons = mprr_integrate.self_guard(a.repo, diff_files)
     merged = False
     status = "discard"
-    if scope_ok and gate_ok:
+    if scope_ok and gate_ok and guard_ok:
         if not a.no_merge:
             mprr_integrate.merge_clean(a.repo, a.branch)  # raises on conflict
         merged = True
@@ -90,8 +98,16 @@ def _cmd_integrate(a: argparse.Namespace) -> int:
     running.pop(a.packet_id, None)
     locked -= set(files)
     _write_state(run_dir, running, locked)
-    _log(run_dir, {"event": status, "id": a.packet_id, "conflict": False,
-                   "merged": merged, "reasons": scope_reasons + gate_reasons})
+    _log(
+        run_dir,
+        {
+            "event": status,
+            "id": a.packet_id,
+            "conflict": False,
+            "merged": merged,
+            "reasons": scope_reasons + gate_reasons + guard_reasons,
+        },
+    )
     return 0 if merged else 1
 
 
@@ -101,7 +117,9 @@ def _class_of(a: argparse.Namespace, run_dir: Path) -> str:
 
 
 def _cmd_reaudit(a: argparse.Namespace) -> int:
-    return len(_items(a.findings, a.triage))  # exit code = residual count (0 = converged)
+    return len(
+        _items(a.findings, a.triage)
+    )  # exit code = residual count (0 = converged)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -109,18 +127,27 @@ def main(argv: list[str] | None = None) -> int:
     sub = p.add_subparsers(dest="cmd", required=True)
 
     sp = sub.add_parser("plan")
-    sp.add_argument("--run-dir", required=True); sp.add_argument("--findings")
-    sp.add_argument("--triage"); sp.add_argument("--ceiling", type=int, default=8)
-    sp.add_argument("--repo", default=""); sp.set_defaults(fn=_cmd_plan)
+    sp.add_argument("--run-dir", required=True)
+    sp.add_argument("--findings")
+    sp.add_argument("--triage")
+    sp.add_argument("--ceiling", type=int, default=8)
+    sp.add_argument("--repo", default="")
+    sp.set_defaults(fn=_cmd_plan)
 
     si = sub.add_parser("integrate")
-    si.add_argument("--run-dir", required=True); si.add_argument("--packet-id", required=True)
-    si.add_argument("--evidence", required=True); si.add_argument("--diff-files", default="")
-    si.add_argument("--repo", default="."); si.add_argument("--branch", default="")
-    si.add_argument("--no-merge", action="store_true"); si.set_defaults(fn=_cmd_integrate)
+    si.add_argument("--run-dir", required=True)
+    si.add_argument("--packet-id", required=True)
+    si.add_argument("--evidence", required=True)
+    si.add_argument("--diff-files", default="")
+    si.add_argument("--repo", default=".")
+    si.add_argument("--branch", default="")
+    si.add_argument("--no-merge", action="store_true")
+    si.set_defaults(fn=_cmd_integrate)
 
     sr = sub.add_parser("reaudit")
-    sr.add_argument("--findings"); sr.add_argument("--triage"); sr.set_defaults(fn=_cmd_reaudit)
+    sr.add_argument("--findings")
+    sr.add_argument("--triage")
+    sr.set_defaults(fn=_cmd_reaudit)
 
     a = p.parse_args(argv)
     return a.fn(a)

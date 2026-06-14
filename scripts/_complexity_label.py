@@ -1,5 +1,8 @@
 # scripts/_complexity_label.py
-"""Local Big-O label from a fitted log-log exponent (repo-B has no cross-repo import to repo-P)."""
+"""Local Big-O label from a fitted log-log exponent.
+
+(repo-B has no cross-repo import to repo-P.)
+"""
 
 
 def label(k: float) -> str:

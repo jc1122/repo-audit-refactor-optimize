@@ -1089,3 +1089,30 @@ def test_default_registry_preserves_lane_order(tmp_path: Path) -> None:
     assert len(findings) == 2
     assert findings[0]["path"] == "h.py"
     assert findings[1]["path"] == "e.py"
+
+
+import importlib
+wave = importlib.import_module("scripts.run_diagnosis_wave")
+
+
+def test_effective_excludes_defaults_to_tests_and_fixtures():
+    assert wave._effective_excludes(source_prefixes=[], exclude_prefixes=[]) == ["tests", "fixtures"]
+
+
+def test_effective_excludes_explicit_source_prefix_disables_default():
+    assert wave._effective_excludes(source_prefixes=["scripts"], exclude_prefixes=[]) == []
+
+
+def test_effective_excludes_explicit_excludes_win():
+    assert wave._effective_excludes(source_prefixes=[], exclude_prefixes=["vendor"]) == ["vendor"]
+
+
+def test_audit_scope_args_emits_excludes_when_supported():
+    args = wave._audit_scope_args(["scripts"], ["tests", "fixtures"], supports_exclude=True)
+    assert args == ["--source-prefix", "scripts",
+                    "--exclude-prefix", "tests", "--exclude-prefix", "fixtures"]
+
+
+def test_audit_scope_args_drops_excludes_when_unsupported():
+    args = wave._audit_scope_args([], ["tests"], supports_exclude=False)
+    assert args == []

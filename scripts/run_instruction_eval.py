@@ -109,9 +109,7 @@ def _load_expected(raw: str) -> int:
         return data
     if isinstance(data, dict) and isinstance(data.get("expected_rows"), int):
         return int(data["expected_rows"])
-    raise ValueError(
-        f"expected JSON must be an int or {{'expected_rows': int}}: {raw}"
-    )
+    raise ValueError(f"expected JSON must be an int or {{'expected_rows': int}}: {raw}")
 
 
 def _load_model_findings(path_str: str) -> list[Any]:
