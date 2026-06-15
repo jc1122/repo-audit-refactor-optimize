@@ -118,9 +118,11 @@ def load_dependency_manifest(manifest_path: Path) -> dict[str, Any]:
     return payload
 
 
+# Fields an override file may set. `install_source` is deliberately NOT here:
+# a git install command is built only from the trusted manifest `sources` map, so
+# an audited (untrusted) repo override cannot inject an arbitrary clone/install.
 _OVERRIDE_SCHEMA: dict[str, type] = {
     "source_type": str,
-    "install_source": dict,
     "manual_fallback": str,
     "restart_required_if_installed": bool,
 }
@@ -131,6 +133,12 @@ def _is_skill_override_valid(payload: dict[str, Any]) -> bool:
         payload.get(field) is None or isinstance(payload[field], expected_type)
         for field, expected_type in _OVERRIDE_SCHEMA.items()
     )
+
+
+def _whitelisted_override(entry: dict[str, Any]) -> dict[str, Any]:
+    """Keep only schema-known keys so an override cannot inject `source`,
+    `install_source`, or any other unexpected field."""
+    return {k: v for k, v in entry.items() if k in _OVERRIDE_SCHEMA}
 
 
 def _read_override_payload(scope: str, path: Path) -> dict[str, Any]:
@@ -183,7 +191,7 @@ def load_source_overrides(
                     f"Ignored override for unknown or inactive skill {skill_name}."
                 )
                 continue
-            merged[skill_name] = entry
+            merged[skill_name] = _whitelisted_override(entry)
 
     return merged, warnings
 
