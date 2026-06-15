@@ -1,0 +1,9 @@
+     72 build_parser no tests
+     67 main no tests
+     22 analyze_tree survived
+     21 render_report no tests
+     14 load_coverage survived
+      8 load_thresholds no tests
+      5 _coverage_percent survived
+      1 _rel survived
+      1 _iter_python_files survived

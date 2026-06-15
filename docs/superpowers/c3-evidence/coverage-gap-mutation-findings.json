@@ -1,0 +1,48 @@
+[
+  {
+    "confidence": "high",
+    "evidence": {
+      "raw": "scripts.coverage_gap_audit.x__coverage_percent__mutmut_11=survived; scripts.coverage_gap_audit.x__coverage_percent__mutmut_17=survived; scripts.coverage_gap_audit.x__coverage_percent__mutmut_6=survived; scripts.coverage_gap_audit.x__coverage_percent__mutmut_7=survived; scripts.coverage_gap_audit.x__coverage_percent__mutmut_9=survived; scripts.coverage_gap_audit.x__iter_python_files__mutmut_6=survived; scripts.coverage_gap_audit.x__rel__mutmut_3=survived; scripts.coverage_gap_audit.x_analyze_tree__mutmut_15=survived; scripts.coverage_gap_audit.x_analyze_tree__mutmut_19=survived; scripts.coverage_gap_audit.x_analyze_tree__mutmut_25=survived ...(+201 more)\n@@ -3,4 +3,4 @@\n@@ -3,4 +3,4 @@\n@@ -1,6 +1,6 @@",
+      "tool": "mutmut"
+    },
+    "id": "77507be57f2ac3b7",
+    "leaf": "test-effectiveness",
+    "location": {
+      "line_end": 1,
+      "line_start": 1,
+      "symbol": "<module>"
+    },
+    "metric": {
+      "name": "mutation_kill_rate",
+      "threshold": 0.8,
+      "value": 0.392
+    },
+    "path": "scripts/coverage_gap_audit.py",
+    "severity": "high",
+    "signal": "TEST",
+    "suggested_action": "Strengthen assertions/cases for scripts/coverage_gap_audit.py: surviving mutants listed in evidence"
+  },
+  {
+    "confidence": "high",
+    "evidence": {
+      "raw": "scripts.health_common.x_sort_findings__mutmut_1=no tests; scripts.health_common.x_sort_findings__mutmut_2=no tests; scripts.health_common.x_sort_findings__mutmut_3=no tests; scripts.health_common.x_sort_findings__mutmut_4=no tests; scripts.health_common.x_sort_findings__mutmut_5=no tests; scripts.health_common.x_write_findings__mutmut_1=no tests; scripts.health_common.x_write_findings__mutmut_10=no tests; scripts.health_common.x_write_findings__mutmut_11=no tests; scripts.health_common.x_write_findings__mutmut_12=no tests; scripts.health_common.x_write_findings__mutmut_13=no tests ...(+23 more)\n@@ -1,5 +1,5 @@\n@@ -1,5 +1,5 @@\n@@ -1,5 +1,4 @@",
+      "tool": "mutmut"
+    },
+    "id": "b5389e3974efcd45",
+    "leaf": "test-effectiveness",
+    "location": {
+      "line_end": 1,
+      "line_start": 1,
+      "symbol": "<module>"
+    },
+    "metric": {
+      "name": "mutation_kill_rate",
+      "threshold": 0.8,
+      "value": 0.0
+    },
+    "path": "scripts/health_common.py",
+    "severity": "high",
+    "signal": "TEST",
+    "suggested_action": "Strengthen assertions/cases for scripts/health_common.py: surviving mutants listed in evidence"
+  }
+]
