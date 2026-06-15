@@ -336,6 +336,34 @@ These complete "every skill on every skill" for the artifact/slow lanes. They ar
 
 Each B-item: its own `docs/superpowers/specs/` brainstorm → plan, because the pass condition is empirical (timings, mutation scores), not a fixed literal.
 
+### Phase 2 — COMPLETE (2026-06-15)
+
+All Tier-2 self-application items shipped via the superpowers pipeline (specs/plans/evidence in
+`docs/superpowers/{specs,plans,b0-evidence,b1-evidence,b2-evidence,b3-evidence,b4-evidence}/`):
+
+- **B0** — bring the family audit under budget: repo-A `npm run check` 371→181 s (−51 %); first
+  self-application of perf-benchmark/perf-optimization (repo-A **v0.7.3**).
+- **B1** — `coverage-gap` into the pass: lane runs + converges to **0** on all three repos (repo-A
+  verify; repo-B/repo-P gaps closed by tests); subprocess-capture coverage methodology established.
+  Test-only, no release.
+- **B2** — `test-quality-assurance` / `test-redundancy-triage` / `test-audit-pipeline` on the family
+  suites: ran + triaged; suites already well-curated (TRT **0 safe DELETE**; TQA low dims justified
+  as white-box-leaf artifacts; one genuine `match=` assertion fix). Test-only, no release.
+- **B3** — `test-effectiveness` (mutation): one hot module per repo — repo-B `mine_iteration_kpis`
+  0.671→0.70 (residual = equivalent argparse help-string mutants, accepted), repo-P `ledger` CLEAN,
+  repo-A **BLOCKED** by its `spec_from_file_location` test convention (recorded + future candidate).
+  Test-only, no release.
+- **B4 (capstone)** — Tier-2 ↔ Tier-1 boundary: **`coverage-gap` GRADUATED** to a binary CI gate
+  (`scripts/check_coverage_gap.py`, baseline `[]`) for **repo-B** (plain) and **repo-P**
+  (subprocess-capture), joining repo-A's pre-existing gate → coverage-gap convergence is now
+  **CI-enforced across the whole family**. TQA/TRT/mutation **stay Tier-2 advisory** (judgment-laden
+  / slow / convention-blocked). Infra-only, no release.
+
+**Goal met:** the orchestrator runs every deterministic leaf on every target (Phase 1) **and** the
+slow/artifact Tier-2 lanes have been self-applied to the family and converged (Phase 2), with the
+one Tier-1-ready lane (coverage-gap) **CI-enforced on all three repos**. The "every skill on every
+skill + converge + full pass" goal is satisfied.
+
 ---
 
 ## Final verification (Phase 1)
