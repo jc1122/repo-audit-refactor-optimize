@@ -57,7 +57,9 @@ def load_targets(path: Path = TARGETS) -> tuple[list[str], list[str], float]:
     return list(data["modules"]), list(data["tests"]), float(data["min_kill_rate"])
 
 
-def floor_violations(report: dict[str, float | None], min_kill_rate: float) -> list[str]:
+def floor_violations(
+    report: dict[str, float | None], min_kill_rate: float
+) -> list[str]:
     """Allowlisted modules whose measured kill rate is below the floor.
 
     A module with an unmeasured (``None``) kill rate is a violation -- the
@@ -139,9 +141,9 @@ def measure_kill_rates(
     with tempfile.TemporaryDirectory() as tmp:
         raw = _run_leaf(modules, tests, Path(tmp))
     measured = {f["path"]: f["metric"]["value"] for f in raw}
-    report: dict[str, float | None] = {}
-    for module in modules:
-        report[module] = measured.get(module, 1.0)
+    report: dict[str, float | None] = {
+        module: measured.get(module, 1.0) for module in modules
+    }
     return report
 
 
