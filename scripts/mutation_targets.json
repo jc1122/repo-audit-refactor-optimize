@@ -4,5 +4,10 @@
     "scripts/_wave_findings.py",
     "scripts/check_wave_baseline.py"
   ],
+  "tests": [
+    "tests/test_accept.py",
+    "tests/test_wave_findings.py",
+    "tests/test_check_wave_baseline.py"
+  ],
   "min_kill_rate": 0.80
 }

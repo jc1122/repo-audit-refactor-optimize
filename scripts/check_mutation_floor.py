@@ -22,6 +22,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shutil
 import subprocess  # nosec B404: local trusted leaf invocation, shell=False
 import sys
 import tempfile
@@ -43,10 +44,17 @@ def _leaf() -> str:
     return os.environ.get("LEAF") or str(_DEFAULT_LEAF)
 
 
-def load_targets(path: Path = TARGETS) -> tuple[list[str], float]:
-    """Read the allowlisted modules and the kill-rate floor from the manifest."""
+def load_targets(path: Path = TARGETS) -> tuple[list[str], list[str], float]:
+    """Read the allowlisted modules, their tests, and the kill-rate floor.
+
+    The ``tests`` allowlist is required: mutmut hard-copies the whole
+    ``tests/`` tree into its sandbox, so running against the repo's full
+    suite breaks stats collection on test modules that import out-of-scope
+    ``scripts.*`` modules. We instead build a scoped root containing only the
+    allowlisted modules + their tests (see ``measure_kill_rates``).
+    """
     data = json.loads(path.read_text(encoding="utf-8"))
-    return list(data["modules"]), float(data["min_kill_rate"])
+    return list(data["modules"]), list(data["tests"]), float(data["min_kill_rate"])
 
 
 def floor_violations(report: dict[str, float | None], min_kill_rate: float) -> list[str]:
@@ -64,8 +72,29 @@ def floor_violations(report: dict[str, float | None], min_kill_rate: float) -> l
     return sorted(violations)
 
 
-def _run_leaf(modules: list[str], out_dir: Path) -> list[dict]:
-    """Invoke the leaf over *modules* with a 1.0 floor; return raw findings."""
+def _build_scoped_root(modules: list[str], tests: list[str], dest: Path) -> None:
+    """Copy only the allowlisted modules + tests into a scoped root.
+
+    mutmut hard-copies the entire ``tests/`` tree into its sandbox and runs
+    the whole suite for stats; a scoped root keeps only the test files that
+    exercise the allowlisted modules so out-of-scope imports never break the
+    run.
+    """
+    for rel in modules + tests:
+        src = ROOT / rel
+        dst = dest / rel
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(src, dst)
+    # The targets import via ``scripts.<mod>``; preserve the package marker.
+    init = ROOT / "scripts" / "__init__.py"
+    if init.exists():
+        shutil.copy2(init, dest / "scripts" / "__init__.py")
+
+
+def _run_leaf(modules: list[str], tests: list[str], out_dir: Path) -> list[dict]:
+    """Invoke the leaf over a scoped root with a 1.0 floor; return findings."""
+    scoped_root = out_dir / "root"
+    _build_scoped_root(modules, tests, scoped_root)
     paths_file = out_dir / "paths.txt"
     paths_file.write_text("\n".join(modules) + "\n", encoding="utf-8")
     config = out_dir / "config.json"
@@ -76,7 +105,7 @@ def _run_leaf(modules: list[str], out_dir: Path) -> list[dict]:
     leaf_out = out_dir / "leaf"
     cmd = (
         sys.executable, _leaf(),
-        "--root", str(ROOT),
+        "--root", str(scoped_root),
         "--out-dir", str(leaf_out),
         "--paths", str(paths_file),
         "--tests-dir", "tests",
@@ -85,18 +114,21 @@ def _run_leaf(modules: list[str], out_dir: Path) -> list[dict]:
         "--source-prefix", "scripts",
     )
     proc = subprocess.run(  # nosec B603: shell=False, trusted leaf
-        cmd, cwd=ROOT, check=False, capture_output=True, text=True
+        cmd, cwd=str(scoped_root), check=False, capture_output=True, text=True
     )
     findings_path = leaf_out / "test-effectiveness_findings.json"
     if not findings_path.exists():
         raise RuntimeError(
             "test-effectiveness leaf produced no findings file; "
-            f"exit={proc.returncode} stderr={proc.stderr[-800:]}"
+            f"exit={proc.returncode} stdout={proc.stdout[-800:]} "
+            f"stderr={proc.stderr[-800:]}"
         )
     return json.loads(findings_path.read_text(encoding="utf-8"))
 
 
-def measure_kill_rates(modules: list[str]) -> dict[str, float | None]:
+def measure_kill_rates(
+    modules: list[str], tests: list[str]
+) -> dict[str, float | None]:
     """Measure the mutation kill rate of each allowlisted module.
 
     Modules that emit a finding carry their measured rate in
@@ -105,7 +137,7 @@ def measure_kill_rates(modules: list[str]) -> dict[str, float | None]:
     the allowlist path so unmeasured modules surface as missing keys upstream.
     """
     with tempfile.TemporaryDirectory() as tmp:
-        raw = _run_leaf(modules, Path(tmp))
+        raw = _run_leaf(modules, tests, Path(tmp))
     measured = {f["path"]: f["metric"]["value"] for f in raw}
     report: dict[str, float | None] = {}
     for module in modules:
@@ -126,8 +158,8 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
-    modules, floor = load_targets(args.targets)
-    report = measure_kill_rates(modules)
+    modules, tests, floor = load_targets(args.targets)
+    report = measure_kill_rates(modules, tests)
     bad = floor_violations(report, floor)
     if bad:
         violations = [{"module": m, "kill_rate": report[m]} for m in bad]

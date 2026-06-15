@@ -63,27 +63,41 @@ def test_leaf_default(monkeypatch):
     )
 
 
-def test_load_targets_reads_modules_and_floor(tmp_path):
+def test_load_targets_reads_modules_tests_and_floor(tmp_path):
     targets = tmp_path / "targets.json"
     targets.write_text(
-        json.dumps({"modules": ["scripts/a.py"], "min_kill_rate": 0.7}),
+        json.dumps({
+            "modules": ["scripts/a.py"],
+            "tests": ["tests/test_a.py"],
+            "min_kill_rate": 0.7,
+        }),
         encoding="utf-8",
     )
-    modules, floor = g.load_targets(targets)
+    modules, tests, floor = g.load_targets(targets)
     assert modules == ["scripts/a.py"]
+    assert tests == ["tests/test_a.py"]
     assert floor == 0.7
+
+
+def test_load_targets_on_real_manifest():
+    modules, tests, floor = g.load_targets()
+    assert "scripts/_accept.py" in modules
+    assert "tests/test_accept.py" in tests
+    assert floor == 0.80
 
 
 # --- main() verdict --------------------------------------------------------
 
 
 def test_main_passes_when_no_violations(monkeypatch):
-    monkeypatch.setattr(g, "measure_kill_rates", lambda modules: {m: 0.99 for m in modules})
+    monkeypatch.setattr(
+        g, "measure_kill_rates", lambda modules, tests: {m: 0.99 for m in modules}
+    )
     assert g.main([]) == 0
 
 
 def test_main_fails_when_a_module_is_below_floor(monkeypatch, capsys):
-    def _fake(modules):
+    def _fake(modules, tests):
         rates = {m: 0.99 for m in modules}
         rates[modules[0]] = 0.40
         return rates
