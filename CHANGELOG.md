@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.12.0
+
+Self-bootstrapping family. The orchestrator's Stage-0 bootstrap can now install
+the family from scratch instead of only reporting it missing. A new `sources` map
+in `scripts/skill_bootstrap_manifest.json` declares the two git source repos
+(DRY — the 19 leaves share one), and each user-local family skill carries a
+`source` ref. The bootstrap checker resolves these and emits a real
+`git clone … && <install>` command per source (deduped), so missing family skills
+report `installable_now` and `install_plan.md` lists actionable commands. A
+top-level `bootstrap/install.sh` installs the orchestrator first, then the pinned
+git sources, for a true one-command bare-machine install:
+`curl -fsSL https://raw.githubusercontent.com/jc1122/repo-audit-refactor-optimize/v0.12.0/bootstrap/install.sh | bash`.
+Pinned sources: repo-audit-skills v0.8.0, perf-benchmark-skill v0.6.1. The
+"never auto-install local skills" rule is refined to "install only the pinned,
+declared git sources, with approval." Tests: `tests/test_manifest_sources.py`
+(schema guard), `tests/test_self_bootstrap.py` (command emission, dedup,
+`summary.restart_required` via candidate `covers`, install plan, installer
+dry-run, hermetic `file://` e2e, opt-in network e2e).
+
 ## 0.11.4
 
 Bugfix: `run_instruction_eval.py` now creates the parent of `--out`

@@ -1,6 +1,6 @@
 ---
 name: repo-audit-refactor-optimize
-version: 0.11.4
+version: 0.12.0
 description: End-to-end repository diagnosis, remediation, and optimization orchestration built on the deterministic repo-audit-skills family. Use when the agent needs to audit a repository with deterministic code-health, coverage-gap, and test-audit lanes, synthesize a coverage-gated remediation backlog, execute safe refactor batches, benchmark and optimize performance, or run a full repo optimization pipeline from diagnosis through verified completion.
 ---
 
@@ -41,9 +41,19 @@ Rules:
 - Continue degraded when only non-blocking lanes are missing.
 - Keep bootstrap installs explicit by user approval.
 - Prefer `skill-installer` if available; otherwise use `npx skills add/find`.
-- Never auto-install local/private skills.
+- Install only the pinned git sources declared in the manifest. The top-level `bootstrap/install.sh` (explicitly invoked) installs them directly; in-session, run the checker-emitted commands only after explicit user approval. Never install undeclared or arbitrary skills.
 - If new blocking skills are installed, restart the session before continuing.
 - If optional skills are newly installed, continue in degraded mode and mark `available_next_run`.
+
+### Self-bootstrap from scratch
+
+From a bare machine, install the whole family in one command:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/jc1122/repo-audit-refactor-optimize/v0.12.0/bootstrap/install.sh | bash
+```
+
+It installs the orchestrator, then the manifest's pinned git `sources` (`repo-audit-skills`, `perf-benchmark-skill`). Pass `--dest DIR` to override the skills root or `--dry-run` to preview the plan. When the orchestrator's checker reports family skills as `installable_now`, `install_plan.md` lists the same git commands (one per source); run them only after explicit approval.
 
 ## Stage 1: Discovery
 

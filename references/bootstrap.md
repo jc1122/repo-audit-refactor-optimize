@@ -77,12 +77,16 @@ Use these states:
 Use prompt-plus-install behavior:
 
 - do not install anything until the user approves
-- install only public skills automatically
+- install only public skills, or the pinned git `sources` declared in the manifest, automatically
 - prefer `skill-installer` when it is already available
 - fall back to raw `npx skills add` or `npx skills find` when bootstrap helpers are missing
-- do not auto-install local or private skills even if a source override exists
+- do not install undeclared or arbitrary skills; user-local skills are installable only via a manifest-declared git source
 
-Without a configured source mapping, local or private skills remain `manual_only`.
+A user-local skill with a manifest `source` (a pinned git `sources` entry) resolves to
+`installable_now`, and the checker emits a `git clone … && <install>` command for it
+(deduped to one per source repo). Without such a source mapping, local or private skills
+remain `manual_only`. The top-level `bootstrap/install.sh` performs the from-scratch
+install end to end.
 
 ## Mixed Gate Failure Behavior
 

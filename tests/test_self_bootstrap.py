@@ -140,7 +140,7 @@ def test_from_scratch_install_plan_lists_both_sources(tmp_path):
     plan = _markdown_install_plan(report)
     assert "repo-audit-skills" in plan and "perf-benchmark-skill" in plan
     assert "git clone --depth 1 -b v0.8.0" in plan
-    assert "git clone --depth 1 -b v0.6.0" in plan
+    assert "git clone --depth 1 -b v0.6.1" in plan
     assert "{dest}" in plan  # documented placeholder present
 
 
@@ -155,7 +155,7 @@ def test_installer_dry_run_lists_repo_b_and_sources():
     assert "repo-audit-refactor-optimize" in text       # installs repo-B first
     assert "repo-audit-skills" in text                   # then source repos
     assert "perf-benchmark-skill" in text
-    assert "v0.8.0" in text and "v0.6.0" in text         # pinned tags from manifest
+    assert "v0.8.0" in text and "v0.6.1" in text         # pinned tags from manifest
 
 
 def test_install_loop_runs_against_file_url_source(tmp_path):
