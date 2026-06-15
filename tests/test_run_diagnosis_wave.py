@@ -1249,3 +1249,13 @@ def test_lane_timeout_becomes_error(tmp_path, monkeypatch):
     assert exit_code == 124
     assert findings == []
     assert rdw._status_for_exit(124, 0) == "error"
+
+
+def test_capabilities_flag_emits_version_and_caps(capsys) -> None:
+    """--capabilities prints the runner version + capability set and returns 0."""
+    rc = mod.main(["--capabilities"])
+    assert rc == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["version"] == mod.__version__
+    for cap in ("lane-error-gate", "metric-ceiling", "lane-timeout"):
+        assert cap in payload["capabilities"]

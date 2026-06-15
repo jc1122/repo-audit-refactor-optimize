@@ -150,3 +150,31 @@ def test_missing_manifest_file_exits_one(tmp_path: Path, capsys):
     result = json.loads(stdout)
     assert result["status"] == "fail"
     assert any("manifest" in d.lower() for d in result["defects"])
+
+
+# ── runner version-sync checks (#8) ──────────────────────────────────────────
+
+
+def test_runner_version_sync_no_defect_when_equal():
+    """The sync check returns no defect when runner __version__ == SKILL version."""
+    mod = importlib.import_module("scripts.check_release")
+    rdw = importlib.import_module("scripts.run_diagnosis_wave")
+    assert mod._check_runner_version_sync(rdw.__version__) == []
+
+
+def test_runner_version_sync_defect_when_mismatched():
+    """A mismatched runner __version__ yields a defect string mentioning both."""
+    mod = importlib.import_module("scripts.check_release")
+    rdw = importlib.import_module("scripts.run_diagnosis_wave")
+    defects = mod._check_runner_version_sync("9.9.9")
+    assert len(defects) == 1
+    assert "9.9.9" in defects[0]
+    assert rdw.__version__ in defects[0]
+
+
+def test_real_repo_release_passes_with_synced_runner(capsys):
+    """The real repo passes the release gate: SKILL version == runner __version__."""
+    mod = importlib.import_module("scripts.check_release")
+    rc = mod.main(["--root", str(REPO_ROOT)])
+    assert rc == 0
+    assert json.loads(capsys.readouterr().out)["status"] == "pass"

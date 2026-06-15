@@ -50,6 +50,12 @@ DEFAULT_EXCLUDES = ("tests", "fixtures")
 # so adding a 10th scopable lane without scoping it fails CI (#11).
 SOURCE_SCOPED_LANES = {"code-health", "security", "dependency", "perf-smell"}
 
+# Runner version + capability surface (#8). __version__ is kept equal to the
+# SKILL.md version by check_release.py; downstream repos assert the pinned
+# runner advertises the capabilities they require before trusting its gate.
+__version__ = "0.11.0"
+CAPABILITIES = ("lane-error-gate", "metric-ceiling", "lane-timeout")
+
 
 def _lane_timeout() -> int:
     """Per-lane wall-clock budget (seconds); env-overridable for tests/CI."""
@@ -97,9 +103,13 @@ class _LaneContext:
 
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run diagnosis wave.")
-    parser.add_argument("--repo", required=True, type=Path)
-    parser.add_argument("--out-dir", required=True, type=Path)
-    parser.add_argument("--skills-root", required=True, type=Path)
+    parser.add_argument(
+        "--capabilities", action="store_true",
+        help="Print {version, capabilities} JSON and exit (no wave run)",
+    )
+    parser.add_argument("--repo", type=Path)
+    parser.add_argument("--out-dir", type=Path)
+    parser.add_argument("--skills-root", type=Path)
     parser.add_argument("--source-prefix", action="append", default=[])
     parser.add_argument("--exclude-prefix", action="append", default=[])
     parser.add_argument("--coverage-json", type=Path)
@@ -444,20 +454,29 @@ def _write_wave_outputs(
 # ── entry point ─────────────────────────────────────────────────────────
 
 
-def main(argv: list[str] | None = None) -> int:
-    args = _parse_args(argv)
-    if args.registry:
-        loaded = load_lanes(args.registry)
-    elif _DEFAULT_REGISTRY.exists():
-        loaded = load_lanes(_DEFAULT_REGISTRY)
-    else:
-        loaded = dict(_LEGACY_LANES)
-    selected, unknown = _selected_lanes(args.lanes, loaded)
-    if unknown:
-        payload = {"status": "error", "error": "Unknown lane(s)", "lanes": unknown}
-        print(json.dumps(payload, sort_keys=True))
-        return 2
+def _missing_required(args: argparse.Namespace) -> list[str]:
+    """Wave-run flags absent in normal mode (all optional so --capabilities works)."""
+    required = (
+        ("--repo", args.repo),
+        ("--out-dir", args.out_dir),
+        ("--skills-root", args.skills_root),
+    )
+    return [flag for flag, value in required if value is None]
 
+
+def _load_registry(args: argparse.Namespace) -> dict[str, str]:
+    """Resolve the lane registry: --registry, the committed default, or legacy."""
+    if args.registry:
+        return load_lanes(args.registry)
+    if _DEFAULT_REGISTRY.exists():
+        return load_lanes(_DEFAULT_REGISTRY)
+    return dict(_LEGACY_LANES)
+
+
+def _execute(
+    args: argparse.Namespace, loaded: dict[str, str], selected: list[str]
+) -> int:
+    """Run the selected wave, apply the accept policy, and write outputs."""
     args.out_dir.mkdir(parents=True, exist_ok=True)
     context = _LaneContext(
         args.repo,
@@ -476,6 +495,29 @@ def main(argv: list[str] | None = None) -> int:
     if policy.entries:
         wave_findings = _apply_accept(policy, wave_findings, args.out_dir)
     return _write_wave_outputs(args.out_dir, wave_exit, summary, wave_findings, timings)
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = _parse_args(argv)
+    if args.capabilities:
+        print(json.dumps({"version": __version__, "capabilities": CAPABILITIES}))
+        return 0
+    missing = _missing_required(args)
+    if missing:
+        print(json.dumps(
+            {"status": "error", "error": "missing required args", "missing": missing},
+            sort_keys=True,
+        ))
+        return 2
+    loaded = _load_registry(args)
+    selected, unknown = _selected_lanes(args.lanes, loaded)
+    if unknown:
+        print(json.dumps(
+            {"status": "error", "error": "Unknown lane(s)", "lanes": unknown},
+            sort_keys=True,
+        ))
+        return 2
+    return _execute(args, loaded, selected)
 
 
 if __name__ == "__main__":
