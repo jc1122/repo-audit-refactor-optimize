@@ -7,8 +7,6 @@ import json
 import sys
 from pathlib import Path
 
-import pytest
-
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
@@ -178,3 +176,40 @@ def test_real_repo_release_passes_with_synced_runner(capsys):
     rc = mod.main(["--root", str(REPO_ROOT)])
     assert rc == 0
     assert json.loads(capsys.readouterr().out)["status"] == "pass"
+
+
+# ── installer pin-coherence checks (#8) ──────────────────────────────────────
+
+
+def _make_installer_repo(tmp_path: Path, version: str, ref: str, oneliner: str) -> Path:
+    repo = tmp_path / "repo"
+    (repo / "bootstrap").mkdir(parents=True)
+    (repo / "bootstrap" / "install.sh").write_text(f'REF="{ref}"\n', encoding="utf-8")
+    (repo / "SKILL.md").write_text(
+        f"---\nname: x\nversion: {version}\n---\n"
+        f"curl .../{oneliner}/bootstrap/install.sh | bash\n",
+        encoding="utf-8",
+    )
+    return repo
+
+
+def test_installer_pin_sync_no_defect_when_coherent(tmp_path: Path):
+    mod = importlib.import_module("scripts.check_release")
+    repo = _make_installer_repo(tmp_path, "0.12.0", "v0.12.0", "v0.12.0")
+    assert mod._check_installer_pin_sync(repo, "0.12.0") == []
+
+
+def test_installer_pin_sync_flags_ref_and_oneliner_drift(tmp_path: Path):
+    mod = importlib.import_module("scripts.check_release")
+    repo = _make_installer_repo(tmp_path, "0.12.0", "v0.11.0", "v0.11.0")
+    defects = mod._check_installer_pin_sync(repo, "0.12.0")
+    assert len(defects) == 2  # both REF and the one-liner tag drifted
+    assert any("install.sh REF" in d for d in defects)
+    assert any("one-liner" in d for d in defects)
+
+
+def test_installer_pin_sync_noop_without_installer(tmp_path: Path):
+    mod = importlib.import_module("scripts.check_release")
+    repo = tmp_path / "norepo"
+    repo.mkdir()
+    assert mod._check_installer_pin_sync(repo, "0.12.0") == []
