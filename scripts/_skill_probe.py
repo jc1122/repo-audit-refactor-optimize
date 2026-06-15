@@ -60,6 +60,7 @@ def _build_skill_entry_base(
         "priority": skill_config["priority"],
         "source_type": skill_config["source_type"],
         "install_source": skill_config.get("install_source"),
+        "source": skill_config.get("source"),
         "manual_fallback": skill_config["manual_fallback"],
         "restart_required_if_installed": skill_config["restart_required_if_installed"],
     }

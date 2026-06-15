@@ -35,3 +35,32 @@ def test_public_skills_cli_branch_still_works():
         "install_source": {"method": "skills_cli", "package": "foo"},
     }
     assert sp._install_command_for_skill(entry) == "npx skills add foo -g -y"
+
+
+from scripts import _lane_resolve as lr
+
+
+def test_build_merged_skills_resolves_git_source_to_installable_now():
+    manifest = {
+        "skills": {
+            "complexity-audit": {
+                "priority": "preferred", "source_type": "user-local",
+                "install_source": None, "manual_fallback": "x",
+                "restart_required_if_installed": True, "source": "repo-audit-skills",
+            },
+        },
+        "lanes": {},
+        "sources": {
+            "repo-audit-skills": {
+                "kind": "git",
+                "url": "https://github.com/jc1122/repo-audit-skills.git",
+                "tag": "v0.8.0",
+                "install": ["node", "bin/install-repo-audit-skills.js", "--dest", "{dest}", "--force"],
+            }
+        },
+    }
+    merged = lr._build_merged_skills({"complexity-audit"}, manifest, {}, {}, {})
+    entry = merged["complexity-audit"]
+    assert entry["state"] == "installable_now"
+    assert entry["source"] == "repo-audit-skills"
+    assert entry["install_source"]["method"] == "git"

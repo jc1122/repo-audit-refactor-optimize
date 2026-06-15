@@ -403,6 +403,28 @@ def _collect_active_and_strict_skills(
     return active_skills, strict_skills
 
 
+def _resolve_skill_source(
+    skill_config: dict[str, Any], sources: dict[str, Any]
+) -> None:
+    """Attach a git install_source from the shared `sources` map (DRY).
+
+    No-op if the skill has no `source`, already has an explicit install_source,
+    or the referenced source is missing/not a git source.
+    """
+    src_id = skill_config.get("source")
+    if not src_id or skill_config.get("install_source"):
+        return
+    src = sources.get(src_id)
+    if not isinstance(src, dict) or src.get("kind") != "git":
+        return
+    skill_config["install_source"] = {
+        "method": "git",
+        "url": src.get("url"),
+        "tag": src.get("tag"),
+        "install": src.get("install"),
+    }
+
+
 def _build_merged_skills(
     active_skills: set[str],
     manifest: dict[str, Any],
@@ -410,11 +432,13 @@ def _build_merged_skills(
     usable_skills: dict[str, dict[str, Any]],
     advisory_skills: dict[str, dict[str, Any]],
 ) -> dict[str, dict[str, Any]]:
+    sources = manifest.get("sources", {})
     merged: dict[str, dict[str, Any]] = {}
     for skill_name in sorted(active_skills):
         skill_config = dict(manifest["skills"][skill_name])
         if skill_name in overrides:
             skill_config.update(overrides[skill_name])
+        _resolve_skill_source(skill_config, sources)
         merged[skill_name] = _skill_entry(
             skill_name, skill_config, usable_skills, advisory_skills
         )
