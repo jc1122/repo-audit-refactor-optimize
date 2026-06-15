@@ -1,0 +1,8 @@
+{
+  "modules": [
+    "scripts/_accept.py",
+    "scripts/_wave_findings.py",
+    "scripts/check_wave_baseline.py"
+  ],
+  "min_kill_rate": 0.80
+}
