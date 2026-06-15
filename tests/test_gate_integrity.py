@@ -10,7 +10,29 @@ import json
 
 import pytest
 
+cwb = importlib.import_module("scripts.check_wave_baseline")
 rdw = importlib.import_module("scripts.run_diagnosis_wave")
+
+ALL_LANES = list(
+    json.loads(rdw._DEFAULT_REGISTRY.read_text(encoding="utf-8"))["lanes"]
+)
+LANE_NAMES = [lane["name"] for lane in ALL_LANES]
+
+
+# ── Task B1: parametrized errored-lane invariant (#4) ──────────────────
+
+
+@pytest.mark.parametrize("errored", LANE_NAMES)
+def test_gate_fails_when_any_single_lane_errors(tmp_path, capsys, errored):
+    summary = {n: {"exit": 0, "status": "ok", "findings": 0} for n in LANE_NAMES}
+    summary[errored] = {"exit": 2, "status": "error", "findings": 0}
+    snap = tmp_path / "a.json"
+    s = tmp_path / "s.json"
+    snap.write_text("[]")
+    s.write_text(json.dumps(summary))
+    rc = cwb.main(["--snapshot", str(snap), "--summary", str(s)])
+    assert rc == 1
+    assert json.loads(capsys.readouterr().out)["reason"] == "lane_error"
 
 
 # ── Task B2: lane-scoping invariant (#11) ──────────────────────────────
