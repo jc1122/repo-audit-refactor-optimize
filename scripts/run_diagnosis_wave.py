@@ -45,6 +45,11 @@ DOC_EXCLUDES = ("audits", "dogfood", "plans", "superpowers")
 
 DEFAULT_EXCLUDES = ("tests", "fixtures")
 
+# Lanes whose findings are scoped to source via --source-prefix. The registry
+# mirrors this via "source_scoped": true; the gate-integrity test asserts parity,
+# so adding a 10th scopable lane without scoping it fails CI (#11).
+SOURCE_SCOPED_LANES = {"code-health", "security", "dependency", "perf-smell"}
+
 
 def _lane_timeout() -> int:
     """Per-lane wall-clock budget (seconds); env-overridable for tests/CI."""
@@ -231,7 +236,7 @@ def _append_scope_args(
         _add_growth_args(cmd, context)
         return
 
-    if lane in {"code-health", "security", "dependency", "perf-smell"}:
+    if lane in SOURCE_SCOPED_LANES:
         supports = _leaf_supports_exclude_prefix(leaf)
         cmd.extend(
             _audit_scope_args(

@@ -3,12 +3,14 @@
     {
       "name": "code-health",
       "script": "code-health-audit-pipeline/scripts/code_health_pipeline.py",
-      "languages": ["python"]
+      "languages": ["python"],
+      "source_scoped": true
     },
     {
       "name": "security",
       "script": "security-audit/scripts/security_audit.py",
-      "languages": ["python"]
+      "languages": ["python"],
+      "source_scoped": true
     },
     {
       "name": "hygiene",
@@ -23,12 +25,14 @@
     {
       "name": "dependency",
       "script": "dependency-audit/scripts/dependency_audit.py",
-      "languages": ["python"]
+      "languages": ["python"],
+      "source_scoped": true
     },
     {
       "name": "perf-smell",
       "script": "perf-smell-audit/scripts/perf_smell_audit.py",
-      "languages": ["python"]
+      "languages": ["python"],
+      "source_scoped": true
     },
     {
       "name": "hotspot",
