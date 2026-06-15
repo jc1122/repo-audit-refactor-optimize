@@ -84,6 +84,7 @@ def _filter_remediation(
 
 def _cmd_plan(a: argparse.Namespace) -> int:
     run_dir = Path(a.run_dir)
+    run_dir.mkdir(parents=True, exist_ok=True)  # standalone CLI: own our run-dir
     raw_findings = _load(a.findings)
     if a.repo:
         raw_findings = _filter_remediation(raw_findings, Path(a.repo), run_dir)

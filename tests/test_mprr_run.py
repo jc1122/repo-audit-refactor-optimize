@@ -29,6 +29,24 @@ def test_plan_emits_disjoint_packets_and_persists_state(tmp_path):
     assert set(state["locked"]) == {"a.py", "b.py"}
 
 
+def test_plan_creates_run_dir_when_absent(tmp_path):
+    # Regression: plan must own (mkdir) its --run-dir. It previously crashed with
+    # FileNotFoundError writing mprr_excluded.json / mprr_state.json into a
+    # not-yet-existing dir when called standalone (orchestrated flow masked it).
+    (tmp_path / ".repo-audit").mkdir()
+    (tmp_path / ".repo-audit" / "accept.json").write_text(json.dumps(
+        {"version": 1, "accept": [
+            {"match": {"kind": "path", "glob": "**/fixtures/**"},
+             "reason": "intentional"}]}), encoding="utf-8")
+    run_dir = tmp_path / "does" / "not" / "exist"  # absent + nested (parents=True)
+    code = run.main(["plan", "--run-dir", str(run_dir),
+                     "--findings", str(_findings(tmp_path)),
+                     "--repo", str(tmp_path), "--ceiling", "4"])
+    assert code == 0
+    assert (run_dir / "mprr_state.json").is_file()
+    assert (run_dir / "mprr_excluded.json").is_file()
+
+
 def test_reaudit_counts_residual_items(tmp_path):
     code = run.main(["reaudit", "--findings", str(_findings(tmp_path))])
     assert code == 2  # exit code carries the residual count (0 == converged)
