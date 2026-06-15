@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import importlib
 import json
 import re
 import sys
@@ -78,6 +79,20 @@ def _check_manifest(root: Path) -> list[str]:
     return defects
 
 
+def _check_runner_version_sync(version: str) -> list[str]:
+    """Runner __version__ must equal the SKILL.md version (#8 pin-coherence)."""
+    runner = importlib.import_module(
+        "scripts.run_diagnosis_wave" if __package__ else "run_diagnosis_wave"
+    )
+    runner_version = getattr(runner, "__version__", "")
+    if runner_version != version:
+        return [
+            f"run_diagnosis_wave.__version__ '{runner_version}' "
+            f"!= SKILL.md version '{version}'"
+        ]
+    return []
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Check release readiness: version-sync across artifacts."
@@ -119,6 +134,10 @@ def main(argv: list[str] | None = None) -> int:
 
     # 4. Check manifest
     defects.extend(_check_manifest(root))
+
+    # 5. Runner version-sync (#8): only when --root owns the runner module.
+    if (root / "scripts" / "run_diagnosis_wave.py").exists():
+        defects.extend(_check_runner_version_sync(version))
 
     if defects:
         print(json.dumps({"status": "fail", "defects": defects}))

@@ -50,6 +50,12 @@ DEFAULT_EXCLUDES = ("tests", "fixtures")
 # so adding a 10th scopable lane without scoping it fails CI (#11).
 SOURCE_SCOPED_LANES = {"code-health", "security", "dependency", "perf-smell"}
 
+# Runner version + capability surface (#8). __version__ is kept equal to the
+# SKILL.md version by check_release.py; downstream repos assert the pinned
+# runner advertises the capabilities they require before trusting its gate.
+__version__ = "0.10.0"
+CAPABILITIES = ["lane-error-gate", "metric-ceiling", "lane-timeout"]
+
 
 def _lane_timeout() -> int:
     """Per-lane wall-clock budget (seconds); env-overridable for tests/CI."""
@@ -97,9 +103,13 @@ class _LaneContext:
 
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run diagnosis wave.")
-    parser.add_argument("--repo", required=True, type=Path)
-    parser.add_argument("--out-dir", required=True, type=Path)
-    parser.add_argument("--skills-root", required=True, type=Path)
+    parser.add_argument(
+        "--capabilities", action="store_true",
+        help="Print {version, capabilities} JSON and exit (no wave run)",
+    )
+    parser.add_argument("--repo", type=Path)
+    parser.add_argument("--out-dir", type=Path)
+    parser.add_argument("--skills-root", type=Path)
     parser.add_argument("--source-prefix", action="append", default=[])
     parser.add_argument("--exclude-prefix", action="append", default=[])
     parser.add_argument("--coverage-json", type=Path)
@@ -446,6 +456,26 @@ def _write_wave_outputs(
 
 def main(argv: list[str] | None = None) -> int:
     args = _parse_args(argv)
+    if args.capabilities:
+        print(json.dumps({"version": __version__, "capabilities": CAPABILITIES}))
+        return 0
+    missing = [
+        flag
+        for flag, value in (
+            ("--repo", args.repo),
+            ("--out-dir", args.out_dir),
+            ("--skills-root", args.skills_root),
+        )
+        if value is None
+    ]
+    if missing:
+        payload = {
+            "status": "error",
+            "error": "missing required args",
+            "missing": missing,
+        }
+        print(json.dumps(payload, sort_keys=True))
+        return 2
     if args.registry:
         loaded = load_lanes(args.registry)
     elif _DEFAULT_REGISTRY.exists():
