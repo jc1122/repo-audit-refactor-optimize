@@ -202,3 +202,18 @@ loop can exclude) so re-anchoring fixes growth without exposing loop-induced chu
 | 63 | perf-smell · `tests/test_synthesize_perf.py` · `loop-global-usage` · W8202 | `test-fixture` | Module-level constant in cold-path test assertion loop; no measurable benefit from hoisting. |
 | 64 | perf-smell · `tests/test_wave_findings.py` · `use-tuple-over-list` · W8301 | `test-fixture` | `FINDINGS = [...]` module-level test fixture; list is idiomatic and allows easy extension. |
 | 65 | complexity · `scripts/mine_iteration_kpis.py` · `build_kpis` · parameter_count | `cohesive-assembler` | 7 params (>5) mirror the KPI record inputs; thin assembler delegating to compute_kpi; grouping would break the pinned signature. |
+
+## v0.11.3 dogfood ratchet — canonical-bootstrap clone
+
+- Ratchet timestamp: 2026-06-15
+- A no-exceptions self-dogfood drove every explicitly-triggered pass against repo-B
+  itself and found `synthesize_perf.py` / `synth_run.py` crashed as direct scripts
+  (`ModuleNotFoundError`) — they were the only runnable `scripts`-package importers
+  missing the `sys.path` bootstrap `mprr_run.py` carries. Fixed by copying the
+  canonical bootstrap into both (v0.11.3).
+- That copy made `synth_run.py`'s import preamble (shared stdlib imports + the 3-line
+  bootstrap) an exact clone of `mprr_run.py`'s, crossing jscpd's clone threshold.
+
+| Row | Finding (leaf · path · symbol · metric) | Class | Justification |
+|---:|---|---|---|
+| 66 | duplication · `scripts/mprr_run.py` · `scripts/synth_run.py:11-21` · duplicate_tokens | `cant-fix` | The cloned region is the shared stdlib import preamble plus the canonical 3-line `sys.path` bootstrap. The bootstrap is irreducible — a shared helper cannot be imported until the repo root is already on `sys.path` (chicken-and-egg) — so this is the blessed idiom `mprr_run.py` established and `synth_run.py` now matches deliberately for direct-script + module parity. One canonical bootstrap is worth more than avoiding a sub-threshold preamble clone. |
