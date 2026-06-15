@@ -53,7 +53,7 @@ SOURCE_SCOPED_LANES = {"code-health", "security", "dependency", "perf-smell"}
 # Runner version + capability surface (#8). __version__ is kept equal to the
 # SKILL.md version by check_release.py; downstream repos assert the pinned
 # runner advertises the capabilities they require before trusting its gate.
-__version__ = "0.11.3"
+__version__ = "0.11.4"
 CAPABILITIES = ("lane-error-gate", "metric-ceiling", "lane-timeout")
 
 

@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.11.4
+
+Bugfix: `run_instruction_eval.py` now creates the parent of `--out`
+(`out_path.parent.mkdir(parents=True, exist_ok=True)`) before writing the eval
+artifact. Previously directing `--out` at a not-yet-existing nested path (e.g. an
+orchestrator routing the artifact into a fresh run-dir subdir) crashed with
+`FileNotFoundError`; the default in-cwd path masked it. Same standalone-CLI class
+as the v0.11.2 `mprr_run plan` run-dir fix. Found by a family-wide bug-class scan
+(direct-script local-import failures + out-dir writes without mkdir) across all
+repo-A leaves, repo-B, and repo-P — this was the only remaining instance; every
+leaf already mkdirs via the shared `health_common.write_findings`. Regression
+guard in `tests/test_run_instruction_eval.py`.
+
 ## 0.11.3
 
 Bugfix: `synthesize_perf.py` and `synth_run.py` now insert the repo root onto
