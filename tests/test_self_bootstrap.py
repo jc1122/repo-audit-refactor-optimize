@@ -137,3 +137,20 @@ def test_from_scratch_install_plan_lists_both_sources(tmp_path):
     assert "git clone --depth 1 -b v0.8.0" in plan
     assert "git clone --depth 1 -b v0.6.0" in plan
     assert "{dest}" in plan  # documented placeholder present
+
+
+import subprocess
+
+
+def test_installer_dry_run_lists_repo_b_and_sources():
+    script = Path(__file__).resolve().parents[1] / "bootstrap" / "install.sh"
+    out = subprocess.run(
+        ["bash", str(script), "--dry-run", "--dest", "/tmp/does-not-matter"],
+        capture_output=True, text=True,
+    )
+    assert out.returncode == 0, out.stderr
+    text = out.stdout
+    assert "repo-audit-refactor-optimize" in text       # installs repo-B first
+    assert "repo-audit-skills" in text                   # then source repos
+    assert "perf-benchmark-skill" in text
+    assert "v0.8.0" in text and "v0.6.0" in text         # pinned tags from manifest
