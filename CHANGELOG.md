@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.11.3
+
+Bugfix: `synthesize_perf.py` and `synth_run.py` now insert the repo root onto
+`sys.path` before their top-level `from scripts import ...`, so they run as
+direct scripts (`python3 scripts/synthesize_perf.py`) — the exact form the
+SKILL.md perf-lane docs imply — instead of only as `python3 -m scripts.<name>`.
+Previously the direct form crashed with `ModuleNotFoundError: No module named
+'scripts'`; they were the only runnable entry points missing the bootstrap
+`mprr_run.py` already carried. Found by a no-exceptions self-dogfood of the
+skill. Class-level regression guard in `tests/test_entrypoint_bootstrap.py`
+holds every runnable `scripts`-package importer to the same bar.
+
 ## 0.11.2
 
 Bugfix: `mprr_run.py plan` now creates its `--run-dir` (`mkdir(parents=True,
