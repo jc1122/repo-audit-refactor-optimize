@@ -1,6 +1,6 @@
 ---
 name: repo-audit-refactor-optimize
-version: 0.12.0
+version: 0.12.1
 description: End-to-end repository diagnosis, remediation, and optimization orchestration built on the deterministic repo-audit-skills family. Use when the agent needs to audit a repository with deterministic code-health, coverage-gap, and test-audit lanes, synthesize a coverage-gated remediation backlog, execute safe refactor batches, benchmark and optimize performance, or run a full repo optimization pipeline from diagnosis through verified completion.
 ---
 
@@ -50,7 +50,7 @@ Rules:
 From a bare machine, install the whole family in one command:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/jc1122/repo-audit-refactor-optimize/v0.12.0/bootstrap/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/jc1122/repo-audit-refactor-optimize/v0.12.1/bootstrap/install.sh | bash
 ```
 
 It installs the orchestrator, then the manifest's pinned git `sources` (`repo-audit-skills`, `perf-benchmark-skill`). Pass `--dest DIR` to override the skills root or `--dry-run` to preview the plan. When the orchestrator's checker reports family skills as `installable_now`, `install_plan.md` lists the same git commands (one per source); run them only after explicit approval.
