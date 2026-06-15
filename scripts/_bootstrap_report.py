@@ -556,7 +556,6 @@ def _markdown_install_plan(report: dict[str, Any]) -> str:
         lines.append("No install candidates were detected.")
         lines.append("")
         return "\n".join(lines)
-    # ... existing per-candidate loop unchanged ...
 
     for candidate in report["install_candidates"]:
         lines.append(f"## `{candidate['name']}`")
