@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.12.1
+
+Bugfix: `bootstrap/install.sh`'s post-install verification now checks the
+deployed skill dirs on the filesystem instead of running a bootstrap check
+against an empty throwaway repo. The old check printed a misleading
+`stop_before_discovery: True` even on a fully successful install, because the
+performance lane is gated on the TARGET repo having a perf/test surface (an empty
+repo has neither). The installer now reports each installed skill + version and
+exits nonzero if any is missing. Found by a from-scratch dogfood of v0.12.0.
+
 ## 0.12.0
 
 Self-bootstrapping family. The orchestrator's Stage-0 bootstrap can now install

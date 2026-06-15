@@ -4,7 +4,7 @@
 set -euo pipefail
 
 REPO_B_URL="https://github.com/jc1122/repo-audit-refactor-optimize.git"
-REF="v0.12.0"            # SHIP CHECKLIST: bump to the new repo-B tag before tagging
+REF="v0.12.1"            # SHIP CHECKLIST: bump to the new repo-B tag before tagging
 DEST=""
 DRY_RUN=0
 while [ $# -gt 0 ]; do
@@ -55,10 +55,20 @@ for sid, src in sources.items():
     subprocess.check_call(install, cwd=tmp)
 PY
 
-# 3. Verify (skip on dry-run).
+# 3. Verify the family landed (filesystem check; target-repo-independent).
+# NB: a bootstrap check against an empty repo would report stop_before_discovery
+# regardless of install success, because the performance lane is gated on the
+# TARGET repo having a perf/test surface — so we verify the deployed skills here.
 if [ "$DRY_RUN" -eq 0 ]; then
-  python3 "$DEST/repo-audit-refactor-optimize/scripts/check_skill_requirements.py" \
-    --repo "$(mktemp -d)" --out-dir "$(mktemp -d)" | \
-    python3 -c "import json,sys; d=json.load(sys.stdin); print('stop_before_discovery:', d.get('stop_before_discovery'))"
+  ok=1
+  for skill in repo-audit-refactor-optimize perf-benchmark perf-optimization complexity-audit; do
+    if [ -f "$DEST/$skill/SKILL.md" ]; then
+      echo "  ok: $skill $(grep -m1 '^version:' "$DEST/$skill/SKILL.md" | awk '{print $2}')"
+    else
+      echo "  MISSING: $skill" >&2
+      ok=0
+    fi
+  done
+  [ "$ok" -eq 1 ] || { echo "install incomplete" >&2; exit 1; }
 fi
 echo "== done =="
