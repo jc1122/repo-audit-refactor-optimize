@@ -31,16 +31,21 @@ def _normalize_finding(finding: dict[str, Any], lane: str) -> dict[str, str]:
     location = finding.get("location")
     if not isinstance(location, dict):
         location = {}
-    metric = finding.get("metric")
+    metric_obj = finding.get("metric")
+    metric = metric_obj
     if isinstance(metric, dict):
         metric = metric.get("name")
     if metric is None:
         metric = finding.get("signal", "")
+    value = metric_obj.get("value") if isinstance(metric_obj, dict) else None
+    threshold = metric_obj.get("threshold") if isinstance(metric_obj, dict) else None
     return {
         "leaf": _string_value(finding.get("leaf"), lane),
         "path": _string_value(finding.get("path"), location.get("path", "")),
         "symbol": _string_value(finding.get("symbol"), location.get("symbol", "")),
         "metric": "" if metric is None else str(metric),
+        "value": value,
+        "threshold": threshold,
     }
 
 

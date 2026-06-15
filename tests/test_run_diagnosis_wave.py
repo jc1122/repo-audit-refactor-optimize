@@ -152,12 +152,16 @@ def test_selected_lanes_disjoint_out_dirs_merge_findings(tmp_path: Path) -> None
         "path": "src/security.py",
         "symbol": "security_symbol",
         "metric": "7",
+        "value": None,
+        "threshold": None,
     } in findings
     assert {
         "leaf": "dep-leaf",
         "path": "src/dep.py",
         "symbol": "dep",
         "metric": "",
+        "value": None,
+        "threshold": None,
     } in findings
     assert len(findings) == 2
 
@@ -195,7 +199,8 @@ def test_fake_leaf_exit_two_with_findings_records_findings_status(tmp_path: Path
     findings = json.loads((out_dir / "wave_findings.json").read_text(encoding="utf-8"))
     _assert_status(summary, "security", 2, "findings")
     assert findings == [
-        {"leaf": "security", "path": "bad.py", "symbol": "bad", "metric": "x"},
+        {"leaf": "security", "path": "bad.py", "symbol": "bad", "metric": "x",
+         "value": None, "threshold": None},
     ]
 
 
