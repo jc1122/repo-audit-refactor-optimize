@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.11.2
+
+Bugfix: `mprr_run.py plan` now creates its `--run-dir` (`mkdir(parents=True,
+exist_ok=True)`) before writing. Previously a standalone `plan` call against a
+not-yet-existing run-dir crashed with `FileNotFoundError` writing
+`mprr_excluded.json` / `mprr_state.json`; the orchestrated flow masked it because
+the run-dir already existed. Found by a no-exceptions self-dogfood of the skill.
+Regression guard in `tests/test_mprr_run.py` (plan into a fresh nested dir).
+
 ## 0.11.1
 
 Performance: `AcceptPolicy.partition` (`scripts/_accept.py`) is now O(N+M) instead
