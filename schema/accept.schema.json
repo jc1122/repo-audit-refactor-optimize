@@ -28,7 +28,8 @@
             "type": "array",
             "items": {"enum": ["report", "remediation"]}
           },
-          "expires": {"type": ["string", "null"]}
+          "expires": {"type": ["string", "null"]},
+          "max_value": {"type": ["number", "null"]}
         }
       }
     }

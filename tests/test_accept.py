@@ -78,6 +78,25 @@ def test_rule_kind_requires_leaf_or_metric(tmp_path: Path):
         acc.load_accept(tmp_path)
 
 
+def test_parse_entry_accepts_numeric_max_value():
+    raw = {"version": 1, "accept": [{
+        "match": {"kind": "finding", "leaf": "x", "path": "a.py",
+                  "symbol": "f", "metric": "cyclomatic"},
+        "reason": "accepted at 12; tracked in CHANGELOG v0.9.0",
+        "max_value": 12}]}
+    policy = acc._parse_policy(raw)
+    assert policy[0].max_value == 12
+
+
+def test_parse_entry_rejects_non_numeric_max_value():
+    raw = {"version": 1, "accept": [{
+        "match": {"kind": "finding", "leaf": "x", "path": "a.py",
+                  "symbol": "f", "metric": "cyclomatic"},
+        "reason": "r", "max_value": "twelve"}]}
+    with pytest.raises(acc.AcceptError):
+        acc._parse_policy(raw)
+
+
 def _policy(entries):
     return acc.AcceptPolicy([acc._parse_entry(e, i) for i, e in enumerate(entries)])
 
