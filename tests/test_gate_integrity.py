@@ -53,3 +53,32 @@ def test_registry_source_scoped_flag_matches_code():
     reg = json.loads(rdw._DEFAULT_REGISTRY.read_text(encoding="utf-8"))
     flagged = {lane["name"] for lane in reg["lanes"] if lane.get("source_scoped")}
     assert flagged == rdw.SOURCE_SCOPED_LANES
+
+
+# ── Task B3: per-lane command-construction contracts (#4) ──────────────
+
+
+def _ctx(tmp_path, **kw):
+    base = dict(repo=tmp_path, out_root=tmp_path, source_prefixes=["scripts"],
+                exclude_prefixes=[], rev="HEAD~1", coverage_json=None,
+                security_config=None, hotspot_config=None)
+    base.update(kw)
+    return rdw._LaneContext(**base)
+
+
+def test_growth_lane_gets_baseline_rev(tmp_path):
+    cmd: list[str] = []
+    rdw._append_scope_args(cmd, "growth", tmp_path / "leaf.py", _ctx(tmp_path))
+    assert cmd[cmd.index("--baseline-rev") + 1] == "HEAD~1"
+
+
+def test_hotspot_lane_gets_rev(tmp_path):
+    cmd: list[str] = []
+    rdw._append_scope_args(cmd, "hotspot", tmp_path / "leaf.py", _ctx(tmp_path))
+    assert cmd[cmd.index("--rev") + 1] == "HEAD~1"
+
+
+def test_exec_lane_gets_no_scope_args(tmp_path):
+    cmd: list[str] = []
+    rdw._append_scope_args(cmd, "exec", tmp_path / "leaf.py", _ctx(tmp_path))
+    assert cmd == []
