@@ -448,17 +448,30 @@ def _build_merged_skills(
 def _build_install_candidates(
     merged_skills: dict[str, dict[str, Any]],
 ) -> list[dict[str, Any]]:
-    return [
-        {
-            "name": skill_name,
-            "command": _install_command_for_skill(skill),
+    candidates: list[dict[str, Any]] = []
+    seen_sources: set[str] = set()
+    for skill_name, skill in merged_skills.items():
+        if skill["state"] != "installable_now":
+            continue
+        command = _install_command_for_skill(skill)
+        if not command:
+            continue
+        source = skill.get("source")
+        if source:  # git source: one command installs all its skills -> dedupe
+            if source in seen_sources:
+                continue
+            seen_sources.add(source)
+            name = source
+        else:  # public skills_cli: per-skill (unchanged)
+            name = skill_name
+        candidates.append({
+            "name": name,
+            "command": command,
             "post_install_state": skill.get("post_install_state"),
             "restart_required": skill["restart_required_if_installed"],
             "source_type": skill["source_type"],
-        }
-        for skill_name, skill in merged_skills.items()
-        if skill["state"] == "installable_now" and _install_command_for_skill(skill)
-    ]
+        })
+    return candidates
 
 
 def _mark_blocking_skills(

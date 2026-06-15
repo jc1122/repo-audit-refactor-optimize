@@ -64,3 +64,34 @@ def test_build_merged_skills_resolves_git_source_to_installable_now():
     assert entry["state"] == "installable_now"
     assert entry["source"] == "repo-audit-skills"
     assert entry["install_source"]["method"] == "git"
+
+
+def _missing_family_manifest():
+    leaf = lambda src: {  # noqa: E731
+        "priority": "preferred", "source_type": "user-local", "install_source": None,
+        "manual_fallback": "x", "restart_required_if_installed": True, "source": src,
+    }
+    return {
+        "skills": {
+            "complexity-audit": leaf("repo-audit-skills"),
+            "security-audit": leaf("repo-audit-skills"),
+            "perf-benchmark": leaf("perf-benchmark-skill"),
+        },
+        "lanes": {},
+        "sources": {
+            "repo-audit-skills": {"kind": "git",
+                "url": "https://github.com/jc1122/repo-audit-skills.git",
+                "tag": "v0.8.0", "install": ["node", "x.js", "--dest", "{dest}"]},
+            "perf-benchmark-skill": {"kind": "git",
+                "url": "https://github.com/jc1122/perf-benchmark-skill.git",
+                "tag": "v0.6.0", "install": ["bash", "bootstrap/install-perf.sh", "{dest}"]},
+        },
+    }
+
+
+def test_install_candidates_deduped_one_per_source():
+    m = _missing_family_manifest()
+    merged = lr._build_merged_skills(set(m["skills"]), m, {}, {}, {})
+    candidates = lr._build_install_candidates(merged)
+    names = sorted(c["name"] for c in candidates)
+    assert names == ["perf-benchmark-skill", "repo-audit-skills"]  # 3 skills -> 2 cmds
