@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.10.0
+
+Dogfood gap remediation — Wave B (audit the tooling, not just the target). Turns
+"is the orchestrator itself correct?" into standing gates:
+
+- **#4/#11 gate-integrity harness.** New `tests/test_gate_integrity.py` asserts
+  class-level invariants the leaves can't: the errored-lane invariant is parametrized
+  over every registry lane (a single errored lane fails the gate, no fail-open), and
+  per-lane command-construction contracts (growth gets `--baseline-rev`, hotspot `--rev`,
+  exec no scope args) lock the orchestrator's behaviour.
+- **#11 lane-scoping invariant.** `SOURCE_SCOPED_LANES` is now an explicit constant
+  mirrored by `"source_scoped": true` in `wave_lanes.json`; a parity test fails CI if a
+  new source-scopable lane is added to the registry without scoping it (the class that
+  the perf-smell scoping bug belonged to).
+- **#5 mutation-kill floor.** New `check_mutation_floor.py` + `mutation_targets.json`
+  run `test-effectiveness-audit` (mutmut) over the three pure gate modules (`_accept.py`,
+  `_wave_findings.py`, `check_wave_baseline.py`) and fail below an 0.80 kill rate, wired
+  Tier-1 in CI. Measuring exposed and closed real gaps (untested `identity_of`,
+  `from_baseline`, `_read_findings_file`, `collect_lane_findings`); kill rates are now
+  0.867 / 0.862 / 0.889. Equivalent mutants are deliberately not chased.
+
 ## 0.9.0
 
 Dogfood gap remediation — Wave A (trustworthy green). Closes five verified gaps that
