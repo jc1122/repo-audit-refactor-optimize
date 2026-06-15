@@ -158,16 +158,18 @@ def test_missing_manifest_file_exits_one(tmp_path: Path, capsys):
 def test_runner_version_sync_no_defect_when_equal():
     """The sync check returns no defect when runner __version__ == SKILL version."""
     mod = importlib.import_module("scripts.check_release")
-    assert mod._check_runner_version_sync("0.10.0") == []
+    rdw = importlib.import_module("scripts.run_diagnosis_wave")
+    assert mod._check_runner_version_sync(rdw.__version__) == []
 
 
 def test_runner_version_sync_defect_when_mismatched():
     """A mismatched runner __version__ yields a defect string mentioning both."""
     mod = importlib.import_module("scripts.check_release")
+    rdw = importlib.import_module("scripts.run_diagnosis_wave")
     defects = mod._check_runner_version_sync("9.9.9")
     assert len(defects) == 1
     assert "9.9.9" in defects[0]
-    assert "0.10.0" in defects[0]
+    assert rdw.__version__ in defects[0]
 
 
 def test_real_repo_release_passes_with_synced_runner(capsys):

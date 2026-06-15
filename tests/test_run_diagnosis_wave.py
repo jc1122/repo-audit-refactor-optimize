@@ -1256,6 +1256,6 @@ def test_capabilities_flag_emits_version_and_caps(capsys) -> None:
     rc = mod.main(["--capabilities"])
     assert rc == 0
     payload = json.loads(capsys.readouterr().out)
-    assert payload["version"] == "0.10.0"
+    assert payload["version"] == mod.__version__
     for cap in ("lane-error-gate", "metric-ceiling", "lane-timeout"):
         assert cap in payload["capabilities"]
