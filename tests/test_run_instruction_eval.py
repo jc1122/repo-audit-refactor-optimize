@@ -157,3 +157,19 @@ def test_main_default_out_path(tmp_path, monkeypatch):
     rc = ev.main(["--skill", "complexity-audit", "--expected", "3", "--model-findings", str(mf)])
     assert rc == 0
     assert (tmp_path / "eval_complexity-audit.json").is_file()
+
+
+def test_main_out_into_nonexistent_nested_dir(tmp_path):
+    # Regression: --out into a not-yet-existing nested dir must be created, not
+    # crash with FileNotFoundError. Orchestrators direct the eval artifact into a
+    # fresh run-dir subdir; same standalone-CLI class as the mprr_run plan
+    # run-dir fix. Found by a family-wide bug-class scan.
+    mf = tmp_path / "mf.json"
+    mf.write_text(json.dumps([1, 2, 3]), encoding="utf-8")
+    out = tmp_path / "does" / "not" / "exist" / "eval.json"  # nested + absent
+    rc = ev.main(
+        ["--skill", "complexity-audit", "--expected", "3",
+         "--model-findings", str(mf), "--out", str(out)]
+    )
+    assert rc == 0
+    assert out.is_file()

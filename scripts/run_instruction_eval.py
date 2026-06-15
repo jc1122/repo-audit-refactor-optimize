@@ -179,6 +179,7 @@ def main(argv: list[str] | None = None) -> int:
 
     out_path = Path(args.out) if args.out else Path(f"eval_{args.skill}.json")
     artifact = {**res, "advisory": adv}
+    out_path.parent.mkdir(parents=True, exist_ok=True)  # own a fresh --out dir
     out_path.write_text(json.dumps(artifact, indent=2) + "\n", encoding="utf-8")
 
     print(json.dumps(adv, indent=2))

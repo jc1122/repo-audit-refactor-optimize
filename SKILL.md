@@ -1,6 +1,6 @@
 ---
 name: repo-audit-refactor-optimize
-version: 0.11.3
+version: 0.11.4
 description: End-to-end repository diagnosis, remediation, and optimization orchestration built on the deterministic repo-audit-skills family. Use when the agent needs to audit a repository with deterministic code-health, coverage-gap, and test-audit lanes, synthesize a coverage-gated remediation backlog, execute safe refactor batches, benchmark and optimize performance, or run a full repo optimization pipeline from diagnosis through verified completion.
 ---
 
