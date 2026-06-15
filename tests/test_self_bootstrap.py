@@ -1,5 +1,10 @@
 """Self-bootstrap: git-source install command emission, dedup, install plan."""
+import os
+import subprocess
+import tempfile
 from pathlib import Path
+
+import pytest
 
 from scripts import _lane_resolve as lr
 from scripts import _skill_probe as sp
@@ -139,9 +144,6 @@ def test_from_scratch_install_plan_lists_both_sources(tmp_path):
     assert "{dest}" in plan  # documented placeholder present
 
 
-import subprocess
-
-
 def test_installer_dry_run_lists_repo_b_and_sources():
     script = Path(__file__).resolve().parents[1] / "bootstrap" / "install.sh"
     out = subprocess.run(
@@ -158,7 +160,8 @@ def test_installer_dry_run_lists_repo_b_and_sources():
 
 def test_install_loop_runs_against_file_url_source(tmp_path):
     # Build a tiny "source" git repo with an installer that drops a skill dir.
-    src = tmp_path / "srcrepo"; src.mkdir()
+    src = tmp_path / "srcrepo"
+    src.mkdir()
     (src / "install.sh").write_text(
         '#!/usr/bin/env bash\nset -e\nmkdir -p "$1/demo-skill"\n'
         'printf "name: demo-skill\\nversion: 1.0.0\\n" > "$1/demo-skill/SKILL.md"\n',
@@ -170,9 +173,9 @@ def test_install_loop_runs_against_file_url_source(tmp_path):
                            "-c", "user.name=t", "commit", "-q", "-m", "init"])
     subprocess.check_call(["git", "-C", str(src), "tag", "v1.0.0"])
 
-    dest = tmp_path / "skills"; dest.mkdir()
+    dest = tmp_path / "skills"
+    dest.mkdir()
     # Mirror install.sh's source loop directly (no network, file:// clone).
-    import json, tempfile
     sources = {"demo": {"url": f"file://{src}", "tag": "v1.0.0",
                         "install": ["bash", "install.sh", str(dest)]}}
     for sid, s in sources.items():
@@ -180,10 +183,6 @@ def test_install_loop_runs_against_file_url_source(tmp_path):
         subprocess.check_call(["git", "clone", "--depth", "1", "-b", s["tag"], s["url"], tmp])
         subprocess.check_call(s["install"], cwd=tmp)
     assert (dest / "demo-skill" / "SKILL.md").is_file()
-
-
-import os
-import pytest
 
 
 @pytest.mark.skipif(os.environ.get("RUN_NETWORK_E2E") != "1",

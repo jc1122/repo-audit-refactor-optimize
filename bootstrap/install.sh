@@ -21,6 +21,8 @@ if [ -z "$DEST" ]; then
   else DEST="$HOME/.agents/skills"; fi
 fi
 
+# run a step, or print it under --dry-run. Inputs are baked constants / mktemp
+# paths / the manifest's trusted url+tag, so eval here is not an injection surface.
 run() { if [ "$DRY_RUN" -eq 1 ]; then echo "DRY: $*"; else eval "$*"; fi; }
 
 echo "== repo-audit family bootstrap =="
@@ -29,6 +31,7 @@ echo "repo-audit-refactor-optimize @ $REF"
 
 # 1. Install repo-B (the orchestrator) first.
 TMPB="$(mktemp -d)"
+trap 'rm -rf "$TMPB"' EXIT
 run "git clone --depth 1 -b $REF $REPO_B_URL \"$TMPB\""
 run "mkdir -p \"$DEST/repo-audit-refactor-optimize\""
 run "git -C \"$TMPB\" archive $REF | tar -x -C \"$DEST/repo-audit-refactor-optimize\""
@@ -37,7 +40,7 @@ run "git -C \"$TMPB\" archive $REF | tar -x -C \"$DEST/repo-audit-refactor-optim
 MANIFEST="$DEST/repo-audit-refactor-optimize/scripts/skill_bootstrap_manifest.json"
 if [ "$DRY_RUN" -eq 1 ]; then MANIFEST="$(dirname "$0")/../scripts/skill_bootstrap_manifest.json"; fi
 python3 - "$MANIFEST" "$DEST" "$DRY_RUN" <<'PY'
-import json, subprocess, sys, tempfile, shlex
+import json, subprocess, sys, tempfile
 manifest, dest, dry = sys.argv[1], sys.argv[2], sys.argv[3] == "1"
 sources = json.load(open(manifest)).get("sources", {})
 for sid, src in sources.items():
