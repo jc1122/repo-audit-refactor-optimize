@@ -548,11 +548,15 @@ def _markdown_install_plan(report: dict[str, Any]) -> str:
         "This checker never installs skills. Use the commands below "
         "only after explicit approval.",
         "",
+        "Replace `{dest}` with your skills root "
+        "(default: `~/.agents/skills`).",
+        "",
     ]
     if not report["install_candidates"]:
-        lines.append("No public install candidates were detected.")
+        lines.append("No install candidates were detected.")
         lines.append("")
         return "\n".join(lines)
+    # ... existing per-candidate loop unchanged ...
 
     for candidate in report["install_candidates"]:
         lines.append(f"## `{candidate['name']}`")

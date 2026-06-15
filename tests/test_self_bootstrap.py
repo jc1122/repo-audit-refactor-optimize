@@ -95,3 +95,25 @@ def test_install_candidates_deduped_one_per_source():
     candidates = lr._build_install_candidates(merged)
     names = sorted(c["name"] for c in candidates)
     assert names == ["perf-benchmark-skill", "repo-audit-skills"]  # 3 skills -> 2 cmds
+
+
+from scripts._bootstrap_report import build_bootstrap_report, _markdown_install_plan
+
+
+def test_from_scratch_install_plan_lists_both_sources(tmp_path):
+    repo = tmp_path / "target"; (repo).mkdir(); (repo / "app.py").write_text("x = 1\n")
+    empty_home = tmp_path / "home"; empty_home.mkdir()
+    env = {"HOME": str(empty_home), "AGENT_SKILLS_HOME": str(empty_home / ".codex"),
+           "CODEX_HOME": str(empty_home / ".codex")}
+    report = build_bootstrap_report(
+        repo_root=repo,
+        out_dir=tmp_path / "out",
+        manifest_path=Path(__file__).resolve().parents[1] / "scripts" / "skill_bootstrap_manifest.json",
+        extra_roots=[], foreign_roots=[],
+        user_override_path=None, repo_override_path=None, env=env,
+    )
+    plan = _markdown_install_plan(report)
+    assert "repo-audit-skills" in plan and "perf-benchmark-skill" in plan
+    assert "git clone --depth 1 -b v0.8.0" in plan
+    assert "git clone --depth 1 -b v0.6.0" in plan
+    assert "{dest}" in plan  # documented placeholder present
