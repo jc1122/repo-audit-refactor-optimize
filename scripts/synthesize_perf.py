@@ -15,7 +15,12 @@ import sys
 from pathlib import Path
 from typing import Any, cast
 
-from scripts import (
+_REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+
+# Imports follow the sys.path bootstrap above (lets the CLI run as a script).
+from scripts import (  # noqa: E402
     _complexity_label as _cl,
 )  # repo-local Big-O label (scripts is a package)
 

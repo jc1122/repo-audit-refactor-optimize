@@ -321,7 +321,7 @@
         "symbol": "use-list-copy",
         "metric": "W8402"
       },
-      "reason": "W8402 fires on `entries.append(...)` inside a nested loop in `_engine_accept_policy` (outer loop: `data.values()`, inner: `section.get('exclude_paths', [])`). The outer loop filters with `isinstance` check and pulls `reason` from each section; these per-section values are used in the constructed `AcceptEntry`. This is not a simple list copy \u2014 it cannot be replaced with `list.copy()` or a single-level comprehension.",
+      "reason": "W8402 fires on `entries.append(...)` inside a nested loop in `_engine_accept_policy` (outer loop: `data.values()`, inner: `section.get('exclude_paths', [])`). The outer loop filters with `isinstance` check and pulls `reason` from each section; these per-section values are used in the constructed `AcceptEntry`. This is not a simple list copy — it cannot be replaced with `list.copy()` or a single-level comprehension.",
       "applies": [
         "report"
       ]
@@ -335,6 +335,19 @@
         "metric": "parameter_count"
       },
       "reason": "complexity/parameter_count at scripts/mine_iteration_kpis.py (build_kpis): build_kpis is a thin per-repo KPI-record assembler: its 7 parameters (7 exceeds the max of 5) mirror exactly the KPI record's inputs (repo label + rows_before/after counts + worker_runs + phase_seconds + ci_wait_seconds + iteration), and its body only builds two per-repo dicts and delegates to compute_kpi. The parameter count reflects the breadth of a KPI record, not tangled logic; grouping into a dataclass would merely relocate the surface and break the pinned build_kpis/test signature. Accepted as cohesive-assembler.",
+      "applies": [
+        "report"
+      ]
+    },
+    {
+      "match": {
+        "kind": "finding",
+        "leaf": "duplication",
+        "path": "scripts/mprr_run.py",
+        "symbol": "scripts/synth_run.py:11-21",
+        "metric": "duplicate_tokens"
+      },
+      "reason": "duplication/duplicate_tokens between scripts/mprr_run.py and scripts/synth_run.py:11-21: the cloned region is the shared stdlib import preamble plus the canonical 3-line sys.path bootstrap. The bootstrap is irreducible — a shared helper cannot be imported until the repo root is already on sys.path (chicken-and-egg), so this is the blessed idiom mprr_run.py established and synth_run.py now matches deliberately for direct-script + module parity (v0.11.3). Consistency of one canonical bootstrap outweighs a sub-threshold preamble clone. Tracked in CHANGELOG.",
       "applies": [
         "report"
       ]
