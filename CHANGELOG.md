@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.11.0
+
+Dogfood gap remediation — Wave C (repo-B half of #8). The diagnosis-wave runner now
+advertises a version + capability surface so downstream repos can verify their pin:
+
+- **#8 runner `--capabilities`.** `run_diagnosis_wave.py --capabilities` prints
+  `{"version", "capabilities": ["lane-error-gate", "metric-ceiling", "lane-timeout"]}`;
+  `__version__` is held equal to the SKILL.md version by a new `check_release.py`
+  version-sync check. perf-benchmark's pin-coherence gate consumes this.
+- Re-pinned the CI leaf clone v0.7.5 → v0.8.0 (repo-A lane gates + jscpd-deploy fix).
+
 ## 0.10.0
 
 Dogfood gap remediation — Wave B (audit the tooling, not just the target). Turns
