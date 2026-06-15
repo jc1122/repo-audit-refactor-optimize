@@ -57,3 +57,9 @@ jobs:
         env:
           LEAF: /tmp/leaves/skills/coverage-gap-audit/scripts/coverage_gap_audit.py
         run: python3 scripts/check_coverage_gap.py --suite tests --source-prefix scripts
+      - name: Install pinned mutmut (for mutation-floor gate)
+        run: python -m pip install mutmut==3.6.0
+      - name: Mutation-kill floor gate (Tier-1, #5)
+        env:
+          LEAF: /tmp/leaves/skills/test-effectiveness-audit/scripts/test_effectiveness_audit.py
+        run: python3 scripts/check_mutation_floor.py

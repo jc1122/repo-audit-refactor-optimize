@@ -191,3 +191,131 @@ def test_expired_entry_goes_active_not_accepted():
     active, accepted, stale = policy.partition([f], "report")
     assert len(active) == 1 and accepted == []
     assert active[0]["accept_expired"] is True and stale == []
+
+
+# --- #5 mutation survivors: identity_of (was wholly untested) -------------
+
+
+def test_identity_of_reads_the_four_keys_in_order():
+    match = {"leaf": "complexity", "path": "scripts/a.py",
+             "symbol": "<module>", "metric": "maintainability_index"}
+    assert acc.identity_of(match) == (
+        "complexity", "scripts/a.py", "<module>", "maintainability_index"
+    )
+
+
+def test_identity_of_each_key_is_positionally_distinct():
+    # Distinct values per key kill any key-name swap or wrong-slot mutation.
+    match = {"leaf": "L", "path": "P", "symbol": "S", "metric": "M"}
+    assert acc.identity_of(match) == ("L", "P", "S", "M")
+
+
+def test_identity_of_missing_keys_default_to_empty_string():
+    # Kills mutations that drop/alter the "" default for absent keys.
+    assert acc.identity_of({}) == ("", "", "", "")
+    assert acc.identity_of({"leaf": "only"}) == ("only", "", "", "")
+
+
+# --- #5 mutation survivors: from_baseline (was wholly untested) -----------
+
+
+def test_from_baseline_builds_report_stage_finding_entries():
+    rows = [{"leaf": "complexity", "path": "scripts/a.py",
+             "symbol": "<module>", "metric": "maintainability_index"}]
+    policy = acc.from_baseline(rows)
+    assert len(policy.entries) == 1
+    entry = policy.entries[0]
+    assert entry.kind == "finding"
+    assert entry.fields == {
+        "leaf": "complexity", "path": "scripts/a.py",
+        "symbol": "<module>", "metric": "maintainability_index",
+    }
+    assert entry.reason == "(legacy --baseline)"
+    assert entry.applies == frozenset({"report"})
+    assert entry.expires is None
+
+
+def test_from_baseline_entry_matches_the_finding_at_report_only():
+    finding = {"leaf": "complexity", "path": "scripts/a.py",
+               "symbol": "<module>", "metric": "maintainability_index"}
+    policy = acc.from_baseline([finding])
+    assert policy.matches(finding, "report") is not None
+    # applies is report-only -> not active at remediation
+    assert policy.matches(finding, "remediation") is None
+
+
+def test_from_baseline_coerces_missing_fields_to_empty_string():
+    policy = acc.from_baseline([{"leaf": "x"}])
+    assert policy.entries[0].fields == {
+        "leaf": "x", "path": "", "symbol": "", "metric": "",
+    }
+
+
+def test_from_baseline_empty_rows_is_empty_policy():
+    assert acc.from_baseline([]).entries == []
+
+
+# --- #5 mutation survivors: merge / _entry_matches dispatch ---------------
+
+
+def test_merge_concatenates_entries_from_both_policies():
+    a = _policy([{"match": {"kind": "path", "glob": "a/**"}, "reason": "ra"}])
+    b = _policy([{"match": {"kind": "path", "glob": "b/**"}, "reason": "rb"}])
+    merged = a.merge(b)
+    globs = sorted(e.fields["glob"] for e in merged.entries)
+    assert globs == ["a/**", "b/**"]
+    # original policies are unchanged
+    assert len(a.entries) == 1 and len(b.entries) == 1
+
+
+def test_entry_matches_dispatches_on_kind():
+    finding = _policy([{"match": {"kind": "finding", **WAVE_FINDING}, "reason": "r"}])
+    path = _policy([{"match": {"kind": "path", "glob": "scripts/*.py"}, "reason": "r"}])
+    rule = _policy([{"match": {"kind": "rule", "leaf": "complexity"}, "reason": "r"}])
+    # the finding-kind entry must NOT match via path/rule logic
+    assert finding.matches(WAVE_FINDING, "report") is not None
+    assert finding.matches({**WAVE_FINDING, "leaf": "other"}, "report") is None
+    assert path.matches({"path": "scripts/a.py"}, "report") is not None
+    assert rule.matches({"leaf": "complexity"}, "report") is not None
+    assert rule.matches({"leaf": "security"}, "report") is None
+
+
+# --- #5 mutation survivors: is_expired / exceeds_ceiling edges ------------
+
+
+def test_is_expired_false_for_future_and_today(tmp_path):
+    from datetime import date
+    entry = acc.AcceptEntry("path", {"glob": "x"}, "r", frozenset({"report"}),
+                            "2999-01-01")
+    assert entry.is_expired() is False
+    today_entry = acc.AcceptEntry("path", {"glob": "x"}, "r", frozenset({"report"}),
+                                  date.today().isoformat())
+    # expires today is NOT yet expired (strictly-less-than comparison)
+    assert today_entry.is_expired() is False
+
+
+def test_is_expired_true_for_past_date():
+    entry = acc.AcceptEntry("path", {"glob": "x"}, "r", frozenset({"report"}),
+                            "2000-01-01")
+    assert entry.is_expired() is True
+
+
+def test_is_expired_false_for_non_date_token():
+    entry = acc.AcceptEntry("path", {"glob": "x"}, "r", frozenset({"report"}),
+                            "soon")
+    assert entry.is_expired() is False
+
+
+def test_exceeds_ceiling_boundary_is_strict():
+    entry = acc.AcceptEntry("finding", {}, "r", frozenset({"report"}), None, 12)
+    assert entry.exceeds_ceiling({"value": 13}) is True
+    assert entry.exceeds_ceiling({"value": 12}) is False   # equal is within
+    assert entry.exceeds_ceiling({"value": 11}) is False
+
+
+def test_exceeds_ceiling_no_ceiling_or_no_value():
+    no_ceiling = acc.AcceptEntry("finding", {}, "r", frozenset({"report"}), None)
+    assert no_ceiling.exceeds_ceiling({"value": 99}) is False
+    has_ceiling = acc.AcceptEntry("finding", {}, "r", frozenset({"report"}), None, 5)
+    assert has_ceiling.exceeds_ceiling({"value": None}) is False
+    assert has_ceiling.exceeds_ceiling({"value": "not-a-number"}) is False
