@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import importlib
 import json
+import os
 import subprocess  # nosec B404: intentional execution of configured leaves
 import sys
 import time
@@ -43,6 +44,12 @@ _DEFAULT_REGISTRY = Path(__file__).resolve().parent / "wave_lanes.json"
 DOC_EXCLUDES = ("audits", "dogfood", "plans", "superpowers")
 
 DEFAULT_EXCLUDES = ("tests", "fixtures")
+
+
+def _lane_timeout() -> int:
+    """Per-lane wall-clock budget (seconds); env-overridable for tests/CI."""
+    return int(os.environ.get("WAVE_LANE_TIMEOUT", "600"))
+
 
 # ── registry loader ────────────────────────────────────────────────────
 
@@ -125,9 +132,10 @@ def _leaf_supports_exclude_prefix(leaf: Path) -> bool:
     try:
         cmd = (sys.executable, str(leaf), "--help")
         proc = subprocess.run(  # nosec B603: shell=False and trusted leaf path
-            cmd, check=False, capture_output=True, text=True
+            cmd, check=False, capture_output=True, text=True,
+            timeout=_lane_timeout(),
         )
-    except OSError:
+    except (OSError, subprocess.TimeoutExpired):
         return False
     help_text = f"{proc.stdout or ''}{proc.stderr or ''}"
     return "--exclude-prefix" in help_text
@@ -260,8 +268,11 @@ def _run_lane(
 
     try:
         exit_code = subprocess.run(  # nosec B603: shell=False
-            cmd, check=False, capture_output=True, text=True
+            cmd, check=False, capture_output=True, text=True,
+            timeout=_lane_timeout(),
         ).returncode
+    except subprocess.TimeoutExpired:
+        exit_code = 124
     except OSError:
         exit_code = 2
     return exit_code, _wave_findings.collect_lane_findings(lane_out, lane)

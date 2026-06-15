@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib
 import json
+import subprocess as _subprocess
 import sys
 from pathlib import Path
 
@@ -1222,3 +1223,24 @@ def test_perf_smell_lane_is_registered():
     lanes = wave.load_lanes(wave._DEFAULT_REGISTRY)
     assert "perf-smell" in lanes
     assert lanes["perf-smell"].endswith("perf-smell-audit/scripts/perf_smell_audit.py")
+
+
+# ── Task A2: per-lane timeout watchdog (#9) ──────────────────────────────
+
+
+def test_lane_timeout_becomes_error(tmp_path, monkeypatch):
+    """A timed-out lane returns exit 124 -> status 'error' (caught by the gate)."""
+    rdw = importlib.import_module("scripts.run_diagnosis_wave")
+
+    def _boom(*a, **k):
+        raise _subprocess.TimeoutExpired(cmd="leaf", timeout=k.get("timeout", 1))
+
+    monkeypatch.setattr(rdw.subprocess, "run", _boom)
+    ctx = rdw._LaneContext(
+        repo=tmp_path, out_root=tmp_path, source_prefixes=[], exclude_prefixes=[],
+        rev=None, coverage_json=None, security_config=None, hotspot_config=None,
+    )
+    exit_code, findings = rdw._run_lane("security", tmp_path / "leaf.py", ctx)
+    assert exit_code == 124
+    assert findings == []
+    assert rdw._status_for_exit(124, 0) == "error"
