@@ -39,6 +39,7 @@ class AcceptEntry:
     reason: str
     applies: frozenset[str]
     expires: str | None
+    max_value: float | None = None
 
     def is_expired(self, today: date | None = None) -> bool:
         """True only for an ISO date in the past; non-date tokens never auto-expire."""
@@ -49,6 +50,16 @@ class AcceptEntry:
         except ValueError:
             return False
         return parsed < (today or date.today())
+
+    def exceeds_ceiling(self, finding: dict[str, Any]) -> bool:
+        """True when a numeric ceiling is set and the finding's value exceeds it."""
+        if self.max_value is None:
+            return False
+        value = finding.get("value")
+        try:
+            return value is not None and float(value) > float(self.max_value)
+        except (TypeError, ValueError):
+            return False
 
 
 def _require(cond: bool, msg: str) -> None:
@@ -127,7 +138,13 @@ def _parse_entry(raw: Any, index: int) -> AcceptEntry:
         expires is None or isinstance(expires, str),
         f"accept[{index}].expires must be string|null",
     )
-    return AcceptEntry(kind, fields, reason, applies, expires)
+    max_value = raw.get("max_value")
+    _require(
+        max_value is None
+        or (isinstance(max_value, (int, float)) and not isinstance(max_value, bool)),
+        f"accept[{index}].max_value must be number|null",
+    )
+    return AcceptEntry(kind, fields, reason, applies, expires, max_value)
 
 
 def _parse_policy(payload: Any) -> list[AcceptEntry]:
@@ -207,18 +224,26 @@ class AcceptPolicy:
         active: list[dict[str, Any]] = []
         accepted: list[dict[str, Any]] = []
         for finding in findings:
-            hit = self._first_hit(finding, stage_entries)
+            hit = self._first_hit(finding, stage_entries)  # identity-only match
             if hit is None:
                 active.append(finding)
+                continue
+            idx, entry = hit
+            matched.add(idx)            # found its target -> never stale
+            if entry.is_expired():
+                active.append({**finding,
+                               "accept_expired": True,
+                               "accept_reason": entry.reason})
+            elif entry.exceeds_ceiling(finding):
+                active.append({**finding,
+                               "ceiling_exceeded": True,
+                               "accepted_value": entry.max_value,
+                               "actual_value": finding.get("value")})
             else:
-                idx, entry = hit
-                matched.add(idx)
-                accepted.append({
-                    **finding,
-                    "accepted": True,
-                    "accept_reason": entry.reason,
-                    "expired": entry.is_expired(),
-                })
+                accepted.append({**finding,
+                                 "accepted": True,
+                                 "accept_reason": entry.reason,
+                                 "expired": entry.is_expired()})
         stale = [
             f"{e.kind}:{e.fields}"
             for i, e in enumerate(stage_entries)

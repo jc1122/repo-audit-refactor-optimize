@@ -38,6 +38,18 @@ def test_check_wave_baseline_reuses_the_shared_identity():
     assert cwb.identities([f]) == {wf.identity(f)}
 
 
+def test_normalize_carries_metric_value_and_threshold():
+    raw = {"leaf": "complexity", "path": "a.py",
+           "location": {"symbol": "f"},
+           "metric": {"name": "cyclomatic", "value": 40, "threshold": 10}}
+    norm = wf._normalize_finding(raw, "code-health")
+    assert norm["metric"] == "cyclomatic"
+    assert norm["value"] == 40
+    assert norm["threshold"] == 10
+    # identity is unchanged — value rides alongside, not inside
+    assert wf.identity(norm) == ("complexity", "a.py", "f", "cyclomatic")
+
+
 def test_load_baseline_rejects_non_array(tmp_path):
     bad = tmp_path / "b.json"
     bad.write_text(json.dumps({"not": "a list"}), encoding="utf-8")

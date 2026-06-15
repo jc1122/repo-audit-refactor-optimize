@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.9.0
+
+Dogfood gap remediation — Wave A (trustworthy green). Closes five verified gaps that
+let the convergence gate report a false GREEN:
+
+- **#1 errored lane no longer passes the gate.** `check_wave_baseline.py` now reads
+  `wave_summary.json` and the runner exit code; any lane with `status:"error"` (or a
+  nonzero runner exit) fails the gate before the active/stale checks, instead of an
+  errored lane (0 findings) sliding through on an empty active set.
+- **#9 per-lane timeout watchdog.** `run_diagnosis_wave._run_lane` (and the
+  `--help` capability probe) now run under `WAVE_LANE_TIMEOUT` (default 600s); a hung
+  leaf becomes exit 124 → `error` status → caught by the #1 gate, not an open-ended hang.
+- **#2 accepts carry a metric value ceiling.** Normalization now carries
+  `metric.value`/`threshold` alongside the (unchanged) 4-field identity; accept entries
+  gain an optional numeric `max_value`; the report-stage partition pushes an
+  expired or ceiling-exceeded entry into the active set (annotated `accept_expired` /
+  `ceiling_exceeded`) so a suppressed metric that later degrades fails the gate.
+- **#3 accept-reason quality gate.** New `check_accept_reasons.py` rejects boilerplate
+  reasons (min length + denylist + a required concrete token); existing reasons enriched
+  with their finding identity. Wired into the convergence-gate CI job.
+- **#10 toolchain-drift assertion.** New `scripts/toolchain_pins.json` is the single
+  source of truth; CI installs from it and `check_toolchain.py` asserts the running env
+  matches, so findings can't be produced by a drifted/missing toolchain.
+
 ## 0.8.2
 
 Dogfood fix — the diagnosis wave now scopes the `perf-smell` lane. `_append_scope_args`

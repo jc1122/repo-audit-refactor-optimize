@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib
 import json
+import subprocess as _subprocess
 import sys
 from pathlib import Path
 
@@ -151,12 +152,16 @@ def test_selected_lanes_disjoint_out_dirs_merge_findings(tmp_path: Path) -> None
         "path": "src/security.py",
         "symbol": "security_symbol",
         "metric": "7",
+        "value": None,
+        "threshold": None,
     } in findings
     assert {
         "leaf": "dep-leaf",
         "path": "src/dep.py",
         "symbol": "dep",
         "metric": "",
+        "value": None,
+        "threshold": None,
     } in findings
     assert len(findings) == 2
 
@@ -194,7 +199,8 @@ def test_fake_leaf_exit_two_with_findings_records_findings_status(tmp_path: Path
     findings = json.loads((out_dir / "wave_findings.json").read_text(encoding="utf-8"))
     _assert_status(summary, "security", 2, "findings")
     assert findings == [
-        {"leaf": "security", "path": "bad.py", "symbol": "bad", "metric": "x"},
+        {"leaf": "security", "path": "bad.py", "symbol": "bad", "metric": "x",
+         "value": None, "threshold": None},
     ]
 
 
@@ -1222,3 +1228,24 @@ def test_perf_smell_lane_is_registered():
     lanes = wave.load_lanes(wave._DEFAULT_REGISTRY)
     assert "perf-smell" in lanes
     assert lanes["perf-smell"].endswith("perf-smell-audit/scripts/perf_smell_audit.py")
+
+
+# ── Task A2: per-lane timeout watchdog (#9) ──────────────────────────────
+
+
+def test_lane_timeout_becomes_error(tmp_path, monkeypatch):
+    """A timed-out lane returns exit 124 -> status 'error' (caught by the gate)."""
+    rdw = importlib.import_module("scripts.run_diagnosis_wave")
+
+    def _boom(*a, **k):
+        raise _subprocess.TimeoutExpired(cmd="leaf", timeout=k.get("timeout", 1))
+
+    monkeypatch.setattr(rdw.subprocess, "run", _boom)
+    ctx = rdw._LaneContext(
+        repo=tmp_path, out_root=tmp_path, source_prefixes=[], exclude_prefixes=[],
+        rev=None, coverage_json=None, security_config=None, hotspot_config=None,
+    )
+    exit_code, findings = rdw._run_lane("security", tmp_path / "leaf.py", ctx)
+    assert exit_code == 124
+    assert findings == []
+    assert rdw._status_for_exit(124, 0) == "error"

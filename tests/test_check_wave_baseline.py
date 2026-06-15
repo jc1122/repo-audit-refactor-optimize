@@ -89,6 +89,39 @@ def test_active_wins_over_stale(tmp_path, capsys):
     assert "stale_acceptances" not in captured
 
 
+def test_fail_when_a_lane_errored_even_if_active_empty(tmp_path, capsys):
+    """The core #1 fix: an errored lane (0 findings) must NOT pass the gate."""
+    snapshot = tmp_path / "active.json"
+    accepted = tmp_path / "accepted.json"
+    summary = tmp_path / "summary.json"
+    _dump(snapshot, [])
+    _dump(accepted, {"accepted": [], "stale": []})
+    _dump(summary, {
+        "security": {"exit": 2, "status": "error", "findings": 0},
+        "hygiene": {"exit": 0, "status": "ok", "findings": 0},
+    })
+
+    rc = mod.main(["--snapshot", str(snapshot),
+                   "--accepted", str(accepted), "--summary", str(summary)])
+    captured = json.loads(capsys.readouterr().out)
+    assert rc == 1
+    assert captured["status"] == "fail"
+    assert captured["reason"] == "lane_error"
+    assert captured["errored_lanes"] == ["security"]
+
+
+def test_pass_when_all_lanes_ok_and_active_empty(tmp_path, capsys):
+    snapshot = tmp_path / "active.json"
+    summary = tmp_path / "summary.json"
+    _dump(snapshot, [])
+    _dump(summary, {"security": {"exit": 0, "status": "ok", "findings": 0}})
+
+    rc = mod.main(["--snapshot", str(snapshot), "--summary", str(summary)])
+    captured = json.loads(capsys.readouterr().out)
+    assert rc == 0
+    assert captured["status"] == "pass"
+
+
 def test_run_wave_forwards_anchor_and_wave_configs(tmp_path, monkeypatch):
     repo = tmp_path / "repo"
     repo.mkdir()
@@ -100,6 +133,7 @@ def test_run_wave_forwards_anchor_and_wave_configs(tmp_path, monkeypatch):
         "out = Path(sys.argv[sys.argv.index('--out-dir') + 1])\n"
         "out.mkdir(parents=True, exist_ok=True)\n"
         "(out / 'wave_findings.json').write_text('[]', encoding='utf-8')\n"
+        "(out / 'wave_summary.json').write_text('{}', encoding='utf-8')\n"
         "(out / 'argv.json').write_text(json.dumps(sys.argv[1:]), encoding='utf-8')\n",
         encoding="utf-8",
     )
@@ -120,8 +154,9 @@ def test_run_wave_forwards_anchor_and_wave_configs(tmp_path, monkeypatch):
     monkeypatch.delenv("SECURITY_CONFIG", raising=False)
     monkeypatch.delenv("HOTSPOT_CONFIG", raising=False)
 
-    out = mod._run_wave()
+    out, rc = mod._run_wave()
     assert out == repo / ".wave_out"
+    assert rc == 0
     argv = json.loads((repo / ".wave_out" / "argv.json").read_text(encoding="utf-8"))
     assert argv[argv.index("--rev") + 1] == "anchor-sha"
     assert argv[argv.index("--security-config") + 1] == str(security_config)

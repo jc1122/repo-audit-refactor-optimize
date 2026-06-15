@@ -26,25 +26,30 @@ def _string_value(value: Any, fallback: Any = "") -> str:
     return fallback if isinstance(fallback, str) else ""
 
 
-def _normalize_finding(finding: dict[str, Any], lane: str) -> dict[str, str]:
+def _normalize_finding(finding: dict[str, Any], lane: str) -> dict[str, Any]:
     """Convert one shared-schema finding into the wave identity shape."""
     location = finding.get("location")
     if not isinstance(location, dict):
         location = {}
-    metric = finding.get("metric")
+    metric_obj = finding.get("metric")
+    metric = metric_obj
     if isinstance(metric, dict):
         metric = metric.get("name")
     if metric is None:
         metric = finding.get("signal", "")
+    value = metric_obj.get("value") if isinstance(metric_obj, dict) else None
+    threshold = metric_obj.get("threshold") if isinstance(metric_obj, dict) else None
     return {
         "leaf": _string_value(finding.get("leaf"), lane),
         "path": _string_value(finding.get("path"), location.get("path", "")),
         "symbol": _string_value(finding.get("symbol"), location.get("symbol", "")),
         "metric": "" if metric is None else str(metric),
+        "value": value,
+        "threshold": threshold,
     }
 
 
-def _read_findings_file(path: Path, lane: str) -> list[dict[str, str]]:
+def _read_findings_file(path: Path, lane: str) -> list[dict[str, Any]]:
     """Read one leaf findings file, returning an empty list on bad output."""
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
@@ -59,9 +64,9 @@ def _read_findings_file(path: Path, lane: str) -> list[dict[str, str]]:
     ]
 
 
-def collect_lane_findings(lane_dir: Path, lane: str) -> list[dict[str, str]]:
+def collect_lane_findings(lane_dir: Path, lane: str) -> list[dict[str, Any]]:
     """Collect all normalized findings emitted for a lane directory."""
-    findings: list[dict[str, str]] = []
+    findings: list[dict[str, Any]] = []
     for finding_path in sorted(lane_dir.glob("*_findings.json")):
         findings.extend(_read_findings_file(finding_path, lane))
     code_health_summary = lane_dir / "code_health_summary.json"
