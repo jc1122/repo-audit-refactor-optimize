@@ -44,11 +44,12 @@ def _parse_args(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--snapshot", help="read the active set from this file (tests)")
     ap.add_argument("--accepted", help="read the accept sidecar from this file (tests)")
+    ap.add_argument("--summary", help="read the wave summary from this file (tests)")
     return ap.parse_args(argv)
 
 
 def _run_wave():
-    """Run the wave (it auto-suppresses via the in-repo accept.json); return out dir."""
+    """Run the wave (auto-suppresses via the in-repo accept.json); return (out, rc)."""
     runner = os.environ.get("WAVE_RUNNER", DEFAULT_RUNNER)
     out = REPO / ".wave_out"
     cmd = [sys.executable, runner, "--repo", str(REPO), "--out-dir", str(out)]
@@ -70,8 +71,8 @@ def _run_wave():
     if hotspot_config:
         cmd += ["--hotspot-config", hotspot_config]
     # Runner path may come from WAVE_RUNNER; shell stays disabled.
-    subprocess.run(cmd, check=False)  # nosec B603: shell=False
-    return out
+    proc = subprocess.run(cmd, check=False)  # nosec B603: shell=False
+    return out, proc.returncode
 
 
 def _emit(payload):
@@ -83,8 +84,23 @@ def _fail(payload):
     return 1
 
 
-def _converge(active, accepted_sidecar):
-    """Option A verdict: pass iff active is empty AND no stale acceptances."""
+def _lane_errors(summary):
+    """Lane names whose status is 'error' (lane failed to produce a verdict)."""
+    return sorted(
+        name for name, info in summary.items()
+        if isinstance(info, dict) and info.get("status") == "error"
+    )
+
+
+def _converge(active, accepted_sidecar, lane_errors, runner_rc):
+    """Option A verdict, fail-closed: any lane error or nonzero runner exit fails."""
+    if lane_errors or runner_rc != 0:
+        return _fail({
+            "status": "fail",
+            "reason": "lane_error",
+            "errored_lanes": lane_errors,
+            "runner_exit": runner_rc,
+        })
     if active:
         return _fail({
             "status": "fail",
@@ -103,11 +119,14 @@ def main(argv=None):
     if args.snapshot:
         active = _load_json(args.snapshot)
         sidecar = _load_json(args.accepted) if args.accepted else {"stale": []}
+        summary = _load_json(args.summary) if args.summary else {}
+        runner_rc = 0
     else:
-        out = _run_wave()
+        out, runner_rc = _run_wave()
         active = _load_json(out / "wave_findings.json")
         sidecar = _load_json(out / "wave_findings.accepted.json")
-    return _converge(active, sidecar)
+        summary = _load_json(out / "wave_summary.json")
+    return _converge(active, sidecar, _lane_errors(summary), runner_rc)
 
 
 if __name__ == "__main__":
