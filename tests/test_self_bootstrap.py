@@ -1,8 +1,13 @@
 """Self-bootstrap: git-source install command emission, dedup, install plan."""
-import json
 from pathlib import Path
 
+from scripts import _lane_resolve as lr
 from scripts import _skill_probe as sp
+from scripts._bootstrap_report import (
+    _build_summary,
+    _markdown_install_plan,
+    build_bootstrap_report,
+)
 
 GIT_ENTRY = {
     "source_type": "user-local",
@@ -37,9 +42,6 @@ def test_public_skills_cli_branch_still_works():
     assert sp._install_command_for_skill(entry) == "npx skills add foo -g -y"
 
 
-from scripts import _lane_resolve as lr
-
-
 def test_build_merged_skills_resolves_git_source_to_installable_now():
     manifest = {
         "skills": {
@@ -67,10 +69,11 @@ def test_build_merged_skills_resolves_git_source_to_installable_now():
 
 
 def _missing_family_manifest():
-    leaf = lambda src: {  # noqa: E731
-        "priority": "preferred", "source_type": "user-local", "install_source": None,
-        "manual_fallback": "x", "restart_required_if_installed": True, "source": src,
-    }
+    def leaf(src):
+        return {
+            "priority": "preferred", "source_type": "user-local", "install_source": None,
+            "manual_fallback": "x", "restart_required_if_installed": True, "source": src,
+        }
     return {
         "skills": {
             "complexity-audit": leaf("repo-audit-skills"),
@@ -97,12 +100,29 @@ def test_install_candidates_deduped_one_per_source():
     assert names == ["perf-benchmark-skill", "repo-audit-skills"]  # 3 skills -> 2 cmds
 
 
-from scripts._bootstrap_report import build_bootstrap_report, _markdown_install_plan
+def test_summary_restart_required_when_blocking_git_skill_missing():
+    # Regression: after dedup, a git candidate's name is the SOURCE id, not a
+    # skill name. _build_summary must match strict skills via the candidate's
+    # `covers` list, else restart_required is wrongly False for a missing
+    # blocking git-sourced skill.
+    m = _missing_family_manifest()
+    merged = lr._build_merged_skills(set(m["skills"]), m, {}, {}, {})
+    candidates = lr._build_install_candidates(merged)
+    summary = _build_summary(
+        lanes={}, active_lanes=[], install_candidates=candidates,
+        strict_skills={"perf-benchmark"},
+    )
+    assert summary["restart_required"] is True
+    perf = next(c for c in candidates if c["name"] == "perf-benchmark-skill")
+    assert "perf-benchmark" in perf["covers"]
 
 
 def test_from_scratch_install_plan_lists_both_sources(tmp_path):
-    repo = tmp_path / "target"; (repo).mkdir(); (repo / "app.py").write_text("x = 1\n")
-    empty_home = tmp_path / "home"; empty_home.mkdir()
+    repo = tmp_path / "target"
+    repo.mkdir()
+    (repo / "app.py").write_text("x = 1\n")
+    empty_home = tmp_path / "home"
+    empty_home.mkdir()
     env = {"HOME": str(empty_home), "AGENT_SKILLS_HOME": str(empty_home / ".codex"),
            "CODEX_HOME": str(empty_home / ".codex")}
     report = build_bootstrap_report(

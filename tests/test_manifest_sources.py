@@ -1,5 +1,6 @@
 """Guard: every user-local family skill resolves to a declared git source."""
 import json
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -18,7 +19,10 @@ def test_sources_are_well_formed():
     for name, src in sources.items():
         assert src.get("kind") == "git", f"{name} must be kind=git"
         assert src.get("url", "").startswith("https://"), f"{name} needs an https url"
-        assert src.get("tag", "").startswith("v"), f"{name} needs a vX.Y.Z tag"
+        # strict vX.Y.Z so the tag is safe to interpolate into a shell command
+        assert re.fullmatch(r"v\d+\.\d+\.\d+", src.get("tag", "")), (
+            f"{name} needs a vX.Y.Z tag"
+        )
         assert isinstance(src.get("install"), list) and src["install"], (
             f"{name} needs a non-empty install array"
         )
