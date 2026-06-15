@@ -224,18 +224,26 @@ class AcceptPolicy:
         active: list[dict[str, Any]] = []
         accepted: list[dict[str, Any]] = []
         for finding in findings:
-            hit = self._first_hit(finding, stage_entries)
+            hit = self._first_hit(finding, stage_entries)  # identity-only match
             if hit is None:
                 active.append(finding)
+                continue
+            idx, entry = hit
+            matched.add(idx)            # found its target -> never stale
+            if entry.is_expired():
+                active.append({**finding,
+                               "accept_expired": True,
+                               "accept_reason": entry.reason})
+            elif entry.exceeds_ceiling(finding):
+                active.append({**finding,
+                               "ceiling_exceeded": True,
+                               "accepted_value": entry.max_value,
+                               "actual_value": finding.get("value")})
             else:
-                idx, entry = hit
-                matched.add(idx)
-                accepted.append({
-                    **finding,
-                    "accepted": True,
-                    "accept_reason": entry.reason,
-                    "expired": entry.is_expired(),
-                })
+                accepted.append({**finding,
+                                 "accepted": True,
+                                 "accept_reason": entry.reason,
+                                 "expired": entry.is_expired()})
         stale = [
             f"{e.kind}:{e.fields}"
             for i, e in enumerate(stage_entries)

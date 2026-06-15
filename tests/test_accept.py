@@ -155,4 +155,39 @@ def test_partition_marks_expired():
     p = _policy([{"match": {"kind": "path", "glob": "x.py"}, "reason": "r",
                   "expires": "2000-01-01"}])
     active, accepted, stale = p.partition([{"path": "x.py"}], "report")
-    assert active == [] and accepted[0]["expired"] is True
+    assert active[0]["accept_expired"] is True and accepted == []
+
+
+def _ceiling_policy():
+    raw = {"version": 1, "accept": [{
+        "match": {"kind": "finding", "leaf": "x", "path": "a.py",
+                  "symbol": "f", "metric": "cyclomatic"},
+        "reason": "accepted at 12; CHANGELOG v0.9.0", "max_value": 12}]}
+    return acc.AcceptPolicy(acc._parse_policy(raw))
+
+
+def test_value_within_ceiling_is_accepted():
+    f = {"leaf": "x", "path": "a.py", "symbol": "f", "metric": "cyclomatic", "value": 12}
+    active, accepted, stale = _ceiling_policy().partition([f], "report")
+    assert active == [] and len(accepted) == 1 and stale == []
+
+
+def test_value_over_ceiling_goes_active_not_accepted():
+    f = {"leaf": "x", "path": "a.py", "symbol": "f", "metric": "cyclomatic", "value": 40}
+    active, accepted, stale = _ceiling_policy().partition([f], "report")
+    assert len(active) == 1 and accepted == []
+    assert active[0]["ceiling_exceeded"] is True
+    assert active[0]["actual_value"] == 40 and active[0]["accepted_value"] == 12
+    assert stale == []   # entry matched its identity target -> not stale
+
+
+def test_expired_entry_goes_active_not_accepted():
+    raw = {"version": 1, "accept": [{
+        "match": {"kind": "finding", "leaf": "x", "path": "a.py",
+                  "symbol": "f", "metric": "cyclomatic"},
+        "reason": "temporary; CHANGELOG", "expires": "2000-01-01"}]}
+    policy = acc.AcceptPolicy(acc._parse_policy(raw))
+    f = {"leaf": "x", "path": "a.py", "symbol": "f", "metric": "cyclomatic", "value": 5}
+    active, accepted, stale = policy.partition([f], "report")
+    assert len(active) == 1 and accepted == []
+    assert active[0]["accept_expired"] is True and stale == []
