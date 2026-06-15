@@ -200,14 +200,44 @@ class AcceptPolicy:
                 return entry
         return None
 
-    def _first_hit(
-        self, finding: dict[str, Any], stage_entries: list[AcceptEntry]
+    @staticmethod
+    def _build_match_index(
+        indexed: list[tuple[int, AcceptEntry]],
+    ) -> tuple[
+        dict[tuple[str, ...], tuple[int, AcceptEntry]],
+        list[tuple[int, AcceptEntry]],
+    ]:
+        """Index ``finding``-kind entries by identity (O(1) lookup) and keep the
+        few ``path``/``rule`` entries on a list. The smallest original index per
+        identity is retained, so first-match-in-order is preserved. O(M) once."""
+        finding_index: dict[tuple[str, ...], tuple[int, AcceptEntry]] = {}
+        other_entries: list[tuple[int, AcceptEntry]] = []
+        for i, entry in indexed:
+            if entry.kind == "finding":
+                key = tuple(entry.fields[k] for k in _FINDING_KEYS)
+                finding_index.setdefault(key, (i, entry))  # earliest wins
+            else:
+                other_entries.append((i, entry))
+        return finding_index, other_entries
+
+    @staticmethod
+    def _indexed_first_hit(
+        finding: dict[str, Any],
+        finding_index: dict[tuple[str, ...], tuple[int, AcceptEntry]],
+        other_entries: list[tuple[int, AcceptEntry]],
     ) -> tuple[int, AcceptEntry] | None:
-        """Return (index, entry) for the first matching stage entry, or None."""
-        for i, entry in enumerate(stage_entries):
-            if self._entry_matches(entry, finding):
-                return (i, entry)
-        return None
+        """First matching entry by original order: O(1) identity lookup for the
+        dominant ``finding`` kind plus a scan of the few ``path``/``rule`` ones."""
+        key = tuple(str(finding.get(k, "")) for k in _FINDING_KEYS)
+        best: tuple[int, AcceptEntry] | None = finding_index.get(key)
+        for i, entry in other_entries:
+            if best is not None and i > best[0]:
+                continue  # cannot precede the current earliest match
+            if AcceptPolicy._entry_matches(entry, finding) and (
+                best is None or i < best[0]
+            ):
+                best = (i, entry)
+        return best
 
     def partition(
         self, findings: list[dict[str, Any]], stage: str
@@ -218,13 +248,17 @@ class AcceptPolicy:
         - *accepted*: findings matched; carry ``accepted``, ``accept_reason``,
           and ``expired`` annotations.
         - *stale*: stage-scoped entries that matched nothing (sidecar note).
+
+        Matching is O(N + M): ``finding``-kind entries (the dominant kind) are
+        identity-indexed; only the few ``path``/``rule`` entries are scanned.
         """
-        stage_entries = [e for e in self.entries if stage in e.applies]
+        indexed = list(enumerate(e for e in self.entries if stage in e.applies))
+        finding_index, other_entries = self._build_match_index(indexed)
         matched: set[int] = set()
         active: list[dict[str, Any]] = []
         accepted: list[dict[str, Any]] = []
         for finding in findings:
-            hit = self._first_hit(finding, stage_entries)  # identity-only match
+            hit = self._indexed_first_hit(finding, finding_index, other_entries)
             if hit is None:
                 active.append(finding)
                 continue
@@ -246,7 +280,7 @@ class AcceptPolicy:
                                  "expired": entry.is_expired()})
         stale = [
             f"{e.kind}:{e.fields}"
-            for i, e in enumerate(stage_entries)
+            for i, e in indexed
             if i not in matched
         ]
         return active, accepted, stale

@@ -193,6 +193,54 @@ def test_expired_entry_goes_active_not_accepted():
     assert active[0]["accept_expired"] is True and stale == []
 
 
+# --- identity-index optimization regression guards (v0.11.1) ---------------
+# partition() indexes the dominant `finding` kind for O(N+M) matching. These
+# pin the two properties a naive index would break: first-match-in-order, and
+# that finding-kind misses never fall back to the O(N*M) linear scan.
+
+
+def test_partition_lower_index_path_entry_wins_over_finding_index():
+    p = _policy([
+        {"match": {"kind": "path", "glob": "scripts/a.py"}, "reason": "path-first"},
+        {"match": {"kind": "finding", **WAVE_FINDING}, "reason": "finding-second"},
+    ])
+    active, accepted, stale = p.partition([dict(WAVE_FINDING)], "report")
+    assert active == []
+    assert accepted[0]["accept_reason"] == "path-first"  # earlier entry wins
+    assert any(s.startswith("finding:") for s in stale)  # index entry never won
+
+
+def test_partition_lower_index_finding_entry_wins_over_path():
+    p = _policy([
+        {"match": {"kind": "finding", **WAVE_FINDING}, "reason": "finding-first"},
+        {"match": {"kind": "path", "glob": "scripts/a.py"}, "reason": "path-second"},
+    ])
+    active, accepted, stale = p.partition([dict(WAVE_FINDING)], "report")
+    assert active == []
+    assert accepted[0]["accept_reason"] == "finding-first"  # earlier entry wins
+    assert any(s.startswith("path:") for s in stale)
+
+
+def test_partition_finding_kind_uses_index_not_linear_scan(monkeypatch):
+    entries = [
+        {"match": {"kind": "finding", "leaf": "l", "path": f"p{i}.py",
+                   "symbol": f"s{i}", "metric": "m"}, "reason": "r"}
+        for i in range(50)
+    ]
+    p = _policy(entries)
+    calls = {"n": 0}
+    real = acc.AcceptPolicy._entry_matches
+
+    def counting(entry, finding):
+        calls["n"] += 1
+        return real(entry, finding)
+
+    monkeypatch.setattr(acc.AcceptPolicy, "_entry_matches", staticmethod(counting))
+    miss = {"leaf": "x", "path": "none.py", "symbol": "none", "metric": "none"}
+    p.partition([miss] * 20, "report")
+    assert calls["n"] == 0  # 20*50 under linear scan; 0 via the identity index
+
+
 # --- #5 mutation survivors: identity_of (was wholly untested) -------------
 
 

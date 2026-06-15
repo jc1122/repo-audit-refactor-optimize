@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.11.1
+
+Performance: `AcceptPolicy.partition` (`scripts/_accept.py`) is now O(N+M) instead
+of O(N×M). The dominant `finding`-kind entries are identity-indexed in a dict, and
+only the few `path`/`rule` entries are linearly scanned; first-match-in-order is
+preserved exactly (smallest original index wins). Behavior is byte-identical —
+verified against the 3 real `.repo-audit/accept.json` policies (both stages) plus
+200 randomized mixed-kind trials. Dogfooded through the perf-benchmark synthesis
+lane: measured exponent k 1.98 → 0.11 (`_entry_matches` calls 16M → 0 at N=M=4000).
+New regression guards in `tests/test_accept.py` pin the order-preservation and
+no-linear-scan invariants. Replaces the now-removed `_first_hit` helper.
+
 ## 0.11.0
 
 Dogfood gap remediation — Wave C (repo-B half of #8). The diagnosis-wave runner now
