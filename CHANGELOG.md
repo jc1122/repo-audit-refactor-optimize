@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.8.2
+
+Dogfood fix — the diagnosis wave now scopes the `perf-smell` lane. `_append_scope_args`
+previously forwarded `--source-prefix` only to `code-health`/`security`/`dependency`, so
+`perf-smell` fell through and `perf_smell_audit` globbed the whole tree (`root.rglob("*.py")`),
+including an untracked local `.venv/` — hanging the wave on perflint over thousands of
+`site-packages` files. Adds `perf-smell` to the source-scoping lane set (regression test
+`test_perf_smell_lane_receives_source_prefix`). Consequently the test-file `perf-smell` accepts
+in `.repo-audit/accept.json` (which only existed because the lane wrongly scanned `tests/`) are
+now stale and have been pruned (10 entries). Surfaced by a full skillset-on-skillset dogfood run;
+see `docs/audits/20260615T073848Z/`.
+
 ## 0.8.1
 
 Self-contained convergent family — Phase 1. The deterministic diagnosis wave now

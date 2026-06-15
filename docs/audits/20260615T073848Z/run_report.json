@@ -1,0 +1,88 @@
+{
+  "schema_version": 2,
+  "repo_root": "/home/jakub/projects/repo-audit-refactor-optimize",
+  "started_utc": "2026-06-15T07:38:48Z",
+  "finished_utc": "2026-06-15T08:27:16Z",
+  "orchestrator_skill_version": "v0.8.1-52-ga54239c",
+  "scope": "Family-wide dogfood: repo-audit-skills (repo-A), repo-audit-refactor-optimize (repo-B), perf-benchmark-skill (repo-P). All audit skills run on the whole skillset.",
+  "lanes": {
+    "code-health": "run (complexity, dead-code, duplication, structure, quality) on all 3 repos",
+    "security": "run on all 3 repos",
+    "hygiene": "run on all 3 repos",
+    "docs": "run on all 3 repos",
+    "dependency": "run on all 3 repos",
+    "perf-smell": "run on all 3 repos (scoping bug found + fixed)",
+    "hotspot": "run on all 3 repos",
+    "exec": "run on all 3 repos",
+    "growth": "run on all 3 repos",
+    "coverage-gap": "run on repo-A/repo-B/repo-P (Tier-1 binary gate)",
+    "self-audit-ratchet": "repo-A code-health convergence gate"
+  },
+  "findings_totals": {
+    "genuine_defects": 1,
+    "consequent_remediations": 2,
+    "advisory_findings_all_accepted": true,
+    "new_unaccepted_findings_after_fix": 0
+  },
+  "backlog": {
+    "accepted": [
+      "repo-B convergence: 26 accepted residuals, 0 active",
+      "repo-P convergence: 45 accepted residuals, 0 active",
+      "repo-A self-audit: 40 accepted residuals (baseline 40)"
+    ],
+    "deferred": [
+      "Default-mode (no --source-prefix) leaf file-walk still globs untracked dependency dirs (.venv/node_modules); only manifests on repos with a local virtualenv. Out of scope for this run (the dogfood scopes positively); recorded as a hardening candidate."
+    ],
+    "coverage_gated": [
+      "repo-A coverage gate: pass (10/10 cheap + 1/1 heavy)",
+      "repo-B coverage-gap: pass (count 0, baseline 0)",
+      "repo-P coverage-gap: pass (count 0, baseline 0)"
+    ],
+    "wont_fix": []
+  },
+  "batches": [
+    {
+      "id": "B1-perf-smell-scoping-fix",
+      "repo": "repo-audit-refactor-optimize",
+      "change": "run_diagnosis_wave.py: add 'perf-smell' to the source-scoping lane set in _append_scope_args so the lane honors --source-prefix (was globbing the whole tree, incl untracked .venv, hanging the wave).",
+      "test": "tests/test_run_diagnosis_wave.py::test_perf_smell_lane_receives_source_prefix (TDD red->green)",
+      "verification": "34/34 wave tests pass; 318/318 repo-B suite pass"
+    },
+    {
+      "id": "B2-prune-stale-accepts-repoB",
+      "repo": "repo-audit-refactor-optimize",
+      "change": "Pruned 10 stale perf-smell accept entries under tests/ from .repo-audit/accept.json (the fix scopes perf-smell to scripts/, so those test-file findings no longer exist).",
+      "verification": "convergence gate pass: 26 accepted, 0 active, 0 stale"
+    },
+    {
+      "id": "B3-prune-stale-accepts-repoP",
+      "repo": "perf-benchmark-skill",
+      "change": "Pruned 3 stale perf-smell accept entries (tests/ + benchmarks/) from .repo-audit/accept.json for the same reason.",
+      "verification": "convergence gate pass: 45 accepted, 0 active, 0 stale"
+    }
+  ],
+  "verification": {
+    "repo-audit-skills": {
+      "self_audit_ratchet": "pass (40/40)",
+      "run_checks": "pass (10/10 cheap gates + 1/1 heavy coverage gate, 0 failed)"
+    },
+    "repo-audit-refactor-optimize": {
+      "pytest": "pass (318)",
+      "release": "pass",
+      "convergence_wave_baseline": "pass (accepted 26, active 0)",
+      "coverage_gap": "pass (count 0, baseline 0)"
+    },
+    "perf-benchmark-skill": {
+      "ruff_check": "pass",
+      "ruff_format": "pass",
+      "pytest": "pass (124)",
+      "convergence_wave_baseline": "pass (accepted 45, active 0)",
+      "coverage_gap": "pass (count 0, baseline 0)"
+    }
+  },
+  "warnings": [
+    "Changes are uncommitted in the working tree. The perf-smell fix lives in repo-B's run_diagnosis_wave.py; repo-B and repo-P convergence gates pin the runner at v0.8.1 in CI. To land in CI, repo-B needs a runner release and repo-P needs a runner re-pin, plus committing both accept.json prunes.",
+    "Local environment was completed to match CI: installed pinned bandit/pylint/perflint/mutmut/hypothesis/jsonschema into repo-A's .venv; symlinked ~/.agents/node_modules -> repo-A/node_modules so the installed duplication leaf can find jscpd (the install process never creates node_modules beside the leaf).",
+    "Coverage-gap baselines show count 0 / baseline 0 on repo-B and repo-P; that is the gate's converged state, not a missing measurement."
+  ]
+}

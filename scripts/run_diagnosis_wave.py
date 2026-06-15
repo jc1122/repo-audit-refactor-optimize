@@ -223,7 +223,7 @@ def _append_scope_args(
         _add_growth_args(cmd, context)
         return
 
-    if lane in {"code-health", "security", "dependency"}:
+    if lane in {"code-health", "security", "dependency", "perf-smell"}:
         supports = _leaf_supports_exclude_prefix(leaf)
         cmd.extend(
             _audit_scope_args(

@@ -344,6 +344,70 @@ def test_docs_living_docs_supporting_excludes_add_superpowers(tmp_path: Path) ->
     assert "docs/superpowers" in exclude_prefixes
 
 
+def test_perf_smell_lane_receives_source_prefix(tmp_path: Path) -> None:
+    """Regression: the perf-smell lane must honor --source-prefix scoping.
+
+    perf_smell_audit globs the entire tree when unscoped, so on a repo with a
+    local untracked virtualenv it sweeps .venv/site-packages (thousands of
+    third-party files) — hanging the wave and emitting garbage findings. The
+    perf-smell lane was omitted from the source-scoping branch, so the
+    --source-prefix values the wave collected were silently dropped for it.
+    """
+    repo = tmp_path / "repo"
+    _prepare_repo_root(repo)
+
+    skills_root = tmp_path / "skills"
+    perf_leaf = skills_root / "perf-smell-audit" / "scripts" / "perf_smell_audit.py"
+    _make_fake_leaf_with_findings(
+        perf_leaf,
+        "perf-smell_findings.json",
+        [],
+        0,
+        has_exclude_arg=False,
+        write_argv=True,
+    )
+    registry = _make_registry(
+        tmp_path,
+        [
+            {
+                "name": "perf-smell",
+                "script": "perf-smell-audit/scripts/perf_smell_audit.py",
+                "languages": ["python"],
+            }
+        ],
+    )
+
+    out_dir = tmp_path / "wave"
+    assert (
+        mod.main(
+            [
+                "--repo",
+                str(repo),
+                "--out-dir",
+                str(out_dir),
+                "--skills-root",
+                str(skills_root),
+                "--lanes",
+                "perf-smell",
+                "--source-prefix",
+                "scripts",
+                "--registry",
+                str(registry),
+            ]
+        )
+        == 0
+    )
+    argv = json.loads(
+        (out_dir / "perf-smell" / "argv.json").read_text(encoding="utf-8")
+    )
+    source_prefixes = [
+        argv[i + 1]
+        for i, value in enumerate(argv)
+        if value == "--source-prefix" and i + 1 < len(argv)
+    ]
+    assert "scripts" in source_prefixes
+
+
 def test_hotspot_config_is_forwarded_to_hotspot_lane(tmp_path: Path) -> None:
     repo = tmp_path / "repo"
     _prepare_repo_root(repo)
