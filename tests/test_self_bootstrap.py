@@ -180,3 +180,20 @@ def test_install_loop_runs_against_file_url_source(tmp_path):
         subprocess.check_call(["git", "clone", "--depth", "1", "-b", s["tag"], s["url"], tmp])
         subprocess.check_call(s["install"], cwd=tmp)
     assert (dest / "demo-skill" / "SKILL.md").is_file()
+
+
+import os
+import pytest
+
+
+@pytest.mark.skipif(os.environ.get("RUN_NETWORK_E2E") != "1",
+                    reason="network e2e is opt-in (set RUN_NETWORK_E2E=1)")
+def test_installer_real_network_into_temp_dest(tmp_path):
+    script = Path(__file__).resolve().parents[1] / "bootstrap" / "install.sh"
+    dest = tmp_path / "skills"
+    rc = subprocess.run(["bash", str(script), "--dest", str(dest)],
+                        capture_output=True, text=True)
+    assert rc.returncode == 0, rc.stderr
+    assert (dest / "repo-audit-refactor-optimize" / "SKILL.md").is_file()
+    assert (dest / "complexity-audit" / "SKILL.md").is_file()
+    assert (dest / "perf-benchmark" / "SKILL.md").is_file()
