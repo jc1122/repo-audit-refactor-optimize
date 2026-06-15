@@ -421,7 +421,8 @@ def _build_summary(
         item["restart_required"]
         for item in install_candidates
         if item["post_install_state"] == "available_next_run"
-        and item["name"] in strict_skills
+        # a candidate may cover several skills (git source); match any strict one
+        and set(item.get("covers", [item["name"]])) & strict_skills
     )
     return {
         "stop_before_discovery": stop_before_discovery,
@@ -548,9 +549,12 @@ def _markdown_install_plan(report: dict[str, Any]) -> str:
         "This checker never installs skills. Use the commands below "
         "only after explicit approval.",
         "",
+        "Replace `{dest}` with your skills root "
+        "(default: `~/.agents/skills`).",
+        "",
     ]
     if not report["install_candidates"]:
-        lines.append("No public install candidates were detected.")
+        lines.append("No install candidates were detected.")
         lines.append("")
         return "\n".join(lines)
 

@@ -168,7 +168,7 @@ def test_python_repo_uses_tqa_triage_fallback_when_pipeline_missing(
         "test-quality-assurance",
         "test-redundancy-triage",
     ]
-    assert report["skills"]["test-audit-pipeline"]["state"] == "manual_only"
+    assert report["skills"]["test-audit-pipeline"]["state"] == "installable_now"
 
 
 def test_missing_public_skill_generates_exact_install_command(tmp_path: Path, sample_manifest: dict):
@@ -196,13 +196,27 @@ def test_missing_public_skill_generates_exact_install_command(tmp_path: Path, sa
 
 def test_missing_local_skill_without_source_mapping_is_manual_only(
     tmp_path: Path,
-    sample_manifest: dict,
 ):
+    """A user-local skill that has no source entry in the manifest stays manual_only."""
     repo = tmp_path / "repo"
     repo.mkdir()
 
+    # Build a minimal manifest with NO sources map so the skill stays manual_only.
+    manifest_no_sources: dict = {
+        "version": 2,
+        "skills": {
+            "complexity-audit": {
+                "priority": "preferred",
+                "source_type": "user-local",
+                "install_source": None,
+                "manual_fallback": "install manually",
+                "restart_required_if_installed": True,
+            },
+        },
+        "lanes": {},
+    }
     manifest_path = tmp_path / "manifest.json"
-    write_manifest(manifest_path, sample_manifest)
+    write_manifest(manifest_path, manifest_no_sources)
 
     report = checker.build_bootstrap_report(
         repo_root=repo,
@@ -356,7 +370,8 @@ def test_perf_focused_repo_without_benchmark_surfaces_is_blocked(
     perf_lane = report["lanes"]["performance"]
     assert perf_lane["state"] == "blocked"
     assert report["summary"]["stop_before_discovery"] is True
-    assert report["skills"]["perf-benchmark"]["state"] == "blocking_missing"
+    # perf-benchmark has a git source so it is installable_now (not blocking_missing).
+    assert report["skills"]["perf-benchmark"]["state"] == "installable_now"
 
 
 def test_main_cli_roundtrip(tmp_path: Path, sample_manifest: dict, python_pytest_repo: Path):
@@ -739,12 +754,59 @@ def test_markdown_report_structure(tmp_path: Path, sample_manifest: dict, python
         assert f"`{lane_name}`: `{lane['state']}`" in md
 
 
-def test_install_plan_no_candidates(tmp_path: Path, sample_manifest: dict):
+def test_install_plan_no_candidates(tmp_path: Path):
+    """When all active skills are installed, the install plan reports no candidates."""
     repo = tmp_path / "repo"
     repo.mkdir()
 
+    # Use a minimal manifest with only skills we will install — no sources needed.
+    minimal_manifest: dict = {
+        "version": 2,
+        "skills": {
+            "perf-benchmark": {
+                "priority": "preferred",
+                "source_type": "user-local",
+                "install_source": None,
+                "manual_fallback": "manual",
+                "restart_required_if_installed": True,
+            },
+            "perf-optimization": {
+                "priority": "preferred",
+                "source_type": "user-local",
+                "install_source": None,
+                "manual_fallback": "manual",
+                "restart_required_if_installed": True,
+            },
+            "verification-before-completion": {
+                "priority": "preferred",
+                "source_type": "user-local",
+                "install_source": None,
+                "manual_fallback": "manual",
+                "restart_required_if_installed": True,
+                "always_available": True,
+            },
+        },
+        "lanes": {
+            "performance": {
+                "always": True,
+                "lane_type": "performance",
+                "preferred": ["perf-benchmark"],
+                "fallback": ["perf-optimization"],
+                "manual_fallback": "manual",
+                "blocking": True,
+            },
+            "orchestration": {
+                "always": True,
+                "lane_type": "orchestration",
+                "preferred": ["verification-before-completion"],
+                "manual_fallback": "manual",
+                "blocking": False,
+            },
+        },
+    }
+
     manifest_path = tmp_path / "manifest.json"
-    write_manifest(manifest_path, sample_manifest)
+    write_manifest(manifest_path, minimal_manifest)
 
     skills_root = tmp_path / ".agents" / "skills"
     write_skill(skills_root, "perf-benchmark")
@@ -761,7 +823,8 @@ def test_install_plan_no_candidates(tmp_path: Path, sample_manifest: dict):
     install_plan = (tmp_path / "out" / "bootstrap" / "install_plan.md").read_text(
         encoding="utf-8",
     )
-    assert "No public install candidates" in install_plan
+    assert report["install_candidates"] == []
+    assert "No" in install_plan and "install candidates" in install_plan
 
 
 def test_matches_when_unknown_key_is_fail_closed(tmp_path: Path, sample_manifest: dict):
@@ -844,6 +907,15 @@ def test_optional_install_candidate_does_not_force_restart_summary(
     manifest_path = tmp_path / "manifest.json"
     write_manifest(manifest_path, sample_manifest)
 
+    # Install the strict (blocking) skills so they aren't in install_candidates.
+    # The performance lane is blocking=true, so perf-benchmark/perf-optimization
+    # are strict skills.  quality-audit is optional — its installable_now state
+    # must NOT flip restart_required=True in the summary.
+    skills_root = tmp_path / ".agents" / "skills"
+    write_skill(skills_root, "perf-benchmark")
+    write_skill(skills_root, "perf-optimization")
+    write_skill(skills_root, "verification-before-completion")
+
     report = checker.build_bootstrap_report(
         repo_root=repo,
         manifest_path=manifest_path,
@@ -885,7 +957,9 @@ def test_public_skill_without_supported_install_command_is_manual_only(
     )
 
     assert report["skills"]["public-helper"]["state"] == "manual_only"
-    assert report["install_candidates"] == []
+    # public-helper has no install command; verify it is NOT in install_candidates.
+    candidate_names = {c["name"] for c in report["install_candidates"]}
+    assert "public-helper" not in candidate_names
 
 
 def test_main_cli_reports_validation_errors_cleanly(

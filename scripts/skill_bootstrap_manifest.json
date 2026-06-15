@@ -1,5 +1,29 @@
 {
   "version": 2,
+  "sources": {
+    "repo-audit-skills": {
+      "kind": "git",
+      "url": "https://github.com/jc1122/repo-audit-skills.git",
+      "tag": "v0.8.0",
+      "install": [
+        "node",
+        "bin/install-repo-audit-skills.js",
+        "--dest",
+        "{dest}",
+        "--force"
+      ]
+    },
+    "perf-benchmark-skill": {
+      "kind": "git",
+      "url": "https://github.com/jc1122/perf-benchmark-skill.git",
+      "tag": "v0.6.1",
+      "install": [
+        "bash",
+        "bootstrap/install-perf.sh",
+        "{dest}"
+      ]
+    }
+  },
   "skills": {
     "find-skills": {
       "priority": "optional",
@@ -21,21 +45,24 @@
       "install_source": null,
       "manual_fallback": "Perform a manual test audit with explicit deterministic checks.",
       "restart_required_if_installed": true,
-      "min_version": "0.3.0"
+      "min_version": "0.3.0",
+      "source": "repo-audit-skills"
     },
     "test-quality-assurance": {
       "priority": "preferred",
       "source_type": "user-local",
       "install_source": null,
       "manual_fallback": "Review test quality manually when the TDD rubric skill is unavailable.",
-      "restart_required_if_installed": true
+      "restart_required_if_installed": true,
+      "source": "repo-audit-skills"
     },
     "test-redundancy-triage": {
       "priority": "preferred",
       "source_type": "user-local",
       "install_source": null,
       "manual_fallback": "Identify redundant tests manually by structural review and deselection.",
-      "restart_required_if_installed": true
+      "restart_required_if_installed": true,
+      "source": "repo-audit-skills"
     },
     "code-health-audit-pipeline": {
       "priority": "preferred",
@@ -43,7 +70,8 @@
       "install_source": null,
       "manual_fallback": "Install repo-audit-skills v0.3.0+ (github.com/jc1122/repo-audit-skills, `node bin/install-repo-audit-skills.js --dest <skills-root> --force`), or run the five leaf audits directly.",
       "restart_required_if_installed": true,
-      "min_version": "0.3.0"
+      "min_version": "0.3.0",
+      "source": "repo-audit-skills"
     },
     "complexity-audit": {
       "priority": "preferred",
@@ -51,7 +79,8 @@
       "install_source": null,
       "manual_fallback": "Part of repo-audit-skills v0.3.0+; install via its node installer.",
       "restart_required_if_installed": true,
-      "min_version": "0.3.0"
+      "min_version": "0.3.0",
+      "source": "repo-audit-skills"
     },
     "duplication-audit": {
       "priority": "preferred",
@@ -59,7 +88,8 @@
       "install_source": null,
       "manual_fallback": "Part of repo-audit-skills v0.3.0+; install via its node installer.",
       "restart_required_if_installed": true,
-      "min_version": "0.3.0"
+      "min_version": "0.3.0",
+      "source": "repo-audit-skills"
     },
     "dead-code-audit": {
       "priority": "preferred",
@@ -67,7 +97,8 @@
       "install_source": null,
       "manual_fallback": "Part of repo-audit-skills v0.3.0+; install via its node installer.",
       "restart_required_if_installed": true,
-      "min_version": "0.3.0"
+      "min_version": "0.3.0",
+      "source": "repo-audit-skills"
     },
     "structure-audit": {
       "priority": "preferred",
@@ -75,7 +106,8 @@
       "install_source": null,
       "manual_fallback": "Part of repo-audit-skills v0.3.0+; install via its node installer.",
       "restart_required_if_installed": true,
-      "min_version": "0.3.0"
+      "min_version": "0.3.0",
+      "source": "repo-audit-skills"
     },
     "quality-audit": {
       "priority": "preferred",
@@ -83,7 +115,8 @@
       "install_source": null,
       "manual_fallback": "Part of repo-audit-skills v0.3.0+; install via its node installer.",
       "restart_required_if_installed": true,
-      "min_version": "0.3.0"
+      "min_version": "0.3.0",
+      "source": "repo-audit-skills"
     },
     "coverage-gap-audit": {
       "priority": "preferred",
@@ -91,14 +124,16 @@
       "install_source": null,
       "manual_fallback": "Collect a coverage.py JSON report and assess testedness manually when the leaf is unavailable.",
       "restart_required_if_installed": true,
-      "min_version": "0.3.0"
+      "min_version": "0.3.0",
+      "source": "repo-audit-skills"
     },
     "perf-benchmark": {
       "priority": "preferred",
       "source_type": "user-local",
       "install_source": null,
       "manual_fallback": "Use manual benchmark discipline with stable commands and fixtures.",
-      "restart_required_if_installed": true
+      "restart_required_if_installed": true,
+      "source": "perf-benchmark-skill"
     },
     "perf-optimization": {
       "priority": "preferred",
@@ -106,7 +141,8 @@
       "install_source": null,
       "manual_fallback": "Optimize manually per the perf-benchmark remediation playbook ratchet.",
       "restart_required_if_installed": true,
-      "min_version": "0.1.0"
+      "min_version": "0.1.0",
+      "source": "perf-benchmark-skill"
     },
     "dispatching-parallel-agents": {
       "priority": "optional",
@@ -138,7 +174,8 @@
       "install_source": null,
       "manual_fallback": "Part of repo-audit-skills v0.4.0+; install via its node installer.",
       "restart_required_if_installed": true,
-      "min_version": "0.4.0"
+      "min_version": "0.4.0",
+      "source": "repo-audit-skills"
     },
     "dependency-audit": {
       "priority": "preferred",
@@ -146,7 +183,8 @@
       "install_source": null,
       "manual_fallback": "Part of repo-audit-skills v0.4.0+; install via its node installer.",
       "restart_required_if_installed": true,
-      "min_version": "0.4.0"
+      "min_version": "0.4.0",
+      "source": "repo-audit-skills"
     },
     "repo-hygiene-audit": {
       "priority": "preferred",
@@ -154,7 +192,8 @@
       "install_source": null,
       "manual_fallback": "Part of repo-audit-skills v0.4.0+; install via its node installer.",
       "restart_required_if_installed": true,
-      "min_version": "0.4.0"
+      "min_version": "0.4.0",
+      "source": "repo-audit-skills"
     },
     "docs-consistency-audit": {
       "priority": "preferred",
@@ -162,7 +201,8 @@
       "install_source": null,
       "manual_fallback": "Part of repo-audit-skills v0.4.0+; install via its node installer.",
       "restart_required_if_installed": true,
-      "min_version": "0.4.0"
+      "min_version": "0.4.0",
+      "source": "repo-audit-skills"
     },
     "security-audit": {
       "priority": "preferred",
@@ -170,7 +210,8 @@
       "install_source": null,
       "manual_fallback": "Part of repo-audit-skills v0.4.0+; install via its node installer.",
       "restart_required_if_installed": true,
-      "min_version": "0.4.0"
+      "min_version": "0.4.0",
+      "source": "repo-audit-skills"
     },
     "test-effectiveness-audit": {
       "priority": "preferred",
@@ -178,48 +219,83 @@
       "install_source": null,
       "manual_fallback": "Part of repo-audit-skills v0.4.0+; install via its node installer.",
       "restart_required_if_installed": true,
-      "min_version": "0.4.0"
+      "min_version": "0.4.0",
+      "source": "repo-audit-skills"
     }
   },
   "lanes": {
     "bootstrap": {
       "always": true,
       "lane_type": "bootstrap",
-      "preferred": ["find-skills", "skill-installer"],
+      "preferred": [
+        "find-skills",
+        "skill-installer"
+      ],
       "fallback": [],
       "manual_fallback": "Use raw Skills CLI commands when helper skills are missing.",
       "blocking": false
     },
     "test-python": {
-      "when": {"python": true, "pytest": true},
+      "when": {
+        "python": true,
+        "pytest": true
+      },
       "lane_type": "test",
-      "preferred": ["test-audit-pipeline"],
-      "fallback": ["test-quality-assurance", "test-redundancy-triage"],
-      "optional": ["test-effectiveness-audit"],
+      "preferred": [
+        "test-audit-pipeline"
+      ],
+      "fallback": [
+        "test-quality-assurance",
+        "test-redundancy-triage"
+      ],
+      "optional": [
+        "test-effectiveness-audit"
+      ],
       "manual_fallback": "Run a deterministic manual Python test audit when the skill lane is unavailable.",
       "blocking": false
     },
     "code-health-python": {
-      "when": {"python": true},
+      "when": {
+        "python": true
+      },
       "lane_type": "code_health",
-      "preferred": ["code-health-audit-pipeline"],
-      "fallback": ["complexity-audit", "duplication-audit", "dead-code-audit", "structure-audit", "quality-audit"],
-      "optional": ["hotspot-audit"],
+      "preferred": [
+        "code-health-audit-pipeline"
+      ],
+      "fallback": [
+        "complexity-audit",
+        "duplication-audit",
+        "dead-code-audit",
+        "structure-audit",
+        "quality-audit"
+      ],
+      "optional": [
+        "hotspot-audit"
+      ],
       "manual_fallback": "Review Python code health manually and record the tooling gap when the deterministic family is unavailable.",
       "blocking": false
     },
     "coverage-python": {
-      "when": {"python": true, "pytest": true},
+      "when": {
+        "python": true,
+        "pytest": true
+      },
       "lane_type": "coverage",
-      "preferred": ["coverage-gap-audit"],
+      "preferred": [
+        "coverage-gap-audit"
+      ],
       "fallback": [],
       "manual_fallback": "Collect coverage.py JSON and assess testedness manually when the leaf is unavailable.",
       "blocking": false
     },
     "security": {
-      "when": {"python": true},
+      "when": {
+        "python": true
+      },
       "lane_type": "audit",
-      "preferred": ["security-audit"],
+      "preferred": [
+        "security-audit"
+      ],
       "fallback": [],
       "manual_fallback": "Perform a manual security review; the bandit-based leaf is unavailable.",
       "blocking": false
@@ -227,25 +303,39 @@
     "performance": {
       "always": true,
       "lane_type": "performance",
-      "preferred": ["perf-benchmark"],
-      "fallback": ["perf-optimization"],
+      "preferred": [
+        "perf-benchmark"
+      ],
+      "fallback": [
+        "perf-optimization"
+      ],
       "manual_fallback": "Use manual performance reasoning and stable verification when the preferred skill set is unavailable.",
       "blocking": true
     },
     "hygiene": {
       "always": true,
       "lane_type": "audit",
-      "preferred": ["repo-hygiene-audit"],
+      "preferred": [
+        "repo-hygiene-audit"
+      ],
       "fallback": [],
-      "optional": ["dependency-audit", "docs-consistency-audit"],
+      "optional": [
+        "dependency-audit",
+        "docs-consistency-audit"
+      ],
       "manual_fallback": "Review repo hygiene manually (tracked artifacts, configs, release files) when the leaf is unavailable.",
       "blocking": false
     },
     "orchestration": {
       "always": true,
       "lane_type": "orchestration",
-      "preferred": ["verification-before-completion"],
-      "optional": ["dispatching-parallel-agents", "subagent-driven-development"],
+      "preferred": [
+        "verification-before-completion"
+      ],
+      "optional": [
+        "dispatching-parallel-agents",
+        "subagent-driven-development"
+      ],
       "manual_fallback": "Run verification manually and execute batches sequentially when orchestration helpers are missing.",
       "blocking": false
     }

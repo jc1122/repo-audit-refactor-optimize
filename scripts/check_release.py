@@ -93,6 +93,26 @@ def _check_runner_version_sync(version: str) -> list[str]:
     return []
 
 
+def _check_installer_pin_sync(root: Path, version: str) -> list[str]:
+    """bootstrap/install.sh REF + the SKILL.md one-liner tag must equal v<version>.
+
+    Self-catches the ship-drift class where the installer (or the documented
+    curl one-liner) points at a tag other than the version being released.
+    Repo-B-specific: no-ops when bootstrap/install.sh is absent.
+    """
+    installer = root / "bootstrap" / "install.sh"
+    if not installer.exists():
+        return []
+    expected = f"v{version}"
+    defects: list[str] = []
+    if f'REF="{expected}"' not in installer.read_text(encoding="utf-8"):
+        defects.append(f"bootstrap/install.sh REF != '{expected}' (pin drift)")
+    skill_text = (root / "SKILL.md").read_text(encoding="utf-8")
+    if f"/{expected}/bootstrap/install.sh" not in skill_text:
+        defects.append(f"SKILL.md install one-liner tag != '{expected}' (pin drift)")
+    return defects
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Check release readiness: version-sync across artifacts."
@@ -138,6 +158,9 @@ def main(argv: list[str] | None = None) -> int:
     # 5. Runner version-sync (#8): only when --root owns the runner module.
     if (root / "scripts" / "run_diagnosis_wave.py").exists():
         defects.extend(_check_runner_version_sync(version))
+
+    # 6. Installer pin-coherence (#8): install.sh REF + one-liner tag == version.
+    defects.extend(_check_installer_pin_sync(root, version))
 
     if defects:
         print(json.dumps({"status": "fail", "defects": defects}))

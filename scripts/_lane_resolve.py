@@ -118,9 +118,11 @@ def load_dependency_manifest(manifest_path: Path) -> dict[str, Any]:
     return payload
 
 
+# Fields an override file may set. `install_source` is deliberately NOT here:
+# a git install command is built only from the trusted manifest `sources` map, so
+# an audited (untrusted) repo override cannot inject an arbitrary clone/install.
 _OVERRIDE_SCHEMA: dict[str, type] = {
     "source_type": str,
-    "install_source": dict,
     "manual_fallback": str,
     "restart_required_if_installed": bool,
 }
@@ -131,6 +133,12 @@ def _is_skill_override_valid(payload: dict[str, Any]) -> bool:
         payload.get(field) is None or isinstance(payload[field], expected_type)
         for field, expected_type in _OVERRIDE_SCHEMA.items()
     )
+
+
+def _whitelisted_override(entry: dict[str, Any]) -> dict[str, Any]:
+    """Keep only schema-known keys so an override cannot inject `source`,
+    `install_source`, or any other unexpected field."""
+    return {k: v for k, v in entry.items() if k in _OVERRIDE_SCHEMA}
 
 
 def _read_override_payload(scope: str, path: Path) -> dict[str, Any]:
@@ -183,7 +191,7 @@ def load_source_overrides(
                     f"Ignored override for unknown or inactive skill {skill_name}."
                 )
                 continue
-            merged[skill_name] = entry
+            merged[skill_name] = _whitelisted_override(entry)
 
     return merged, warnings
 
@@ -403,6 +411,28 @@ def _collect_active_and_strict_skills(
     return active_skills, strict_skills
 
 
+def _resolve_skill_source(
+    skill_config: dict[str, Any], sources: dict[str, Any]
+) -> None:
+    """Attach a git install_source from the shared `sources` map (DRY).
+
+    No-op if the skill has no `source`, already has an explicit install_source,
+    or the referenced source is missing/not a git source.
+    """
+    src_id = skill_config.get("source")
+    if not src_id or skill_config.get("install_source"):
+        return
+    src = sources.get(src_id)
+    if not isinstance(src, dict) or src.get("kind") != "git":
+        return
+    skill_config["install_source"] = {
+        "method": "git",
+        "url": src.get("url"),
+        "tag": src.get("tag"),
+        "install": src.get("install"),
+    }
+
+
 def _build_merged_skills(
     active_skills: set[str],
     manifest: dict[str, Any],
@@ -410,11 +440,13 @@ def _build_merged_skills(
     usable_skills: dict[str, dict[str, Any]],
     advisory_skills: dict[str, dict[str, Any]],
 ) -> dict[str, dict[str, Any]]:
+    sources = manifest.get("sources", {})
     merged: dict[str, dict[str, Any]] = {}
     for skill_name in sorted(active_skills):
         skill_config = dict(manifest["skills"][skill_name])
         if skill_name in overrides:
             skill_config.update(overrides[skill_name])
+        _resolve_skill_source(skill_config, sources)
         merged[skill_name] = _skill_entry(
             skill_name, skill_config, usable_skills, advisory_skills
         )
@@ -424,17 +456,40 @@ def _build_merged_skills(
 def _build_install_candidates(
     merged_skills: dict[str, dict[str, Any]],
 ) -> list[dict[str, Any]]:
-    return [
-        {
-            "name": skill_name,
-            "command": _install_command_for_skill(skill),
-            "post_install_state": skill.get("post_install_state"),
-            "restart_required": skill["restart_required_if_installed"],
-            "source_type": skill["source_type"],
-        }
-        for skill_name, skill in merged_skills.items()
-        if skill["state"] == "installable_now" and _install_command_for_skill(skill)
-    ]
+    candidates: list[dict[str, Any]] = []
+    by_source: dict[str, dict[str, Any]] = {}
+    for skill_name, skill in merged_skills.items():
+        if skill["state"] != "installable_now":
+            continue
+        command = _install_command_for_skill(skill)
+        if not command:
+            continue
+        source = skill.get("source")
+        if source:  # git source: one command installs all its skills -> dedupe
+            existing = by_source.get(source)
+            if existing is not None:
+                existing["covers"].append(skill_name)  # record every skill covered
+                continue
+            candidate = {
+                "name": source,
+                "command": command,
+                "covers": [skill_name],
+                "post_install_state": skill.get("post_install_state"),
+                "restart_required": skill["restart_required_if_installed"],
+                "source_type": skill["source_type"],
+            }
+            by_source[source] = candidate
+            candidates.append(candidate)
+        else:  # public skills_cli: per-skill (unchanged)
+            candidates.append({
+                "name": skill_name,
+                "command": command,
+                "covers": [skill_name],
+                "post_install_state": skill.get("post_install_state"),
+                "restart_required": skill["restart_required_if_installed"],
+                "source_type": skill["source_type"],
+            })
+    return candidates
 
 
 def _mark_blocking_skills(
