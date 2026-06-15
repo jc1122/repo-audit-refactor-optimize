@@ -227,8 +227,23 @@ def _skill_entry(
 
 def _install_command_for_skill(skill: dict[str, Any]) -> str | None:
     install_source = skill.get("install_source")
-    if skill["source_type"] != "public" or not isinstance(install_source, dict):
+    if not isinstance(install_source, dict):
         return None
-    if install_source.get("method") == "skills_cli" and install_source.get("package"):
+    method = install_source.get("method")
+    if (
+        method == "skills_cli"
+        and skill.get("source_type") == "public"
+        and install_source.get("package")
+    ):
         return f"npx skills add {install_source['package']} -g -y"
+    if method == "git":
+        url = install_source.get("url")
+        tag = install_source.get("tag")
+        install = install_source.get("install")
+        if url and tag and isinstance(install, list) and install:
+            run = " ".join(install)  # {dest} stays a literal token; see install plan
+            return (
+                f'tmp=$(mktemp -d) && git clone --depth 1 -b {tag} {url} "$tmp" '
+                f'&& (cd "$tmp" && {run}) && rm -rf "$tmp"'
+            )
     return None
