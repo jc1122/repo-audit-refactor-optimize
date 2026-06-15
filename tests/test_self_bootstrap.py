@@ -154,3 +154,29 @@ def test_installer_dry_run_lists_repo_b_and_sources():
     assert "repo-audit-skills" in text                   # then source repos
     assert "perf-benchmark-skill" in text
     assert "v0.8.0" in text and "v0.6.0" in text         # pinned tags from manifest
+
+
+def test_install_loop_runs_against_file_url_source(tmp_path):
+    # Build a tiny "source" git repo with an installer that drops a skill dir.
+    src = tmp_path / "srcrepo"; src.mkdir()
+    (src / "install.sh").write_text(
+        '#!/usr/bin/env bash\nset -e\nmkdir -p "$1/demo-skill"\n'
+        'printf "name: demo-skill\\nversion: 1.0.0\\n" > "$1/demo-skill/SKILL.md"\n',
+        encoding="utf-8",
+    )
+    subprocess.check_call(["git", "init", "-q", str(src)])
+    subprocess.check_call(["git", "-C", str(src), "add", "-A"])
+    subprocess.check_call(["git", "-C", str(src), "-c", "user.email=t@t",
+                           "-c", "user.name=t", "commit", "-q", "-m", "init"])
+    subprocess.check_call(["git", "-C", str(src), "tag", "v1.0.0"])
+
+    dest = tmp_path / "skills"; dest.mkdir()
+    # Mirror install.sh's source loop directly (no network, file:// clone).
+    import json, tempfile
+    sources = {"demo": {"url": f"file://{src}", "tag": "v1.0.0",
+                        "install": ["bash", "install.sh", str(dest)]}}
+    for sid, s in sources.items():
+        tmp = tempfile.mkdtemp()
+        subprocess.check_call(["git", "clone", "--depth", "1", "-b", s["tag"], s["url"], tmp])
+        subprocess.check_call(s["install"], cwd=tmp)
+    assert (dest / "demo-skill" / "SKILL.md").is_file()
