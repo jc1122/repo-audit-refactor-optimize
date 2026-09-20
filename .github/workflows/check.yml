@@ -37,4 +37,7 @@ jobs:
           test -x /tmp/smoke-codex/repo-audit-refactor-optimize/scripts/repo-audit
       - name: Launcher fails closed without a runtime
         run: |
-          /tmp/smoke-codex/repo-audit-refactor-optimize/scripts/repo-audit doctor; test $? -eq 2
+          set +e
+          /tmp/smoke-codex/repo-audit-refactor-optimize/scripts/repo-audit doctor
+          code=$?
+          test $code -eq 2
