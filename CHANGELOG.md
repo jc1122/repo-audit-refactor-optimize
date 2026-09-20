@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.1
+
+Installer shared-root fix. The post-swap verification counted every
+`SKILL.md` under the destination and refused shared skills roots (live
+deploy failed with 17 entries under `/home/jakub/.agents/skills`). It now
+verifies only the owned `repo-audit-refactor-optimize` subtree and that no
+owned backup leaked under the destination; unrelated skills (perf-benchmark
+and others) are preserved and never rejected.
+
 ## 1.0.0
 
 Thin portable skill. Detection moved to the `repo-audit` CLI (package

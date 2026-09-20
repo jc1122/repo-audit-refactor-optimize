@@ -25,7 +25,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-__version__ = "1.0.0"
+__version__ = "1.0.1"
 
 _RETIRED = (
     "baseline",

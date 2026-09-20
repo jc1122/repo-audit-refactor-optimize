@@ -2,7 +2,7 @@
 name: repo-audit-refactor-optimize
 description: Structured repository audit with optional authorized fixes. Runs detection through the repo-audit CLI, ranks findings into a coverage-gated backlog, applies small verified batches only when fixes are requested, and reports evidence with remaining limits. Use when asked to audit a repo, review code health, or carry out an explicitly authorized cleanup.
 metadata:
-  version: 1.0.0
+  version: 1.0.1
   requires: "repo-audit-checks >= 1.0.0"
 ---
 

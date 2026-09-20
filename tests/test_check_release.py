@@ -20,18 +20,18 @@ def test_pass_on_real_repo(capsys):
 
 def _skeleton(root: Path, skill_head: str) -> None:
     (root / "SKILL.md").write_text(skill_head, encoding="utf-8")
-    (root / "CHANGELOG.md").write_text("# Changelog\n\n## 1.0.0\n", encoding="utf-8")
+    (root / "CHANGELOG.md").write_text("# Changelog\n\n## 1.0.1\n", encoding="utf-8")
     (root / "references").mkdir()
     for ref in cr.REQUIRED_REFERENCES:
         (root / "references" / ref).write_text("x\n", encoding="utf-8")
     scripts = root / "scripts"
     scripts.mkdir()
-    (scripts / "run_diagnosis_wave.py").write_text('__version__ = "1.0.0"\n', encoding="utf-8")
+    (scripts / "run_diagnosis_wave.py").write_text('__version__ = "1.0.1"\n', encoding="utf-8")
     (scripts / "repo-audit").write_text('#!/bin/sh\n', encoding="utf-8")
     bootstrap = root / "bootstrap"
     bootstrap.mkdir()
     (bootstrap / "install.sh").write_text(
-        'SKILL_VERSION="1.0.0"\nrepo-audit-skills@v1.0.0\n'
+        'SKILL_VERSION="1.0.1"\nrepo-audit-skills@v1.0.0\n'
         '"$PYTHON_BIN" -m venv\n"$VENV/bin/python" -m pip install\n',
         encoding="utf-8",
     )
@@ -40,7 +40,7 @@ def _skeleton(root: Path, skill_head: str) -> None:
 GOOD_SKILL = (
     "---\nname: repo-audit-refactor-optimize\n"
     "description: test skill\n"
-    "metadata:\n  version: 1.0.0\n  requires: \"repo-audit-checks >= 1.0.0\"\n---\n"
+    "metadata:\n  version: 1.0.1\n  requires: \"repo-audit-checks >= 1.0.0\"\n---\n"
     "body with \"$SKILL_DIR/scripts/repo-audit\" doctor,\n"
     "\"$SKILL_DIR/scripts/repo-audit\" scan and\n"
     "\"$SKILL_DIR/scripts/repo-audit\" compare examples\n"
@@ -60,8 +60,8 @@ def test_top_level_version_rejected(tmp_path, capsys):
     repo.mkdir()
     _skeleton(
         repo,
-        "---\nname: repo-audit-refactor-optimize\ndescription: t\nversion: 1.0.0\n"
-        "metadata:\n  version: 1.0.0\n---\nbody\n",
+        "---\nname: repo-audit-refactor-optimize\ndescription: t\nversion: 1.0.1\n"
+        "metadata:\n  version: 1.0.1\n---\nbody\n",
     )
     assert cr.main(["--root", str(repo)]) == 1
     out = capsys.readouterr().out

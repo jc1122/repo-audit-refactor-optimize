@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Install repo-audit-refactor-optimize v1.0.0.
+# Install repo-audit-refactor-optimize v1.0.1.
 #
 # Installs the same skill body for Codex and Claude Code, then installs the
 # detection runtime (repo-audit-checks, which provides the `repo-audit` CLI)
@@ -31,7 +31,7 @@
 set -euo pipefail
 
 SKILL_NAME="repo-audit-refactor-optimize"
-SKILL_VERSION="1.0.0"
+SKILL_VERSION="1.0.1"
 DEFAULT_CORE="git+https://github.com/jc1122/repo-audit-skills@v1.0.0"
 VENV_DIRNAME="repo-audit-venv"
 SHIPPED_SCRIPTS="repo-audit run_diagnosis_wave.py"
@@ -253,13 +253,22 @@ done
 for f in $SHIPPED_SCRIPTS; do
   [ -f "$DEST/$SKILL_NAME/scripts/$f" ] || fail "script $f missing after swap"
 done
-# Exactly one public skill entry may live directly under the destination:
-# backups moved outside the root, so any second SKILL.md here is a real fault.
-entries=0
-for d in "$DEST"/*/; do
-  [ -f "$d/SKILL.md" ] && entries=$((entries + 1))
+# Shared destinations legitimately host unrelated skills next to ours
+# (perf-benchmark plus many others), so never count the whole root.
+# Verify only the owned subtree, and that none of our own timestamped
+# backups leaked back under the scanned root (they live in the sibling
+# backup dir outside $DEST).
+if [ -e "$DEST/.repo-audit-install-backups" ]; then
+  fail "owned backup leaked under destination: $DEST/.repo-audit-install-backups"
+fi
+dupes=0
+for d in "$DEST/$SKILL_NAME"*; do
+  [ -e "$d" ] || continue
+  if [ "$d" != "$DEST/$SKILL_NAME" ] && [ -f "$d/SKILL.md" ]; then
+    dupes=$((dupes + 1))
+  fi
 done
-[ "$entries" -eq 1 ] || fail "expected exactly one skill entry under $DEST, found $entries"
+[ "$dupes" -eq 0 ] || fail "duplicate owned skill entries under $DEST"
 if [ "$SKIP_CORE" -eq 0 ]; then
   "$DEST/$SKILL_NAME/scripts/repo-audit" scan --list-checks >/dev/null \
     || fail "installed launcher probe failed"

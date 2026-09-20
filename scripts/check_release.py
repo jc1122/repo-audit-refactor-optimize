@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Release-gate checks for the thin 1.0.0 skill.
+"""Release-gate checks for the thin 1.0.1 skill.
 
 Verifies: SKILL.md Agent Skills frontmatter (name + metadata.version semver),
 CHANGELOG heading, wrapper version sync, installer pin sync, shipped reference
@@ -16,7 +16,9 @@ from pathlib import Path
 
 SEMVER_RE = re.compile(r"^\d+\.\d+\.\d+$")
 
-EXPECTED_VERSION = "1.0.0"
+EXPECTED_VERSION = "1.0.1"
+
+CORE_REQUIRES_FLOOR = "1.0.0"
 
 REQUIRED_REFERENCES = (
     "acceptance.md",
@@ -118,10 +120,11 @@ def _check_requires(meta: dict[str, object]) -> list[str]:
             "SKILL.md metadata.requires must look like "
             "'repo-audit-checks >= 1.0.0' (got %r)" % requires
         ]
-    if not SEMVER_RE.match(parts[2]) or parts[2] != EXPECTED_VERSION:
+    if not SEMVER_RE.match(parts[2]) or parts[2] != CORE_REQUIRES_FLOOR:
         return [
-            f"SKILL.md metadata.requires version '{parts[2]}' "
-            f"!= expected '{EXPECTED_VERSION}'"
+            "SKILL.md metadata.requires floor must stay "
+            f"'{CORE_REQUIRES_FLOOR}' (core repo is still v{CORE_REQUIRES_FLOOR}; "
+            f"got {parts[2]!r})"
         ]
     return []
 
@@ -135,7 +138,7 @@ def _metadata_version(meta: dict[str, object]) -> str:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Check 1.0.0 release readiness.")
+    parser = argparse.ArgumentParser(description="Check 1.0.1 release readiness.")
     parser.add_argument(
         "--root",
         default=str(Path(__file__).resolve().parents[1]),

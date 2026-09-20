@@ -209,3 +209,57 @@ def test_upgrade_leaves_single_entry_with_external_backup(tmp_path_factory, monk
         capture_output=True, text=True, cwd="/", env=env,
     )
     assert proc.returncode == 1 and (out / "findings.json").is_file()
+
+
+def test_shared_dest_unrelated_skills_preserved(tmp_path_factory, monkeypatch):
+    """Shared skills roots keep unrelated entries; only owned state is verified.
+
+    Regression for the live-deploy failure where the post-swap check counted
+    every $DEST/*/SKILL.md and refused a shared root (17 entries under
+    ~/.agents/skills). Unrelated skills and sibling perf-benchmark must be
+    preserved byte-identical, and a failed upgrade must leave everything —
+    previous owned install plus neighbors — untouched.
+    """
+    wheel = _wheel(tmp_path_factory, monkeypatch)
+    dest = tmp_path_factory.mktemp("shared-skills")
+    unrelated = dest / "unrelated-skill"
+    unrelated.mkdir()
+    (unrelated / "SKILL.md").write_text(
+        "---\nname: unrelated-skill\n---\n", encoding="utf-8"
+    )
+    (unrelated / "notes.txt").write_text("do not touch\n", encoding="utf-8")
+    perf = dest / "perf-benchmark"
+    (perf / "references").mkdir(parents=True)
+    (perf / "SKILL.md").write_text(
+        "---\nname: perf-benchmark\n---\n", encoding="utf-8"
+    )
+    (perf / "references" / "keep.txt").write_text("keep\n", encoding="utf-8")
+
+    proc = _run("--dest", str(dest), "--core", str(wheel))
+    assert proc.returncode == 0, f"stdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
+    assert (dest / "repo-audit-refactor-optimize" / "SKILL.md").is_file()
+    assert (unrelated / "SKILL.md").read_text(encoding="utf-8") == (
+        "---\nname: unrelated-skill\n---\n"
+    )
+    assert (unrelated / "notes.txt").read_text(encoding="utf-8") == "do not touch\n"
+    assert (perf / "references" / "keep.txt").read_text(encoding="utf-8") == "keep\n"
+
+    # Upgrade with neighbors present: swap+backup path, still succeeds.
+    proc = _run("--dest", str(dest), "--core", str(wheel))
+    assert proc.returncode == 0, f"stdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
+    assert (unrelated / "notes.txt").read_text(encoding="utf-8") == "do not touch\n"
+    assert (perf / "SKILL.md").is_file()
+    backups = dest.parent / ".repo-audit-install-backups"
+    assert backups.is_dir()
+    assert (dest / ".repo-audit-install-backups").exists() is False
+
+    # Failed upgrade (missing --venv) preserves the previous install and neighbors.
+    bad = _run(
+        "--dest", str(dest),
+        "--venv", str(dest / "no-such-env"),
+        "--core", str(wheel),
+    )
+    assert bad.returncode != 0
+    assert (dest / "repo-audit-refactor-optimize" / "SKILL.md").is_file()
+    assert (unrelated / "notes.txt").read_text(encoding="utf-8") == "do not touch\n"
+    assert (perf / "references" / "keep.txt").read_text(encoding="utf-8") == "keep\n"

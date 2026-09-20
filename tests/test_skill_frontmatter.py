@@ -26,7 +26,7 @@ def test_frontmatter_uses_metadata_version():
     assert meta.get("name") == "repo-audit-refactor-optimize"
     assert "version" not in meta, "top-level 'version:' retired; use metadata.version"
     metadata = meta.get("metadata")
-    assert isinstance(metadata, dict) and metadata.get("version") == "1.0.0"
+    assert isinstance(metadata, dict) and metadata.get("version") == "1.0.1"
     requires = metadata.get("requires")
     assert isinstance(requires, str), "metadata values must be plain strings"
     name, op, floor = requires.split()
