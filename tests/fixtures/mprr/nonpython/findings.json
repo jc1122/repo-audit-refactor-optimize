@@ -1,2 +1,0 @@
-[{"id": "n1", "leaf": "duplication", "signal": "MERGE", "path": "app.js",
-  "evidence": {"raw": "clone within app.js"}, "confidence": "medium"}]

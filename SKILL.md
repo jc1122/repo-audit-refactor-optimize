@@ -1,151 +1,94 @@
 ---
 name: repo-audit-refactor-optimize
-version: 0.12.1
-description: End-to-end repository diagnosis, remediation, and optimization orchestration built on the deterministic repo-audit-skills family. Use when the agent needs to audit a repository with deterministic code-health, coverage-gap, and test-audit lanes, synthesize a coverage-gated remediation backlog, execute safe refactor batches, benchmark and optimize performance, or run a full repo optimization pipeline from diagnosis through verified completion.
+description: Structured repository audit with optional authorized fixes. Runs detection through the repo-audit CLI, ranks findings into a coverage-gated backlog, applies small verified batches only when fixes are requested, and reports evidence with remaining limits. Use when asked to audit a repo, review code health, or carry out an explicitly authorized cleanup.
+metadata:
+  version: 1.0.0
+  requires: "repo-audit-checks >= 1.0.0"
 ---
 
 # Repo Audit Refactor Optimize
 
-## Overview
+## Scope rule
 
-Run a deterministic pipeline from bootstrap to verified completion. Start with capability discovery, then diagnosis, then execution, then verification.
+An audit never authorizes edits. Read-only analysis runs first and always.
+Only make changes when the user explicitly asked for fixes, and only inside
+the scope they granted. Say which mode you are in before you start.
 
-Load the reference docs on demand:
+Static checks must not import or execute target code. Checks that run tests,
+profilers, or anything that executes the target need a trusted project context
+and an isolated working area. Never silently import code during a static-only
+audit.
 
-- `references/bootstrap.md` - bootstrap policy, dependency state, overrides
-- `references/pipeline.md` - stage order, artifacts, run report
-- `references/activation-matrix.md` - preferred/fallback/manual/blocked behavior
-- `references/prioritization.md` - backlog ranking and batching
-- `references/verification.md` - evidence and rerun standards
-- `references/remediation-playbook.md` - execution discipline
+## Prerequisites
 
-## Stage Order
-
-0. Bootstrap. 1. Discovery. 2. Diagnosis. 3. Synthesis. 4. Execution. 5. Verification. 6. Run report write.
-
-## Stage 0: Bootstrap
-
-Run the checker first and only move forward on green or safe degraded mode:
+Detection lives in the `repo-audit` command (package `repo-audit-checks`
+v1.0.0+, owned by the repo-audit-skills repository). This skill ships a
+launcher at `scripts/repo-audit` next to this file; it runs the isolated
+environment created at install time, so no venv activation or global install
+is needed. Let `SKILL_DIR` be the directory containing this SKILL.md:
 
 ```bash
-python3 scripts/check_skill_requirements.py \
-  --repo /path/to/target-repo \
-  --out-dir /tmp/repo-audit-refactor-optimize/<repo-name>/<timestamp>
+"$SKILL_DIR/scripts/repo-audit" doctor
 ```
 
-The checker is deterministic and non-mutating. It reads the manifest and writes `bootstrap/bootstrap_report.json`, `bootstrap/bootstrap_report.md`, and `bootstrap/install_plan.md`.
+If the launcher reports no CLI, install it per `bootstrap/install.sh --help`
+and stop if installation is not possible. A missing required check makes the
+result incomplete; skipped checks never count as clean coverage.
 
-Rules:
+## Workflow
 
-- Continue when all blocking lanes are usable.
-- Continue degraded when only non-blocking lanes are missing.
-- Keep bootstrap installs explicit by user approval.
-- Prefer `skill-installer` if available; otherwise use `npx skills add/find`.
-- Install only the pinned git sources declared in the manifest. The top-level `bootstrap/install.sh` (explicitly invoked) installs them directly; in-session, run the checker-emitted commands only after explicit user approval. Never install undeclared or arbitrary skills.
-- If new blocking skills are installed, restart the session before continuing.
-- If optional skills are newly installed, continue in degraded mode and mark `available_next_run`.
+1. Scope. Identify the repository, languages, build and test commands, and
+   generated or vendored boundaries. Record what you will and will not touch.
+2. Diagnose. Run the packaged CLI, selecting checks for the target:
+   ```bash
+   "$SKILL_DIR/scripts/repo-audit" scan --root <repo> --out-dir <run-dir> --checks <a,b>
+   "$SKILL_DIR/scripts/repo-audit" scan --root <repo> --out-dir <run-dir> --preset code-health
+   "$SKILL_DIR/scripts/repo-audit" scan --list-checks
+   ```
+   Every check stays individually selectable. Expensive checks that execute
+   code are opt-in, never default. Keep the explicit output directory; never
+   require report files inside the target repository.
+3. Review. Read `run.json`, `findings.json`, and `report.md` from the run
+   directory. Exit 0 means complete and clean, 1 means complete with findings,
+   2 means incomplete or error. Failed requested checks make the result
+   incomplete. Skipped, unsupported, and error states are reported as-is.
+4. Prioritize. Rank by impact, confidence, risk, and effort (see
+   `references/prioritization.md`). Files without covering tests are
+   characterize-first: add behavior tests before remediating.
+5. Fix only if authorized. Work in small coherent batches with one intent per
+   batch, inspect the actual diff, and rerun the relevant checks and tests
+   (see `references/remediation-playbook.md`). Test removal needs evidence of
+   preserved behavior; no universal score threshold proves equivalence.
+6. Compare on real measurements: same workload, same inputs, same method,
+   matched environment — including stored audit runs:
+   ```bash
+   "$SKILL_DIR/scripts/repo-audit" compare --baseline <run-a> --current <run-b>
+   ```
+   A comparison is advisory evidence, never authorization to merge.
+7. Report. Findings, changes with verification output, and remaining limits.
+   Label each claim `verified improvement`, `verified neutral cleanup`,
+   `verified regression`, `unverified hypothesis`, or `deferred recommendation`.
 
-### Self-bootstrap from scratch
+## Acceptance
 
-From a bare machine, install the whole family in one command:
+A target may carry `.repo-audit/accept.json` with accepted residuals (reason,
+expiry, ceilings). Accepted findings stay visible with their reason; stale
+entries are reported. Malformed policy is a hard error, never silent. Details
+in `references/acceptance.md`.
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/jc1122/repo-audit-refactor-optimize/v0.12.1/bootstrap/install.sh | bash
-```
+## Delegation
 
-It installs the orchestrator, then the manifest's pinned git `sources` (`repo-audit-skills`, `perf-benchmark-skill`). Pass `--dest DIR` to override the skills root or `--dry-run` to preview the plan. When the orchestrator's checker reports family skills as `installable_now`, `install_plan.md` lists the same git commands (one per source); run them only after explicit approval.
+The host owns planning, edits, and Git. Use host-native delegation only when
+available and useful; sequential execution in one agent is fully supported.
+Pass each worker its scope, constraints, artifact locations, and expected
+evidence, then review the combined result yourself. File-disjoint work does
+not imply conflict-free behavior: shared interfaces and cross-file effects
+still need combined-state validation.
 
-## Stage 1: Discovery
+## What this skill does not do
 
-Build repository profile: languages, build/test systems, generated/vendor boundaries, existing deterministic checks, and flaky loops.
-
-## Stage 2: Diagnosis
-
-Load `references/pipeline.md`, then run lanes relevant to repository profile and bootstrap result. Keep lanes read-only, run in parallel when independent, and merge outputs.
-
-- Test lane: prefer `test-audit-pipeline` (coverage json), fallback `test-quality-assurance` and `test-redundancy-triage`.
-- Code health lane: prefer `code-health-audit-pipeline`, fallback five leaf skills.
-- Coverage lane: `coverage-gap-audit` from test coverage.
-- Performance lane: `perf-benchmark` then `perf-optimization`. When no benchmark surface exists but a runnable Python surface does and `perf-benchmark` is usable, the lane is `synthesizable`: the agent runs `profile_discover.py`, picks a hotspot, authors `make_input(size)` via `synth_microbench.py`, measures with the `perf-benchmark` pipeline (callgrind tier preferred), gates with `synthesize_perf.py`, and may `graduate_benchmark.py` on demand. Synthesis is agent-triggered, never automatic.
-
-Use the deterministic diagnosis wave runner when installed leaves are available:
-
-```bash
-python3 scripts/run_diagnosis_wave.py \
-  --repo <repo> --out-dir <diag-dir> --skills-root <skills-root> \
-  --lanes code-health,security,hygiene,docs,dependency,hotspot
-```
-
-By default (no `--source-prefix`) the wave excludes `tests/` and `**/fixtures/` so self-noise from test code does not crowd the backlog; pass `--source-prefix <dir>` to scope positively (which disables the default exclusion), `--exclude-prefix <dir>` to exclude additional trees, and `--baseline <accepted-residuals.json>` to suppress already-triaged findings (matched by the `{leaf,path,symbol,metric}` identity; suppressed/stale entries are written to `wave_findings.suppressed.json`). The orchestration lane resolves its process skills (`verification-before-completion`, `dispatching-parallel-agents`, `subagent-driven-development`) as always-available — they are harness-guaranteed, so the lane no longer degrades to `manual` when they are absent from a skills root.
-
-Accepted-residuals policy: drop `.repo-audit/accept.json` in the target repo to suppress (report) and/or exclude-from-fix (remediation) findings — see `references/acceptance.md`.
-
-Pass test coverage with `--coverage-json` where supported. Wave output includes `wave_findings.json`, `wave_summary.json`, and one lane directory per module.
-
-## Stage 3: Synthesis
-
-Merge findings into one backlog: deduplicate overlaps, separate cleanup/structural/performance work, rank by impact/confidence/effort/risk, and group executable batches.
-
-## Stage 4: Execution
-
-Use `references/remediation-playbook.md`. Execute verified batches: apply low-risk cleanup, pause on risky API or broad rewrites, isolate performance work unless evidence supports joint change, and rebaseline after meaningful batches.
-
-Use `subagent-driven-development` for sequential multi-batch execution; use dispatch parallelism only for independent, non-overlapping subsystems.
-
-## Stage 5: Verification
-
-Load `references/verification.md`. Before completion, rerun smallest sufficient checks first, rerun the full relevant suite before closing batch, compare benchmark deltas with the same method, and separate verified from unverified claims.
-
-Use `verification-before-completion` as final gate.
-
-## Stage 6: Run Report
-
-Write run report artifacts under `docs/audits/<run-id>/` (JSON and Markdown). Verification fails closed if `run_report.json` / `run_report.md` are missing or missing schema keys; do not claim completion without them.
-
-## MPRR Remediation Track
-
-The Massively-Parallel Redundancy Remediation (MPRR) engine runs unattended, gate-gated auto-remediation of redundancy findings in parallel. The engine lives in `scripts/mprr_run.py` (three subcommands, each answering `--help`). State is file-backed under a run directory; no state lives in chat.
-
-### Subcommands
-
-**plan** — emit file-disjoint remediation packets and persist run-state:
-
-```
-python scripts/mprr_run.py plan --run-dir DIR [--findings F.json] [--triage T.json] [--ceiling N] [--repo R]
-```
-
-Reads findings and triage inputs, selects the dispatchable batch (file-disjoint, up to `--ceiling`, default 8), emits the batch as a JSON array to stdout, and writes `mprr_state.json` + `mprr_events.jsonl` under `--run-dir`.
-
-**integrate** — re-check scope and gate ladder, merge the conflict-free branch, release locks:
-
-```
-python scripts/mprr_run.py integrate --run-dir DIR --packet-id P --evidence E.json [--diff-files a.py,b.py] [--repo R] [--branch B] [--no-merge]
-```
-
-Verifies the worker only touched declared files (scope check) and that evidence satisfies the gate ladder for the finding's `remediation_class`. On pass, merges `--branch` into the current branch (unless `--no-merge`). Always releases the packet's file locks. Exit 0 on merged, 1 on discarded.
-
-**reaudit** — check residual redundancy; exit code equals the count of remaining items (0 = converged):
-
-```
-python scripts/mprr_run.py reaudit [--findings F.json] [--triage T.json]
-```
-
-### File-level conflict rule
-
-Two findings conflict iff they share at least one file. The scheduler only dispatches file-disjoint batches, so every merge is conflict-free by construction. A merge conflict reported at integration time is an `InvariantViolation` (hard stop — partitioner or worker bug), never a condition to resolve manually.
-
-### Gate ladder
-
-| `remediation_class` | Gates required for auto-merge |
-|---|---|
-| `mechanical` | tests green + lane re-audit resolves the finding |
-| `refactor` | tests green + scoped mutation score ≥ 0.80 + duplication re-audit resolves the clone |
-| `test_removal` | coverage parity + mutation parity + triage confidence == `"high"` only |
-
-The orchestrator re-derives all gate evidence from artifacts; it never trusts a worker's self-reported "green".
-
-### R2 admission
-
-Signal MPRR makes visible: which redundancy findings are safely auto-remediable in parallel. No existing component hosts it: the wave runner and synthesis layer are advisory-only and do not manage locks, branch merges, or gate enforcement. Sunset plan: fold non-redundancy lanes into this engine in SP15.
-
-Accepted-residuals policy: drop `.repo-audit/accept.json` in the target repo to suppress (report) and/or exclude-from-fix (remediation) findings — see `references/acceptance.md`.
+No automatic merging, no scheduler, no mandatory commits or checked-in report
+files, no required full-suite tooling before starting. There is deliberately
+no `fix`, `spawn`, `schedule`, or `merge` command: the host edits, the CLI
+detects, and this skill holds the two apart. Removed v0.x machinery is mapped
+in `references/MIGRATION.md`.

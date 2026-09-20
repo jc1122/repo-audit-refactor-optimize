@@ -1,5 +1,35 @@
 # Changelog
 
+## 1.0.0
+
+Thin portable skill. Detection moved to the `repo-audit` CLI (package
+`repo-audit-checks` v1.0.0, owned by repo-audit-skills); this repository keeps
+the workflow, ranking/execution discipline, and acceptance policy.
+
+- New Agent Skills frontmatter (`name`, `description`, `metadata.version`);
+  the top-level `version:` key is gone.
+- Retired with no replacement: MPRR scheduler/auto-merge, skill scanners and
+  bootstrap manifest, duplicate wave engine and lane registries, campaign
+  telemetry (`mine_iteration_kpis`, `allocate_batches`, `run_instruction_eval`),
+  exact-pin toolchain gate, universal mutation floor, mandatory
+  `docs/audits/` commits. `run_diagnosis_wave.py` remains one release as a
+  thin deprecated wrapper around `repo-audit scan` (`--baseline` rejected).
+- Installer copies the same body for Codex (`--harness codex`) and Claude Code
+  (`--harness claude`) and installs the core from `--core SPEC` into an
+  isolated `<dest>/repo-audit-venv` (or `--venv DIR`); the shipped
+  `scripts/repo-audit` launcher resolves it with no activation. System Python
+  is never touched; failed installs exit nonzero and leave any previous
+  install intact. Upgrades move superseded trees to timestamped backups
+  outside the skills root (never a second discoverable entry); the installer
+  refuses to finish unless exactly one public skill entry remains.
+- Acceptance policy is now single-sourced in the core (`repo_audit.accept`,
+  all 41 acceptance tests migrated and verified): the orchestrator duplicate
+  (`scripts/_accept.py`, `scripts/validate_accept.py`, schema, tests) is
+  removed; scan-time fail-closed validation replaces the standalone validator.
+- Baselines become `.repo-audit/accept.json` entries; see
+  `references/MIGRATION.md`. Bounded exits (0 clean, 1 findings, 2
+  incomplete/error); counts live in JSON.
+
 ## 0.12.1
 
 Bugfix: `bootstrap/install.sh`'s post-install verification now checks the

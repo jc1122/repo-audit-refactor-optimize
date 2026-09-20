@@ -1,0 +1,34 @@
+#!/bin/sh
+# Skill-local launcher for the `repo-audit` CLI.
+#
+# Ordinary exec wrapper only: no detection, no scheduling, no second engine.
+# Uses the isolated environment created by bootstrap/install.sh, so the skill
+# works from any cwd with no venv activation and no global install.
+# The CLI is always run as `<venv>/bin/python <venv>/bin/repo-audit` (never
+# via its shebang), so venv paths containing spaces or quotes keep working:
+# the kernel never parses them as an interpreter line.
+# Resolution order:
+#   1. venv recorded by the installer in the sibling .venv-path file;
+#   2. <skills-root>/repo-audit-venv (the installer default, relative here);
+#   3. repo-audit on PATH.
+set -eu
+here="$(cd "$(dirname "$0")" && pwd)"
+try_venv() {
+  venv_path="$1"
+  shift
+  if [ -x "$venv_path/bin/python" ] && [ -f "$venv_path/bin/repo-audit" ]; then
+    exec "$venv_path/bin/python" "$venv_path/bin/repo-audit" "$@"
+  fi
+  return 1
+}
+if [ -f "$here/.venv-path" ]; then
+  rec="$(cat "$here/.venv-path")"
+  try_venv "$rec" "$@" || true
+fi
+try_venv "$here/../../repo-audit-venv" "$@" || true
+if command -v repo-audit >/dev/null 2>&1; then
+  exec repo-audit "$@"
+fi
+echo "error: repo-audit CLI not found (no installed venv, no PATH entry)." >&2
+echo "Run bootstrap/install.sh (see --help) to install the detection runtime." >&2
+exit 2

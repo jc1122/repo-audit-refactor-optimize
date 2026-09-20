@@ -1,0 +1,15 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "stub-core-checks"
+version = "0.0.1"
+description = "Test stub providing a repo-audit named CLI for installer tests (no network, no real checks)."
+requires-python = ">=3.10"
+
+[project.scripts]
+repo-audit = "stub_core.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

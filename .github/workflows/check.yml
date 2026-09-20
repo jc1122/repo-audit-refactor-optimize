@@ -11,55 +11,30 @@ jobs:
         with:
           python-version: '3.12'
       - name: Install Python dependencies
-        run: python -m pip install pytest==9.0.3 hypothesis==6.155.2
+        run: python -m pip install pytest==9.0.3
       - name: Run tests
         run: python -m pytest tests/ -q
       - name: Release checks
         run: python scripts/check_release.py
 
-  convergence-gate:
+  install-smoke:
+    # The two-host installer must plan and stage the same body for Codex and
+    # Claude Code without network access (--skip-core / --dry-run).
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-        with:
-          fetch-depth: 0   # hotspot/growth audits mine full git history (shallow clone errors them -> stale accepts)
-      - uses: actions/setup-node@v6
-        with:
-          node-version: '22'
-      - uses: actions/setup-python@v6
-        with:
-          python-version: '3.14'
-      - name: Install pinned toolchain (from manifest)
+      - name: Dry-run both harnesses
         run: |
-          python -m pip install --upgrade pip
-          python - <<'PY'
-          import json, subprocess, sys
-          pins = json.load(open("scripts/toolchain_pins.json"))
-          pkgs = [f"{n}=={v}" for n, v in pins.items()]
-          subprocess.check_call([sys.executable, "-m", "pip", "install", *pkgs])
-          PY
-      - name: Toolchain-drift gate (#10)
-        run: python3 scripts/check_toolchain.py
-      - name: Clone leaves at a pinned tag
+          ./bootstrap/install.sh --harness codex --dry-run
+          ./bootstrap/install.sh --harness claude --dry-run
+      - name: Real skill-body install (no core)
         run: |
-          git clone --depth 1 --branch v0.8.0 https://github.com/jc1122/repo-audit-skills.git /tmp/leaves
-          (cd /tmp/leaves && npm ci)   # jscpd for the duplication leaf (L1)
-          test -x /tmp/leaves/node_modules/.bin/jscpd || (echo "jscpd missing" && exit 1)
-          echo "/tmp/leaves/node_modules/.bin" >> "$GITHUB_PATH"
-      - name: Convergence gate (Tier-1 wave)
-        env:
-          WAVE_RUNNER: ${{ github.workspace }}/scripts/run_diagnosis_wave.py
-          SKILLS_ROOT: /tmp/leaves/skills
-        run: python3 scripts/check_wave_baseline.py   # real exit code, not piped (L4)
-      - name: Accept-reason quality gate (#3)
-        run: python3 scripts/check_accept_reasons.py
-      - name: Coverage-gap gate (Tier-1 graduation)
-        env:
-          LEAF: /tmp/leaves/skills/coverage-gap-audit/scripts/coverage_gap_audit.py
-        run: python3 scripts/check_coverage_gap.py --suite tests --source-prefix scripts
-      - name: Install pinned mutmut (for mutation-floor gate)
-        run: python -m pip install mutmut==3.6.0
-      - name: Mutation-kill floor gate (Tier-1, #5)
-        env:
-          LEAF: /tmp/leaves/skills/test-effectiveness-audit/scripts/test_effectiveness_audit.py
-        run: python3 scripts/check_mutation_floor.py
+          ./bootstrap/install.sh --dest /tmp/smoke-codex --harness codex --skip-core
+          ./bootstrap/install.sh --dest /tmp/smoke-claude --harness claude --skip-core
+          diff -r /tmp/smoke-codex/repo-audit-refactor-optimize \
+                  /tmp/smoke-claude/repo-audit-refactor-optimize
+          test -f /tmp/smoke-codex/repo-audit-refactor-optimize/SKILL.md
+          test -x /tmp/smoke-codex/repo-audit-refactor-optimize/scripts/repo-audit
+      - name: Launcher fails closed without a runtime
+        run: |
+          /tmp/smoke-codex/repo-audit-refactor-optimize/scripts/repo-audit doctor; test $? -eq 2

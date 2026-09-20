@@ -1,122 +1,141 @@
 #!/usr/bin/env python3
-"""Release-gate checks: version-sync across SKILL.md, CHANGELOG, and manifest."""
+"""Release-gate checks for the thin 1.0.0 skill.
+
+Verifies: SKILL.md Agent Skills frontmatter (name + metadata.version semver),
+CHANGELOG heading, wrapper version sync, installer pin sync, shipped reference
+set, and absence of retired v0.x runtime machinery.
+"""
 
 from __future__ import annotations
 
 import argparse
-import importlib
 import json
 import re
 import sys
 from pathlib import Path
 
 SEMVER_RE = re.compile(r"^\d+\.\d+\.\d+$")
-MANIFEST_PATH = "scripts" / Path("skill_bootstrap_manifest.json")
+
+EXPECTED_VERSION = "1.0.0"
+
+REQUIRED_REFERENCES = (
+    "acceptance.md",
+    "prioritization.md",
+    "remediation-playbook.md",
+    "verification.md",
+    "MIGRATION.md",
+)
+
+# v0.x runtime machinery that must not ship in 1.0.0. The acceptance policy
+# implementation (_accept.py, validate_accept.py, schema) was removed after
+# the core migrated all 41 acceptance tests (see STATUS-orchestrator.md);
+# only the user-facing acceptance doc stays.
+RETIRED_SCRIPTS = (
+    "mprr_run.py",
+    "mprr_gate.py",
+    "mprr_integrate.py",
+    "mprr_normalize.py",
+    "mprr_packets.py",
+    "mprr_partition.py",
+    "mprr_schedule.py",
+    "synth_run.py",
+    "synthesize_packets.py",
+    "synthesize_perf.py",
+    "graduate_benchmark.py",
+    "mine_iteration_kpis.py",
+    "allocate_batches.py",
+    "run_instruction_eval.py",
+    "_lane_resolve.py",
+    "_skill_probe.py",
+    "_bootstrap_report.py",
+    "_wave_findings.py",
+    "check_skill_requirements.py",
+    "_accept.py",
+    "validate_accept.py",
+    "check_wave_baseline.py",
+    "check_coverage_gap.py",
+    "check_mutation_floor.py",
+    "check_accept_reasons.py",
+    "check_toolchain.py",
+    "validate_run_report.py",
+    "migrate_baseline_to_accept.py",
+)
+
+RETIRED_FILES = (
+    "schema/accept.schema.json",
+    "scripts/skill_bootstrap_manifest.json",
+    "scripts/wave_lanes.json",
+    "scripts/toolchain_pins.json",
+    "scripts/growth_allowances.json",
+    "scripts/mutation_targets.json",
+    "scripts/coverage_gap_baseline.json",
+    "scripts/hotspot_audit_config.json",
+    "scripts/wave_anchor.txt",
+    "scripts/wave_frozen.md",
+)
 
 
-def frontmatter(path: Path) -> dict[str, str]:
-    """Parse SKILL.md YAML frontmatter. Raises ValueError on malformed input."""
+def frontmatter(path: Path) -> dict[str, object]:
+    """Parse SKILL.md YAML frontmatter, supporting one nested mapping level."""
     text = path.read_text(encoding="utf-8")
     if not text.startswith("---\n"):
         raise ValueError(f"{path} does not start with YAML frontmatter")
     end = text.find("\n---", 4)
     if end < 0:
         raise ValueError(f"{path} has unterminated YAML frontmatter")
-    values: dict[str, str] = {}
+    values: dict[str, object] = {}
+    current_parent: str | None = None
     for line in text[4:end].splitlines():
-        if ":" not in line:
+        if not line.strip():
             continue
-        key, raw = line.split(":", 1)
-        values[key.strip()] = raw.strip().strip('"')
+        indent = len(line) - len(line.lstrip(" "))
+        if indent == 0 and ":" in line:
+            key, raw = line.split(":", 1)
+            key, raw = key.strip(), raw.strip().strip('"')
+            if raw == "":
+                values[key] = {}
+                current_parent = key
+            else:
+                values[key] = raw
+                current_parent = None
+        elif indent > 0 and current_parent is not None and ":" in line:
+            sub = values[current_parent]
+            assert isinstance(sub, dict)
+            key, raw = line.strip().split(":", 1)
+            sub[key.strip()] = raw.strip().strip('"')
     return values
 
 
-def _check_semver(version: str, skill_path: Path) -> list[str]:
-    """Validate version matches semver; returns list of defect strings."""
-    defects: list[str] = []
-    if not SEMVER_RE.match(version):
-        defects.append(
-            f"SKILL.md version '{version}' is not valid semver (expected X.Y.Z)"
-        )
-    return defects
-
-
-def _check_changelog(root: Path, version: str) -> list[str]:
-    """Check CHANGELOG.md exists and contains ## <version> heading."""
-    defects: list[str] = []
-    changelog = root / "CHANGELOG.md"
-    if not changelog.exists():
-        defects.append(f"CHANGELOG.md not found at {changelog}")
-        return defects
-    heading = f"## {version}"
-    text = changelog.read_text(encoding="utf-8")
-    if heading not in text:
-        defects.append(
-            f"CHANGELOG.md missing heading '{heading}' for version {version}"
-        )
-    return defects
-
-
-def _check_manifest(root: Path) -> list[str]:
-    """Check manifest exists, parses as JSON, has 'skills' and 'lanes' keys."""
-    defects: list[str] = []
-    manifest_path = root / MANIFEST_PATH
-    if not manifest_path.exists():
-        defects.append(f"Manifest file not found at {manifest_path}")
-        return defects
-    try:
-        data = json.loads(manifest_path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as exc:
-        defects.append(f"Manifest file at {manifest_path} is invalid JSON: {exc}")
-        return defects
-    if not isinstance(data, dict):
-        defects.append(f"Manifest file at {manifest_path} is not a JSON object")
-        return defects
-    if "skills" not in data:
-        defects.append(f"Manifest file at {manifest_path} missing 'skills' key")
-    if "lanes" not in data:
-        defects.append(f"Manifest file at {manifest_path} missing 'lanes' key")
-    return defects
-
-
-def _check_runner_version_sync(version: str) -> list[str]:
-    """Runner __version__ must equal the SKILL.md version (#8 pin-coherence)."""
-    runner = importlib.import_module(
-        "scripts.run_diagnosis_wave" if __package__ else "run_diagnosis_wave"
-    )
-    runner_version = getattr(runner, "__version__", "")
-    if runner_version != version:
+def _check_requires(meta: dict[str, object]) -> list[str]:
+    """Validate metadata.requires names repo-audit-checks with a 1.0.0 floor."""
+    metadata = meta.get("metadata")
+    requires = metadata.get("requires") if isinstance(metadata, dict) else ""
+    if not isinstance(requires, str) or not requires.strip():
+        return ["SKILL.md metadata.requires must declare the core dependency"]
+    parts = requires.strip().split()
+    if len(parts) != 3 or parts[0] != "repo-audit-checks" or parts[1] not in ("==", ">="):
         return [
-            f"run_diagnosis_wave.__version__ '{runner_version}' "
-            f"!= SKILL.md version '{version}'"
+            "SKILL.md metadata.requires must look like "
+            "'repo-audit-checks >= 1.0.0' (got %r)" % requires
+        ]
+    if not SEMVER_RE.match(parts[2]) or parts[2] != EXPECTED_VERSION:
+        return [
+            f"SKILL.md metadata.requires version '{parts[2]}' "
+            f"!= expected '{EXPECTED_VERSION}'"
         ]
     return []
 
 
-def _check_installer_pin_sync(root: Path, version: str) -> list[str]:
-    """bootstrap/install.sh REF + the SKILL.md one-liner tag must equal v<version>.
-
-    Self-catches the ship-drift class where the installer (or the documented
-    curl one-liner) points at a tag other than the version being released.
-    Repo-B-specific: no-ops when bootstrap/install.sh is absent.
-    """
-    installer = root / "bootstrap" / "install.sh"
-    if not installer.exists():
-        return []
-    expected = f"v{version}"
-    defects: list[str] = []
-    if f'REF="{expected}"' not in installer.read_text(encoding="utf-8"):
-        defects.append(f"bootstrap/install.sh REF != '{expected}' (pin drift)")
-    skill_text = (root / "SKILL.md").read_text(encoding="utf-8")
-    if f"/{expected}/bootstrap/install.sh" not in skill_text:
-        defects.append(f"SKILL.md install one-liner tag != '{expected}' (pin drift)")
-    return defects
+def _metadata_version(meta: dict[str, object]) -> str:
+    metadata = meta.get("metadata")
+    if isinstance(metadata, dict):
+        version = metadata.get("version", "")
+        return version if isinstance(version, str) else ""
+    return ""
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(
-        description="Check release readiness: version-sync across artifacts."
-    )
+    parser = argparse.ArgumentParser(description="Check 1.0.0 release readiness.")
     parser.add_argument(
         "--root",
         default=str(Path(__file__).resolve().parents[1]),
@@ -126,13 +145,11 @@ def main(argv: list[str] | None = None) -> int:
     root = Path(args.root)
     defects: list[str] = []
 
-    # 1. Parse version from SKILL.md frontmatter
     skill_path = root / "SKILL.md"
     if not skill_path.exists():
         defects.append(f"SKILL.md not found at {skill_path}")
         print(json.dumps({"status": "fail", "defects": defects}))
         return 1
-
     try:
         meta = frontmatter(skill_path)
     except (ValueError, OSError) as exc:
@@ -140,32 +157,75 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps({"status": "fail", "defects": defects}))
         return 1
 
-    version = meta.get("version", "")
+    if meta.get("name") != "repo-audit-refactor-optimize":
+        defects.append("SKILL.md frontmatter 'name' must be repo-audit-refactor-optimize")
+    if "version" in meta:
+        defects.append("SKILL.md must use metadata.version, not top-level 'version:'")
+    version = _metadata_version(meta)
     if not version:
-        defects.append("SKILL.md frontmatter missing 'version' key")
-        print(json.dumps({"status": "fail", "defects": defects}))
-        return 1
+        defects.append("SKILL.md frontmatter missing 'metadata.version'")
+    elif not SEMVER_RE.match(version):
+        defects.append(f"metadata.version '{version}' is not valid semver (X.Y.Z)")
+    elif version != EXPECTED_VERSION:
+        defects.append(f"metadata.version '{version}' != expected '{EXPECTED_VERSION}'")
 
-    # 2. Validate semver
-    defects.extend(_check_semver(version, skill_path))
+    changelog = root / "CHANGELOG.md"
+    if not changelog.exists():
+        defects.append(f"CHANGELOG.md not found at {changelog}")
+    elif f"## {EXPECTED_VERSION}" not in changelog.read_text(encoding="utf-8"):
+        defects.append(f"CHANGELOG.md missing heading '## {EXPECTED_VERSION}'")
 
-    # 3. Check CHANGELOG
-    defects.extend(_check_changelog(root, version))
+    skill_text = skill_path.read_text(encoding="utf-8")
+    for verb in ("doctor", "scan", "compare"):
+        if f'scripts/repo-audit" {verb}' not in skill_text:
+            defects.append(f"SKILL.md must show the scripts/repo-audit launcher for {verb}")
 
-    # 4. Check manifest
-    defects.extend(_check_manifest(root))
+    wrapper = root / "scripts" / "run_diagnosis_wave.py"
+    if wrapper.exists():
+        text = wrapper.read_text(encoding="utf-8")
+        if f'__version__ = "{EXPECTED_VERSION}"' not in text:
+            defects.append(
+                f"run_diagnosis_wave.__version__ != '{EXPECTED_VERSION}'"
+            )
+    else:
+        defects.append("scripts/run_diagnosis_wave.py wrapper missing")
 
-    # 5. Runner version-sync (#8): only when --root owns the runner module.
-    if (root / "scripts" / "run_diagnosis_wave.py").exists():
-        defects.extend(_check_runner_version_sync(version))
+    installer = root / "bootstrap" / "install.sh"
+    if not installer.exists():
+        defects.append("bootstrap/install.sh missing")
+    else:
+        install_text = installer.read_text(encoding="utf-8")
+        if f'SKILL_VERSION="{EXPECTED_VERSION}"' not in install_text:
+            defects.append("bootstrap/install.sh SKILL_VERSION pin drift")
+        if "repo-audit-skills@v1.0.0" not in install_text:
+            defects.append("bootstrap/install.sh core pin drift (expected v1.0.0)")
+        if "--break-system-packages" in install_text:
+            defects.append("bootstrap/install.sh must never bypass PEP 668")
+        if "-m venv" not in install_text or "-m pip install" not in install_text:
+            defects.append("bootstrap/install.sh must install the core into an isolated venv")
+    launcher = root / "scripts" / "repo-audit"
+    if not launcher.exists():
+        defects.append("scripts/repo-audit launcher missing")
+    defects.extend(_check_requires(meta))
 
-    # 6. Installer pin-coherence (#8): install.sh REF + one-liner tag == version.
-    defects.extend(_check_installer_pin_sync(root, version))
+    for ref in REQUIRED_REFERENCES:
+        if not (root / "references" / ref).exists():
+            defects.append(f"references/{ref} missing")
+    for retired in ("bootstrap.md", "activation-matrix.md", "pipeline.md", "mprr.md"):
+        if (root / "references" / retired).exists():
+            defects.append(f"references/{retired} is retired v0.x prose and must go")
+
+    scripts_dir = root / "scripts"
+    for name in RETIRED_SCRIPTS:
+        if (scripts_dir / name).exists():
+            defects.append(f"scripts/{name} is retired machinery and must be removed")
+    for rel in RETIRED_FILES:
+        if (root / rel).exists():
+            defects.append(f"{rel} is retired and must be removed")
 
     if defects:
         print(json.dumps({"status": "fail", "defects": defects}))
         return 1
-
     print(json.dumps({"status": "pass"}))
     return 0
 

@@ -3,5 +3,5 @@
 # (e.g. anthropic.yaml, copilot.yaml) following the same interface schema.
 interface:
   display_name: "Repo Audit Refactor Optimize"
-  short_description: "End-to-end repository optimization orchestration"
-  default_prompt: "Bootstrap the relevant subskills, audit this repository end-to-end, execute safe improvements, and verify the results."
+  short_description: "Structured repo audit with optional authorized fixes"
+  default_prompt: "Audit this repository with the repo-audit CLI, rank the findings into a coverage-gated backlog, and — only if I explicitly authorize fixes — carry out small verified batches and report the evidence."

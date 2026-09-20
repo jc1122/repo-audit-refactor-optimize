@@ -1,39 +1,34 @@
-# Repo Audit Refactor Optimize
+# Repo Audit Refactor Optimize (v1.0.0)
 
-`repo-audit-refactor-optimize` is a repository-local skill for running a structured audit and remediation workflow. Its deterministic diagnosis lanes (test, code-health, coverage) are Python-first, built on the repo-audit-skills family; C, Rust, and assembly codebases are handled in manual mode with the tooling gap recorded.
+Thin portable skill for structured repository audits with optional authorized
+fixes. Detection lives in the `repo-audit` CLI (package `repo-audit-checks`
+v1.0.0+, owned by the repo-audit-skills repository); this skill owns the
+workflow, ranking/execution discipline, and acceptance policy.
 
-It focuses on:
-- bootstrapping required subskills
-- profiling repository structure and verification surfaces
-- synthesizing a ranked remediation backlog
-- executing safe cleanup, refactors, and performance work in verified batches
+- `SKILL.md`: the portable workflow (audit-only default, authorized-fix mode)
+- `references/`: prioritization, remediation playbook, verification, acceptance, migration guide
+- `scripts/repo-audit`: launcher resolving the install-time isolated venv (no activation needed)
+- `scripts/run_diagnosis_wave.py`: deprecated thin wrapper around `repo-audit scan`
+- acceptance policy lives in the core (`repo_audit.accept`, single source of
+  truth); this repo keeps the user-facing `references/acceptance.md` only
+- `bootstrap/install.sh`: same-body two-host installer; core goes into an
+  isolated `<dest>/repo-audit-venv` (or `--venv DIR`), never system Python
 
-**Requirement:** the deterministic diagnosis lanes require `repo-audit-skills` v0.3.0+ installed (from github.com/jc1122/repo-audit-skills).
-
-## Repository Layout
-
-- `SKILL.md`: top-level orchestration workflow
-- `references/`: stage order, lane activation, prioritization, and verification guidance
-- `scripts/check_skill_requirements.py`: bootstrap checker for required and optional subskills
-- `tests/`: unit tests covering bootstrap and lane resolution behavior
-- `agents/openai.yaml`: example agent interface metadata
-
-## Basic Usage
-
-Run the bootstrap checker against a target repository:
+## Usage
 
 ```bash
-python3 scripts/check_skill_requirements.py \
-  --repo /path/to/target-repo \
-  --out-dir /tmp/repo-audit-refactor-optimize/run
+"$SKILL_DIR/scripts/repo-audit" doctor
+"$SKILL_DIR/scripts/repo-audit" scan --root /path/to/target-repo --out-dir /tmp/audit-run --preset code-health
+./bootstrap/install.sh --harness codex --core 'git+https://github.com/jc1122/repo-audit-skills@v1.0.0'
 ```
 
-Run the tests:
+(`SKILL_DIR` is the directory containing the installed `SKILL.md`.)
+
+Run the checks:
 
 ```bash
 pytest -q
+python3 scripts/check_release.py
 ```
 
-## Status
-
-This repository contains the skill definition, reference material, bootstrap manifest, and tests for the bootstrap checker.
+Migrating from v0.12.x? Read `references/MIGRATION.md`.

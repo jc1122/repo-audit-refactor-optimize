@@ -1,9 +1,9 @@
 # Acceptance policy — `.repo-audit/accept.json`
 
-Drop this file in an audited repo's root to mark findings acceptable. The audit **leaves
-still detect everything**; acceptance is applied at the wave (reporting) and the MPRR
-engine (remediation). Accepted findings are recorded with their reason in a sidecar —
-never silently dropped. A malformed file is a hard error.
+Drop this file in an audited repo's root to mark findings acceptable. The checks
+**still detect everything**; acceptance is applied at the reporting stage by the
+`repo-audit` CLI. Accepted findings are recorded with their reason in the run
+record — never silently dropped. A malformed file is a hard error.
 
 ## Schema (version 1)
 
@@ -17,17 +17,35 @@ never silently dropped. A malformed file is a hard error.
   - `rule`: requires `leaf` and/or `metric` (subset; both → AND).
 - `reason` — required, non-empty.
 - `applies` — subset of `["report","remediation"]`; default both. `report` = not flagged
-  by the wave/gate; `remediation` = never auto-fixed by the MPRR engine.
+  in the run report; `remediation` = excluded from fix batches.
 - `expires` — optional ISO date (`YYYY-MM-DD`) or version token. A past ISO date still
   applies but is flagged `expired` for re-triage; non-date tokens are informational.
+- `max_value` — optional numeric ceiling. A finding whose value exceeds it stops being
+  accepted and is reported again.
 
 ## Example
 
-(See the three-entry example in the design spec.)
+```json
+{
+  "version": 1,
+  "accept": [
+    {
+      "match": {"kind": "finding", "leaf": "complexity", "path": "src/legacy.py",
+                "symbol": "parse", "metric": "cyclomatic"},
+      "reason": "Legacy parser, scheduled rewrite in Q4.",
+      "applies": ["report", "remediation"],
+      "expires": "2026-12-31"
+    }
+  ]
+}
+```
 
 ## Validate
 
-`python3 scripts/validate_accept.py --file <repo>/.repo-audit/accept.json` → `{"status":"pass"}` or
-a `fail` verdict with defects. Auto-discovered by `run_diagnosis_wave.py` (also `--accept <file>`)
-and by `mprr_run.py plan --repo <repo>`; `--baseline` rows are honored as report-stage `finding`
-entries. `scripts/remediation_excludes.json` is honored as a back-compat remediation fallback.
+The `repo-audit` CLI validates the file fail-closed on every scan: a malformed
+policy is an error (exit 2), never silent. To check a policy without a full
+scan, run any scan with `--strict` against the target repo — stale, expired,
+and ceiling-exceeded entries become explicit errors. The CLI discovers
+`<repo>/.repo-audit/accept.json` automatically (`--accept <file>` overrides);
+stale entries — accepted identities the checks no longer produce — are
+reported, never silently kept.
