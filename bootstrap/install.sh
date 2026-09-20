@@ -110,13 +110,19 @@ echo "venv: ${VENV:-"(skipped)"}"
 echo "core: ${CORE:-"(skipped)"}"
 
 if [ "$DRY_RUN" -eq 1 ]; then
-  [ -d "$DEST_PARENT" ] || fail "parent of --dest does not exist: $DEST_PARENT"
+  # Dry-run never creates: allow a not-yet-existing parent (CI smoke).
+  if [ -d "$DEST_PARENT" ]; then
+    DEST="$(cd "$DEST_PARENT" && pwd)/$(basename "$DEST")"
+    BACKUP_ROOT="$(cd "$DEST_PARENT" && pwd)/.repo-audit-install-backups"
+  else
+    BACKUP_ROOT="$DEST_PARENT/.repo-audit-install-backups"
+  fi
 else
   # Create the parent chain (harmless on failure: no install content yet).
   mkdir -p "$DEST_PARENT" || fail "cannot create parent of --dest: $DEST_PARENT"
+  DEST="$(cd "$DEST_PARENT" && pwd)/$(basename "$DEST")"
+  BACKUP_ROOT="$(cd "$DEST_PARENT" && pwd)/.repo-audit-install-backups"
 fi
-DEST="$(cd "$DEST_PARENT" && pwd)/$(basename "$DEST")"
-BACKUP_ROOT="$(cd "$DEST_PARENT" && pwd)/.repo-audit-install-backups"
 
 if [ "$DRY_RUN" -eq 1 ]; then
   run mkdir -p "$DEST/$SKILL_NAME"
