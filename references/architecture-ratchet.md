@@ -6,7 +6,7 @@ end. It records what worked in METHOD BET #3428
 (jc1122/agent-fleet-method#3428, 2026-10-15/16: a structural refactor of the
 agent-fleet-method scripts). Every number here comes from that issue or its
 artifacts (`spec.md`, `arch-measures.sh`, `.importlinter`, `semgrep.yml`,
-`replay.md`, `replay-signflip.txt`, task contracts, PR #3549).
+`replay.md`, `replay-signflip.txt`, task contracts, PR #3549 merged as aa8291a1).
 
 Scope rule unchanged: an audit may measure and recommend all of this. Adding a
 CI gate, a contract file or a codemod to the target is an edit and needs the
@@ -172,8 +172,8 @@ dominate, cut those instead.
 
 ## 7. The #3428 verdict
 
-- **Maintainability improved** (baseline 9ce53ce6 versus the task 38
-  candidate in PR #3549):
+- **Maintainability improved** (baseline 9ce53ce6 versus final main aa8291a1,
+  after task 38, PR #3549):
   - CC max went 155→51.
   - Import violations went 17→0.
   - Cycles went 1→0 (v1 count; v2 counted 2, and both were cut).
