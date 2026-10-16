@@ -1,4 +1,4 @@
-# Repo Audit Refactor Optimize (v1.0.0)
+# Repo Audit Refactor Optimize (v1.1.0)
 
 Thin portable skill for structured repository audits with optional authorized
 fixes. Detection lives in the `repo-audit` CLI (package `repo-audit-checks`
@@ -6,7 +6,7 @@ v1.0.0+, owned by the repo-audit-skills repository); this skill owns the
 workflow, ranking/execution discipline, and acceptance policy.
 
 - `SKILL.md`: the portable workflow (audit-only default, authorized-fix mode)
-- `references/`: prioritization, remediation playbook, verification, acceptance, migration guide
+- `references/`: prioritization, remediation playbook, verification, acceptance, migration guide, architecture ratchet (contracts, CI ratchets, frozen measures, replay verdict)
 - `scripts/repo-audit`: launcher resolving the install-time isolated venv (no activation needed)
 - `scripts/run_diagnosis_wave.py`: deprecated thin wrapper around `repo-audit scan`
 - acceptance policy lives in the core (`repo_audit.accept`, single source of

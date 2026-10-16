@@ -66,6 +66,7 @@ def test_real_install_same_body_both_harnesses(tmp_path):
         "remediation-playbook.md",
         "verification.md",
         "MIGRATION.md",
+        "architecture-ratchet.md",
     ):
         assert Path("references") / ref in codex_files
     # Byte-identical bodies across harnesses.

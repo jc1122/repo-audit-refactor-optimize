@@ -1,5 +1,31 @@
 # Changelog
 
+## 1.1.0
+
+Tools proven in METHOD BET #3428 (jc1122/agent-fleet-method#3428; skill issue
+#3433). New `references/architecture-ratchet.md`, shipped by the installer and
+required by the release check:
+- CLI-first routing: complexity, hotspot, growth, dead-code, duplication,
+  structure, test-effectiveness and perf-smell go through `repo-audit scan
+  --checks`; the wrapped tools are not restated.
+- Only what the CLI lacks: an import-linter contract and semgrep boundary rules
+  in CI ratchet mode, a CI complexity ratchet from the first wave, one frozen
+  measure script whose `--check` lines are each task's acceptance, reading-cost
+  measurement from agent transcripts, and a paired before/after replay
+  (exact sign-flip test, first-try PASS harm guard) as the verdict.
+- The #3428 verdict: structure improved maintainability (CC max 155→51, import
+  violations 17→0) but not tokens or lines read per fix (geometric ratios 1.17
+  and 1.16, p≈0.55, n=7). Only the protocol-read cut saved (−54% protocol lines
+  per fix). Structure refactors are presented as maintenance.
+- Six one-line lessons (owned tests for moves, acceptance fails on base first,
+  codemods for moves, two reviewers then spec, mutation survivor triage, live
+  cut-over smoke tests).
+
+SKILL.md routes each concern to its check and points multi-wave refactors at
+the new reference; redundant prerequisite and delegation prose is shortened.
+The remediation playbook's architecture verify column now names CLI checks
+instead of retired leaf names.
+
 ## 1.0.1
 
 Installer shared-root fix. The post-swap verification counted every

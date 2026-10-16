@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Install repo-audit-refactor-optimize v1.0.1.
+# Install repo-audit-refactor-optimize v1.1.0.
 #
 # Installs the same skill body for Codex and Claude Code, then installs the
 # detection runtime (repo-audit-checks, which provides the `repo-audit` CLI)
@@ -31,11 +31,11 @@
 set -euo pipefail
 
 SKILL_NAME="repo-audit-refactor-optimize"
-SKILL_VERSION="1.0.1"
+SKILL_VERSION="1.1.0"
 DEFAULT_CORE="git+https://github.com/jc1122/repo-audit-skills@v1.0.0"
 VENV_DIRNAME="repo-audit-venv"
 SHIPPED_SCRIPTS="repo-audit run_diagnosis_wave.py"
-SHIPPED_REFS="acceptance.md prioritization.md remediation-playbook.md verification.md MIGRATION.md"
+SHIPPED_REFS="acceptance.md prioritization.md remediation-playbook.md verification.md MIGRATION.md architecture-ratchet.md"
 
 HARNESS=""
 DEST=""
@@ -129,7 +129,7 @@ if [ "$DRY_RUN" -eq 1 ]; then
   run cp "$SRC_DIR/SKILL.md" "$DEST/$SKILL_NAME/SKILL.md"
   run mkdir -p "$DEST/$SKILL_NAME/references" "$DEST/$SKILL_NAME/scripts"
   # shellcheck disable=SC2086
-  run cp "$SRC_DIR"/references/{acceptance.md,prioritization.md,remediation-playbook.md,verification.md,MIGRATION.md} "$DEST/$SKILL_NAME/references/"
+  run cp "$SRC_DIR"/references/{acceptance.md,prioritization.md,remediation-playbook.md,verification.md,MIGRATION.md,architecture-ratchet.md} "$DEST/$SKILL_NAME/references/"
   run cp "$SRC_DIR/scripts/repo-audit" "$SRC_DIR/scripts/run_diagnosis_wave.py" "$DEST/$SKILL_NAME/scripts/"
   if [ "$SKIP_CORE" -eq 0 ]; then
     run "$PYTHON_BIN" -m venv "$VENV"
@@ -150,7 +150,7 @@ VENV_NEW="$WORK/venv"
 # 1. Stage the skill body (same content for both harnesses).
 run mkdir -p "$STAGE/references" "$STAGE/scripts"
 run cp "$SRC_DIR/SKILL.md" "$STAGE/SKILL.md"
-run cp "$SRC_DIR/references/acceptance.md" "$SRC_DIR/references/prioritization.md" "$SRC_DIR/references/remediation-playbook.md" "$SRC_DIR/references/verification.md" "$SRC_DIR/references/MIGRATION.md" "$STAGE/references/"
+run cp "$SRC_DIR/references/acceptance.md" "$SRC_DIR/references/prioritization.md" "$SRC_DIR/references/remediation-playbook.md" "$SRC_DIR/references/verification.md" "$SRC_DIR/references/MIGRATION.md" "$SRC_DIR/references/architecture-ratchet.md" "$STAGE/references/"
 run cp "$SRC_DIR/scripts/repo-audit" "$SRC_DIR/scripts/run_diagnosis_wave.py" "$STAGE/scripts/"
 
 # 2. Provide the isolated runtime (default) or reuse the given environment.

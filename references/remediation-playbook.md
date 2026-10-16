@@ -38,18 +38,19 @@ Use this for markdown/reference-surface findings and run this after the coverage
 ## RESTRUCTURE at architecture scale
 
 Use these when a RESTRUCTURE finding names a cycle, god module, layer violation, or
-hotspot/coupling cluster (hotspot-audit). One procedure per batch; each has a MECHANICAL
+hotspot/coupling cluster (`--checks hotspot`). One procedure per batch; each has a MECHANICAL
 verification condition — if it does not hold after the batch, discard the batch.
 
 | Procedure | When | Mechanics | Verify (mechanical) |
 |---|---|---|---|
-| Dependency inversion at the cycle's weakest edge | `import_cycle_size` finding | Pick the cycle edge with the fewest imported symbols (count names actually used); extract those symbols' contract into a new lower-layer module (or Protocol); point both ends at it | structure-audit re-run: cycle count STRICTLY decreased; no new cycles; suite green |
-| Interface extraction | god module by fan-in (`fan_in` finding) | Identify the symbol subsets distinct caller groups use; extract each subset into a facade module; rewire callers group by group, one commit per group | structure-audit re-run: target module fan-in strictly decreased; no caller behavior change (suite green) |
-| Module split / merge | god module by fan-out, or temporal-coupling pair (`temporal_coupling_ratio`) | Split: cluster the module's defs by shared imports + co-change, move one cluster out. Merge: co-changing pair whose split serves no boundary → merge into one module, keep a deprecation re-export | structure-audit re-run: `fan_out` below threshold or strictly decreased / coupling pair gone next hotspot-audit window; suite green |
-| Strangler fig | legacy module slated for replacement (hotspot + low kill-rate + DELETE cluster) | Stand up the replacement module behind the old entry points; migrate one caller per batch; old module shrinks to a shim | per batch: old module fan-in strictly decreases; final batch: dead-code-audit emits DELETE for the shim and it is removed; suite green throughout |
+| Dependency inversion at the cycle's weakest edge | `import_cycle_size` finding | Pick the cycle edge with the fewest imported symbols (count names actually used); extract those symbols' contract into a new lower-layer module (or Protocol); point both ends at it | `--checks structure` re-run: cycle count STRICTLY decreased; no new cycles; suite green |
+| Interface extraction | god module by fan-in (`fan_in` finding) | Identify the symbol subsets distinct caller groups use; extract each subset into a facade module; rewire callers group by group, one commit per group | `--checks structure` re-run: target module fan-in strictly decreased; no caller behavior change (suite green) |
+| Module split / merge | god module by fan-out, or temporal-coupling pair (`temporal_coupling_ratio`) | Split: cluster the module's defs by shared imports + co-change, move one cluster out. Merge: co-changing pair whose split serves no boundary → merge into one module, keep a deprecation re-export | `--checks structure` re-run: `fan_out` below threshold or strictly decreased / coupling pair gone next `--checks hotspot` window; suite green |
+| Strangler fig | legacy module slated for replacement (hotspot + low kill-rate + DELETE cluster) | Stand up the replacement module behind the old entry points; migrate one caller per batch; old module shrinks to a shim | per batch: old module fan-in strictly decreases; final batch: `--checks dead-code` emits DELETE for the shim and it is removed; suite green throughout |
 
 Standing rule: architecture batches are coverage-gated like all others — characterize-first
-on any touched file carrying a TEST finding.
+on any touched file carrying a TEST finding. Multi-wave campaigns (contract, CI ratchets,
+frozen measures, replay verdict) follow `references/architecture-ratchet.md`.
 
 ## Batch Protocol
 
