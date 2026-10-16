@@ -2,7 +2,7 @@
 name: repo-audit-refactor-optimize
 description: Structured repository audit with optional authorized fixes. Runs detection through the repo-audit CLI, ranks findings into a coverage-gated backlog, applies small verified batches only when fixes are requested, and reports evidence with remaining limits. Use when asked to audit a repo, review code health, or carry out an explicitly authorized cleanup.
 metadata:
-  version: 1.0.1
+  version: 1.1.0
   requires: "repo-audit-checks >= 1.0.0"
 ---
 
@@ -22,9 +22,8 @@ audit.
 ## Prerequisites
 
 Detection lives in the `repo-audit` command (package `repo-audit-checks`
-v1.0.0+, owned by the repo-audit-skills repository). This skill ships a
-launcher at `scripts/repo-audit` next to this file; it runs the isolated
-environment created at install time, so no venv activation or global install
+v1.0.0+, owned by the repo-audit-skills repository). The shipped launcher
+`scripts/repo-audit` runs the isolated install-time environment; no activation
 is needed. Let `SKILL_DIR` be the directory containing this SKILL.md:
 
 ```bash
@@ -32,8 +31,7 @@ is needed. Let `SKILL_DIR` be the directory containing this SKILL.md:
 ```
 
 If the launcher reports no CLI, install it per `bootstrap/install.sh --help`
-and stop if installation is not possible. A missing required check makes the
-result incomplete; skipped checks never count as clean coverage.
+and stop if installation is not possible.
 
 ## Workflow
 
@@ -45,20 +43,29 @@ result incomplete; skipped checks never count as clean coverage.
    "$SKILL_DIR/scripts/repo-audit" scan --root <repo> --out-dir <run-dir> --preset code-health
    "$SKILL_DIR/scripts/repo-audit" scan --list-checks
    ```
-   Every check stays individually selectable. Expensive checks that execute
-   code are opt-in, never default. Keep the explicit output directory; never
-   require report files inside the target repository.
+   Route each concern to its check: `complexity`, `hotspot`, `growth`,
+   `dead-code`, `duplication`, `structure`, `perf-smell`; `test-effectiveness`
+   executes code, so like every executing check it is opt-in. Never call the
+   tools a check wraps. Keep the explicit output directory, outside the target.
 3. Review. Read `run.json`, `findings.json`, and `report.md` from the run
    directory. Exit 0 means complete and clean, 1 means complete with findings,
    2 means incomplete or error. Failed requested checks make the result
-   incomplete. Skipped, unsupported, and error states are reported as-is.
+   incomplete. Skipped, unsupported, and error states are reported as-is and
+   never count as clean coverage.
 4. Prioritize. Rank by impact, confidence, risk, and effort (see
    `references/prioritization.md`). Files without covering tests are
    characterize-first: add behavior tests before remediating.
 5. Fix only if authorized. Work in small coherent batches with one intent per
    batch, inspect the actual diff, and rerun the relevant checks and tests
    (see `references/remediation-playbook.md`). Test removal needs evidence of
-   preserved behavior; no universal score threshold proves equivalence.
+   preserved behavior; no score threshold proves equivalence.
+   Structural refactors beyond one batch follow
+   `references/architecture-ratchet.md`: CI-ratcheted import contract,
+   semgrep and complexity gates from the first wave, a frozen measure script
+   as each task's acceptance, and a replay of past fixes as the verdict.
+   Present structure as maintenance; in METHOD BET #3428 it did not cut
+   tokens or lines read per fix. Refactor for tokens only when measured
+   reading cost points at structure.
 6. Compare on real measurements: same workload, same inputs, same method,
    matched environment — including stored audit runs:
    ```bash
@@ -78,12 +85,11 @@ in `references/acceptance.md`.
 
 ## Delegation
 
-The host owns planning, edits, and Git. Use host-native delegation only when
-available and useful; sequential execution in one agent is fully supported.
-Pass each worker its scope, constraints, artifact locations, and expected
-evidence, then review the combined result yourself. File-disjoint work does
-not imply conflict-free behavior: shared interfaces and cross-file effects
-still need combined-state validation.
+The host owns planning, edits, and Git. Delegate only when the host supports
+it; one agent working sequentially is fine. Give each worker its scope,
+constraints, artifact locations, and expected evidence, then review the
+combined result yourself. File-disjoint work can still conflict through shared
+interfaces, so validate the combined state.
 
 ## What this skill does not do
 

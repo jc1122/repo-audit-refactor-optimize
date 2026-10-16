@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Release-gate checks for the thin 1.0.1 skill.
+"""Release-gate checks for the thin 1.1.0 skill.
 
 Verifies: SKILL.md Agent Skills frontmatter (name + metadata.version semver),
 CHANGELOG heading, wrapper version sync, installer pin sync, shipped reference
@@ -16,7 +16,7 @@ from pathlib import Path
 
 SEMVER_RE = re.compile(r"^\d+\.\d+\.\d+$")
 
-EXPECTED_VERSION = "1.0.1"
+EXPECTED_VERSION = "1.1.0"
 
 CORE_REQUIRES_FLOOR = "1.0.0"
 
@@ -26,6 +26,7 @@ REQUIRED_REFERENCES = (
     "remediation-playbook.md",
     "verification.md",
     "MIGRATION.md",
+    "architecture-ratchet.md",
 )
 
 # v0.x runtime machinery that must not ship in 1.0.0. The acceptance policy
@@ -138,7 +139,7 @@ def _metadata_version(meta: dict[str, object]) -> str:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Check 1.0.1 release readiness.")
+    parser = argparse.ArgumentParser(description="Check 1.1.0 release readiness.")
     parser.add_argument(
         "--root",
         default=str(Path(__file__).resolve().parents[1]),

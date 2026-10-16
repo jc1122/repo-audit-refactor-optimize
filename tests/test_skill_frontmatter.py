@@ -26,7 +26,7 @@ def test_frontmatter_uses_metadata_version():
     assert meta.get("name") == "repo-audit-refactor-optimize"
     assert "version" not in meta, "top-level 'version:' retired; use metadata.version"
     metadata = meta.get("metadata")
-    assert isinstance(metadata, dict) and metadata.get("version") == "1.0.1"
+    assert isinstance(metadata, dict) and metadata.get("version") == "1.1.0"
     requires = metadata.get("requires")
     assert isinstance(requires, str), "metadata values must be plain strings"
     name, op, floor = requires.split()
@@ -71,3 +71,11 @@ def test_declares_core_dependency_and_scope_rule():
     text = _skill_text()
     assert "repo-audit" in text and "1.0.0" in text
     assert "audit" in text.lower() and "authoriz" in text.lower()
+
+
+def test_routes_structural_work_to_ratchet_reference():
+    text = _skill_text()
+    assert "references/architecture-ratchet.md" in text
+    for check in ("complexity", "hotspot", "dead-code", "duplication", "structure",
+                  "test-effectiveness", "perf-smell"):
+        assert f"`{check}`" in text, f"SKILL.md does not route {check} to the CLI"
